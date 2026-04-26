@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, ReactNode } from 'react'
 import { useToast, ToastContainer } from '@/components/toast'
 import { useRouter, useParams } from 'next/navigation'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
@@ -116,6 +116,44 @@ export default function ClientePerfilPage() {
       body: JSON.stringify({ analysis: aiProfile, website: analyzeUrl || client?.website })
     })
     setSavingAi(false); setEditingAi(false); load()
+  }
+
+
+  function renderFileValue(value: unknown): ReactNode {
+    if (!value) return null
+    if (Array.isArray(value)) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {(value as { url: string; name: string; size: number; type: string }[]).map((f, i) => {
+            const isImage = f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
+            if (isImage && f.url) return (
+              <div key={i}>
+                <a href={f.url} target="_blank" rel="noopener noreferrer">
+                  <img src={f.url} alt={f.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, display: 'block', objectFit: 'contain', background: '#111' }} />
+                </a>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{f.name}{f.size ? ` · ${(f.size / 1024).toFixed(0)}kb` : ''}</div>
+              </div>
+            )
+            return (
+              <a key={i} href={f.url || '#'} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-3)', borderRadius: 8, textDecoration: 'none', color: 'var(--text)', border: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 20 }}>{f.type?.includes('pdf') ? '📄' : '📎'}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
+                  {f.size && <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{(f.size / 1024).toFixed(0)}kb</div>}
+                </div>
+                {f.url && <span style={{ fontSize: 11, color: 'var(--accent)', flexShrink: 0 }}>↗</span>}
+              </a>
+            )
+          })}
+        </div>
+      )
+    }
+    const str = String(value)
+    const isUrl = str.startsWith('http')
+    return isUrl
+      ? <a href={str} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline', wordBreak: 'break-all' }}>📎 {str.split('/').pop()}</a>
+      : <span style={{ color: 'var(--text-3)' }}>📎 {str}</span>
   }
 
   async function viewResponses(slug: string) {
@@ -374,22 +412,23 @@ export default function ClientePerfilPage() {
             ) : responses ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {Object.entries(responses).filter(([,v]) => v).map(([key, value]) => {
-                  const labelMap = briefings.find(b => b.slug === viewingResponses)?.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
+                  const bLang = briefings.find(b => b.slug === viewingResponses)?.language
+                  const labelMap = bLang === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
                   const label = labelMap[key] || key.replace(/_/g, ' ')
-                  const displayValue = Array.isArray(value) ? (value as string[]).join(', ') : String(value)
-                  const isShort = displayValue.length < 60
-                  const isFile = /arquivo|logo|referencia|anexo|upload|files/i.test(key)
+                  const isFileField = /arquivo|logo|referencia|anexo|upload|files/i.test(key) || (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'url' in (value[0] as object))
+                  const displayValue = isFileField ? '' : (Array.isArray(value) ? (value as string[]).join(', ') : String(value))
+                  const isShort = !isFileField && displayValue.length < 60
                   return (
                     <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                      <div style={{ padding: '8px 14px', background: 'var(--bg-3)', borderBottom: isShort ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ padding: '8px 14px', background: 'var(--bg-3)', borderBottom: (isShort && !isFileField) ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                          {isFile && '📎 '}{label}
+                          {isFileField && '📎 '}{label}
                         </span>
-                        {isShort && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{displayValue}</span>}
+                        {isShort && !isFileField && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{displayValue}</span>}
                       </div>
-                      {!isShort && (
-                        <div style={{ padding: '12px 14px', fontSize: 14, color: 'var(--text)', lineHeight: 1.7, background: 'var(--bg-2)', whiteSpace: 'pre-wrap' }}>
-                          {isFile ? <a href={displayValue} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline', wordBreak: 'break-all' }}>📎 {displayValue}</a> : displayValue}
+                      {(!isShort || isFileField) && (
+                        <div style={{ padding: '12px 14px', fontSize: 14, color: 'var(--text)', lineHeight: 1.7, background: 'var(--bg-2)' }}>
+                          {isFileField ? renderFileValue(value) : <span style={{ whiteSpace: 'pre-wrap' }}>{displayValue}</span>}
                         </div>
                       )}
                     </div>

@@ -67,7 +67,7 @@ function FieldInput({ field, value, prefilled, onChange }: {
   }
 
   if (field.type === 'file') {
-    const files: File[] = Array.isArray(value) ? (value as File[]) : []
+    const files: File[] = Array.isArray(value) ? (value as File[]).filter(v => v instanceof File) : []
     return (
       <div>
         <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 16px', border: '2px dashed var(--border-2)', borderRadius: 12, cursor: 'pointer', background: 'var(--bg-3)', transition: 'border-color 0.2s', minHeight: 80 }}>
@@ -75,7 +75,7 @@ function FieldInput({ field, value, prefilled, onChange }: {
             onChange={e => { const newFiles = Array.from(e.target.files || []); onChange([...files, ...newFiles]) }} />
           <div style={{ fontSize: 24 }}>📎</div>
           <div style={{ fontSize: 14, color: 'var(--text-2)', textAlign: 'center' }}>Toque para anexar arquivos</div>
-          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Imagens, PDFs, documentos</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Imagens, PDFs, documentos · máx. 10MB cada</div>
         </label>
         {files.length > 0 && (
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -107,6 +107,7 @@ export default function BriefingFormPage() {
   const [notFound, setNotFound] = useState(false)
   const [answers, setAnswers] = useState<Record<string, unknown>>({})
   const [submitting, setSubmitting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<string>('')
   const [submitted, setSubmitted] = useState(false)
   const [currentSection, setCurrentSection] = useState(0)
   const [started, setStarted] = useState(false)
@@ -130,17 +131,53 @@ export default function BriefingFormPage() {
   async function handleSubmit() {
     if (!briefing) return
     setSubmitting(true)
-    // Filter out File objects (can't serialize)
+    const isEN = briefing.language === 'en-US'
+
+    // Upload all File objects to Supabase Storage
     const serializableAnswers: Record<string, unknown> = {}
+    const fileFields = Object.entries(answers).filter(
+      ([, v]) => Array.isArray(v) && v.length > 0 && v[0] instanceof File
+    )
+
+    for (const [k, files] of fileFields) {
+      const uploadedUrls: { url: string; name: string; size: number; type: string }[] = []
+      for (const file of files as File[]) {
+        setUploadProgress(isEN ? `Uploading ${file.name}...` : `Enviando ${file.name}...`)
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('slug', slug)
+        fd.append('fieldId', k)
+        try {
+          const res = await fetch('/api/upload', { method: 'POST', body: fd })
+          if (res.ok) {
+            const data = await res.json()
+            uploadedUrls.push({ url: data.url, name: data.name, size: data.size, type: data.type })
+          } else {
+            // Fallback: store filename if upload fails
+            uploadedUrls.push({ url: '', name: file.name, size: file.size, type: file.type })
+          }
+        } catch {
+          uploadedUrls.push({ url: '', name: file.name, size: file.size, type: file.type })
+        }
+      }
+      serializableAnswers[k] = uploadedUrls
+    }
+
+    setUploadProgress('')
+
+    // Copy non-file answers
     for (const [k, v] of Object.entries(answers)) {
-      if (Array.isArray(v) && v.length > 0 && v[0] instanceof File) {
-        serializableAnswers[k] = (v as File[]).map(f => f.name).join(', ')
-      } else {
+      if (!(Array.isArray(v) && v.length > 0 && v[0] instanceof File)) {
         serializableAnswers[k] = v
       }
     }
+
     try {
-      await fetch(`/api/briefings/${slug}/submit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answers: serializableAnswers }) })
+      await fetch(`/api/briefings/${slug}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: serializableAnswers }),
+      })
       setSubmitted(true)
     } catch (e) { console.error(e) }
     setSubmitting(false)
