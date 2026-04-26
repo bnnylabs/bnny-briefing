@@ -9,12 +9,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 
   if (!briefing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Return all versions ordered by date
+  // Fetch all versions — try submitted_at first (original schema), fallback to created_at
   const { data: responses } = await supabaseAdmin
     .from('responses')
-    .select('id, answers, created_at')
+    .select('*')
     .eq('briefing_id', briefing.id)
-    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
 
   const all = responses || []
   const latest = all[all.length - 1]
@@ -23,8 +23,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   // Build diff between original and latest (if multiple versions)
   let diff: Record<string, { old: unknown; new: unknown }> = {}
   if (all.length > 1 && original && latest) {
-    const oldAnswers = original.answers as Record<string, unknown>
-    const newAnswers = latest.answers as Record<string, unknown>
+    const oldAnswers = (original.answers || {}) as Record<string, unknown>
+    const newAnswers = (latest.answers || {}) as Record<string, unknown>
     for (const [key, newVal] of Object.entries(newAnswers)) {
       const oldVal = oldAnswers[key]
       const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
@@ -41,7 +41,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     diff,
     versions: all.length,
     updateCount: briefing.update_count || 0,
-    submittedAt: latest?.created_at,
-    originalSubmittedAt: original?.created_at,
+    submittedAt: latest?.submitted_at || latest?.created_at,
+    originalSubmittedAt: original?.submitted_at || original?.created_at,
   })
 }
