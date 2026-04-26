@@ -579,9 +579,11 @@ export default function AdminPage() {
           </>
         )}
 
+      </div>{/* end padding wrapper */}
+
       {/* RESPONSES MODAL — redesigned */}
       {responsesBriefing && (
-        <Modal onClose={() => { setResponsesBriefing(null); setResponses(null) }} wide className="modal-box">
+        <Modal onClose={() => { setResponsesBriefing(null); setResponses(null) }} wide>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em' }}>{responsesBriefing.clients?.company}</div>
