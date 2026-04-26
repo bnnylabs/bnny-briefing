@@ -68,7 +68,7 @@ function Modal({ onClose, children, wide }: { onClose: () => void; children: Rea
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className={`relative bg-card border border-border rounded-2xl w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200 p-6`}
+      <div className={`relative bg-card border border-border rounded-xl w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-[90vh] overflow-y-auto shadow-xl animate-in fade-in-0 zoom-in-95 duration-150 p-6`}
         onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all text-lg">×</button>
         {children}
@@ -512,7 +512,7 @@ export default function AdminPage() {
             ) : (
               <div className="flex flex-col gap-2">
                 {activityLogs.map(log => (
-                  <div key={log.id} className="rounded-xl border border-border bg-card px-4 py-3 flex items-start justify-between gap-4">
+                  <div key={log.id} className="rounded-lg border border-border bg-card px-4 py-3 flex items-start justify-between gap-4">
                     <div>
                       <div className="font-semibold text-sm">{ACTION_LABELS[log.action] || log.action}</div>
                       {log.details?.company ? <div className="text-xs text-muted-foreground mt-1">{String(log.details.company)} · {String(log.details.type_label ?? '')}</div> : null}
@@ -590,9 +590,9 @@ export default function AdminPage() {
                 { label: 'Concluído',   value: briefings.filter(b => b.status === 'concluido').length,    status: 'concluido' },
               ] as { label: string; value: number; status: string }[]).map(s => (
                 <button key={s.label} onClick={() => setStatusFilter(prev => prev === s.status ? '' : s.status)}
-                  className={`rounded-xl border p-4 text-left transition-all duration-150 cursor-pointer card-shadow ${statusFilter === s.status ? 'border-primary/40 bg-primary/8 shadow-primary/5' : 'border-border bg-card hover:border-border/60 hover:bg-secondary/30'}`}>
-                  <div className={`text-3xl font-extrabold tabular-nums leading-none ${statusFilter === s.status ? 'text-primary' : 'text-foreground'}`}>{s.value}</div>
-                  <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.08em] mt-1.5">{s.label}</div>
+                  className={`rounded-lg border p-3.5 text-left transition-colors duration-100 cursor-pointer ${statusFilter === s.status ? 'border-primary/30 bg-primary/5' : 'border-border bg-card hover:border-border/70'}`}>
+                  <div className={`text-2xl font-bold tabular-nums leading-none font-mono ${statusFilter === s.status ? 'text-primary' : 'text-foreground'}`}>{s.value}</div>
+                  <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-1.5">{s.label}</div>
                 </button>
               ))}
             </div>
@@ -667,7 +667,7 @@ export default function AdminPage() {
               <div className="flex flex-col gap-2">
                 {filtered.map(b => (
                   <div key={b.id}
-                    className={`rounded-xl border px-4 py-3.5 transition-all duration-150 card-shadow ${selectedIds.has(b.id) ? 'border-primary/40 bg-primary/[0.05]' : 'border-border bg-card hover:border-secondary/50 hover:shadow-md'}`}>
+                    className={`rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-primary/40 bg-primary/[0.04]' : 'border-border bg-card hover:border-border/70'}`}>
                     {/* Row: checkbox + name + actions */}
                     <div className="flex items-center gap-2.5">
                       <Checkbox checked={selectedIds.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} className="shrink-0" />

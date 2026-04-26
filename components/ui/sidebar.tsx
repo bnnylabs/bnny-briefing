@@ -29,11 +29,8 @@ export function Sidebar({ items, actions, logo, footer }: SidebarProps) {
       <div className="h-14 flex items-center px-5">
         {logo ?? (
           <Link href="/admin" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black text-sm leading-none">B</div>
-            <div>
-              <div className="font-bold text-[14px] tracking-tight text-sidebar-foreground leading-none">Bnny Labs</div>
-              <div className="text-[10px] text-sidebar-foreground/40 leading-none mt-0.5">Briefings</div>
-            </div>
+            <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-black text-xs leading-none font-mono">B</div>
+            <span className="font-mono font-bold text-[13px] tracking-tight text-sidebar-foreground">Bnny Labs</span>
           </Link>
         )}
       </div>
@@ -47,9 +44,9 @@ export function Sidebar({ items, actions, logo, footer }: SidebarProps) {
           return (
             <Link key={item.href} href={item.href}>
               <div className={cn(
-                'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150',
+                'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all duration-150 cursor-pointer',
                 active
-                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  ? 'bg-primary text-primary-foreground'
                   : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
               )}>
                 <span className="w-4 h-4 flex items-center justify-center shrink-0 text-base leading-none">{item.icon}</span>
