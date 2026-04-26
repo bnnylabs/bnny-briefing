@@ -257,9 +257,14 @@ export default function AdminPage() {
   }
 
   async function viewResponses(b: Briefing) {
-    setResponsesBriefing(b); setResponses(null)
+    setResponsesBriefing(b); setResponses(null); setShowDiffView(false)
     const res = await fetch(`/api/briefings/${b.slug}/responses`)
-    if (res.ok) { const data = await res.json(); setResponses(data.answers || {}) }
+    if (res.ok) {
+      const d = await res.json()
+      setResponses(d.answers || {})
+      setResponseDiff(d.diff || null)
+      setResponseVersions(d.versions || 1)
+    }
   }
 
   function buildText(b: Briefing, resp: Record<string, unknown>) {
