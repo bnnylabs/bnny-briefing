@@ -165,17 +165,32 @@ export async function sendReminderToClient({
 
 // ─── Confirmation email to client after completing briefing ───────────────────
 export async function sendClientConfirmation({
-  clientName, clientEmail, company, typeLabel, language = 'pt-BR',
+  clientName, clientEmail, company, typeLabel, language = 'pt-BR', briefingLink, editingHours = 48,
 }: {
   clientName: string; clientEmail: string; company: string
-  typeLabel: string; language?: string
+  typeLabel: string; language?: string; briefingLink?: string; editingHours?: number
 }) {
   const isEN = language === 'en-US'
+  const editSection = briefingLink ? (isEN ? `
+    <div class="highlight" style="border-left-color:#c8ff00">
+      <strong style="color:#111">⏱ You have ${editingHours} hours to review your answers</strong><br>
+      <span style="font-size:13px;color:#555">If you want to change anything, access the link below during this period.</span><br>
+      <a href="${briefingLink}" style="display:inline-block;margin-top:12px;background:#c8ff00;color:#000;font-weight:700;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px">✏️ Review / Edit my answers →</a>
+    </div>
+  ` : `
+    <div class="highlight" style="border-left-color:#c8ff00">
+      <strong style="color:#111">⏱ Você tem ${editingHours} horas para revisar suas respostas</strong><br>
+      <span style="font-size:13px;color:#555">Se quiser alterar algo, acesse o link abaixo durante este período.</span><br>
+      <a href="${briefingLink}" style="display:inline-block;margin-top:12px;background:#c8ff00;color:#000;font-weight:700;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px">✏️ Revisar / Editar minhas respostas →</a>
+    </div>
+  `) : ''
+
   try {
     const html = baseTemplate(isEN ? `
       <h1>Briefing received successfully! ✅</h1>
       <p>Hello, <strong>${clientName}</strong>!</p>
       <p style="margin-top:12px">We received the <strong>${typeLabel}</strong> briefing for <strong>${company}</strong>. Thank you so much for your time!</p>
+      ${editSection}
       <div class="highlight">
         Our team will review your answers and will be in touch soon to move the project forward.
       </div>
@@ -184,6 +199,7 @@ export async function sendClientConfirmation({
       <h1>Briefing recebido com sucesso! ✅</h1>
       <p>Olá, <strong>${clientName}</strong>!</p>
       <p style="margin-top:12px">Recebemos o briefing de <strong>${typeLabel}</strong> da <strong>${company}</strong>. Muito obrigado pelo seu tempo!</p>
+      ${editSection}
       <div class="highlight">
         Nossa equipe vai analisar suas respostas e em breve entrará em contato para dar andamento ao projeto.
       </div>

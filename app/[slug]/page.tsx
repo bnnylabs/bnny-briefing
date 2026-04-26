@@ -201,9 +201,20 @@ export default function BriefingFormPage() {
         body: JSON.stringify({ answers: serializableAnswers, isUpdate }),
       })
       if (res2.ok) {
+        const submitData = await res2.json()
         setPreviousAnswers(serializableAnswers)
         setEditingMode(false)
         setIsUpdate(false)
+        // Update briefing state with new editing window
+        if (!isUpdate && submitData.editingExpiresAt) {
+          setBriefing(prev => prev ? {
+            ...prev,
+            canEdit: true,
+            editing_expires_at: submitData.editingExpiresAt,
+            editing_locked: false,
+            status: 'concluido'
+          } : prev)
+        }
         setSubmitted(true)
       }
     } catch (e) { console.error(e) }

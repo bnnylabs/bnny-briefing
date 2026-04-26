@@ -107,7 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   // Confirmation to client (only on first submit)
   if (!isUpdate && clientEmail) {
-    await sendClientConfirmation({ clientName, clientEmail, company: briefing.clients?.company, typeLabel: briefing.type_label, language: lang })
+    await sendClientConfirmation({ clientName, clientEmail, company: briefing.clients?.company, typeLabel: briefing.type_label, language: lang, briefingLink: `${baseUrl}/${briefing.slug}`, editingHours })
     try { await supabaseAdmin.from('notifications').insert({ briefing_id: briefing.id, type: 'email_client_confirmation', status: 'sent', details: { to: clientEmail } }) } catch (_e) {}
   }
 
