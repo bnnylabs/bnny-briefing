@@ -62,7 +62,7 @@
 }
 
 @layer base {
-  * { @apply border-border box-sizing-border; }
+  * { @apply border-border; }
   *, *::before, *::after { box-sizing: border-box; }
   body {
     @apply bg-background text-foreground;
