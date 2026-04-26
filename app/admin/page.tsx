@@ -10,7 +10,7 @@ interface Briefing {
   id: string; slug: string; type: string; type_label: string; status: string
   created_at: string; viewed_at: string | null; started_at: string | null
   completed_at: string | null; expires_at: string | null; internal_notes: string | null
-  clients: Client
+  language?: string; clients: Client
 }
 interface ActivityLog {
   id: string; action: string; details: Record<string, unknown>; created_at: string
@@ -566,6 +566,7 @@ export default function AdminPage() {
                     <div className="card-meta">
                       <StatusBadge status={b.status} />
                       <span style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-3)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{b.type_label}</span>
+                      {b.language === 'en-US' && <span title="Briefing em inglês" style={{ fontSize: 12 }}>🇺🇸</span>}
                       <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{b.clients?.name}</span>
                       <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· {timeAgo(b.created_at)}</span>
                       <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>({fmt(b.created_at)})</span>

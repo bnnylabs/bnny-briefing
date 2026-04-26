@@ -1,6 +1,8 @@
 import { Resend } from 'resend'
 
-function getResend() { return new Resend(process.env.RESEND_API_KEY || 'placeholder') }
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || 'placeholder')
+}
 
 const FROM = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
 
@@ -43,24 +45,26 @@ function baseTemplate(content: string) {
 </html>`
 }
 
-// Email to client - briefing created
+// ─── Email to client — briefing created ──────────────────────────────────────
 export async function sendBriefingToClient({
-  clientName,
-  clientEmail,
-  company,
-  typeLabel,
-  link,
-  language = 'pt-BR',
+  clientName, clientEmail, company, typeLabel, link, language = 'pt-BR',
 }: {
-  clientName: string
-  clientEmail: string
-  company: string
-  typeLabel: string
-  link: string
-  language?: string
+  clientName: string; clientEmail: string; company: string
+  typeLabel: string; link: string; language?: string
 }) {
+  const isEN = language === 'en-US'
   try {
-    const html = baseTemplate(`
+    const html = baseTemplate(isEN ? `
+      <h1>Your briefing is ready! 🎉</h1>
+      <p>Hello, <strong>${clientName}</strong>!</p>
+      <p style="margin-top:12px">The <strong>Bnny Labs</strong> team has prepared a personalized <strong>${typeLabel}</strong> briefing for <strong>${company}</strong>.</p>
+      <div class="highlight">
+        Some fields have already been pre-filled automatically based on your information. You can review, edit and complete the rest.
+      </div>
+      <p>The process is simple and takes just a few minutes. Click the button below to get started:</p>
+      <a href="${link}" class="btn">Fill out briefing →</a>
+      <p style="margin-top:24px;font-size:13px;color:#999">If the button doesn't work, access: <a href="${link}" style="color:#000">${link}</a></p>
+    ` : `
       <h1>Seu briefing está pronto! 🎉</h1>
       <p>Olá, <strong>${clientName}</strong>!</p>
       <p style="margin-top:12px">A equipe da <strong>Bnny Labs</strong> preparou um briefing personalizado de <strong>${typeLabel}</strong> para a <strong>${company}</strong>.</p>
@@ -71,11 +75,9 @@ export async function sendBriefingToClient({
       <a href="${link}" class="btn">Preencher briefing →</a>
       <p style="margin-top:24px;font-size:13px;color:#999">Se o botão não funcionar, acesse: <a href="${link}" style="color:#000">${link}</a></p>
     `)
-
     const result = await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
-      subject: `Briefing de ${typeLabel} — ${company}`,
+      from: FROM, to: clientEmail,
+      subject: isEN ? `${typeLabel} Briefing — ${company}` : `Briefing de ${typeLabel} — ${company}`,
       html,
     })
     return { ok: true, id: result.data?.id }
@@ -85,21 +87,12 @@ export async function sendBriefingToClient({
   }
 }
 
-// Email to admin - briefing completed
+// ─── Email to admin — briefing completed ─────────────────────────────────────
 export async function sendCompletionToAdmin({
-  adminEmail,
-  clientName,
-  company,
-  typeLabel,
-  slug,
-  baseUrl,
+  adminEmail, clientName, company, typeLabel, slug, baseUrl,
 }: {
-  adminEmail: string
-  clientName: string
-  company: string
-  typeLabel: string
-  slug: string
-  baseUrl: string
+  adminEmail: string; clientName: string; company: string
+  typeLabel: string; slug: string; baseUrl: string
 }) {
   try {
     const html = baseTemplate(`
@@ -114,10 +107,8 @@ export async function sendCompletionToAdmin({
       <p>Acesse o painel para ver as respostas completas:</p>
       <a href="${baseUrl}/admin" class="btn">Ver respostas no painel →</a>
     `)
-
     const result = await getResend().emails.send({
-      from: FROM,
-      to: adminEmail,
+      from: FROM, to: adminEmail,
       subject: `✅ Briefing concluído — ${company} (${typeLabel})`,
       html,
     })
@@ -128,24 +119,25 @@ export async function sendCompletionToAdmin({
   }
 }
 
-// Email reminder to client
+// ─── Reminder email to client ─────────────────────────────────────────────────
 export async function sendReminderToClient({
-  clientName,
-  clientEmail,
-  company,
-  typeLabel,
-  link,
-  language = 'pt-BR',
+  clientName, clientEmail, company, typeLabel, link, language = 'pt-BR',
 }: {
-  clientName: string
-  clientEmail: string
-  company: string
-  typeLabel: string
-  link: string
-  language?: string
+  clientName: string; clientEmail: string; company: string
+  typeLabel: string; link: string; language?: string
 }) {
+  const isEN = language === 'en-US'
   try {
-    const html = baseTemplate(`
+    const html = baseTemplate(isEN ? `
+      <h1>Reminder: your briefing is waiting ⏳</h1>
+      <p>Hello, <strong>${clientName}</strong>!</p>
+      <p style="margin-top:12px">Just a reminder that your <strong>${typeLabel}</strong> briefing for <strong>${company}</strong> is still waiting to be filled out.</p>
+      <div class="highlight">
+        It only takes a few minutes! Some answers are already pre-filled — just review and confirm.
+      </div>
+      <a href="${link}" class="btn">Fill out now →</a>
+      <p style="margin-top:24px;font-size:13px;color:#999">Direct link: <a href="${link}" style="color:#000">${link}</a></p>
+    ` : `
       <h1>Lembrete: briefing aguardando ⏳</h1>
       <p>Olá, <strong>${clientName}</strong>!</p>
       <p style="margin-top:12px">Passando para lembrar que seu briefing de <strong>${typeLabel}</strong> para a <strong>${company}</strong> ainda está aguardando ser preenchido.</p>
@@ -155,11 +147,11 @@ export async function sendReminderToClient({
       <a href="${link}" class="btn">Preencher agora →</a>
       <p style="margin-top:24px;font-size:13px;color:#999">Link direto: <a href="${link}" style="color:#000">${link}</a></p>
     `)
-
     const result = await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
-      subject: `Lembrete: briefing de ${typeLabel} aguardando — ${company}`,
+      from: FROM, to: clientEmail,
+      subject: isEN
+        ? `Reminder: ${typeLabel} briefing pending — ${company}`
+        : `Lembrete: briefing de ${typeLabel} aguardando — ${company}`,
       html,
     })
     return { ok: true, id: result.data?.id }
@@ -169,22 +161,24 @@ export async function sendReminderToClient({
   }
 }
 
-// Confirmation email to client after completing briefing
+// ─── Confirmation email to client after completing briefing ───────────────────
 export async function sendClientConfirmation({
-  clientName,
-  clientEmail,
-  company,
-  typeLabel,
-  language = 'pt-BR',
+  clientName, clientEmail, company, typeLabel, language = 'pt-BR',
 }: {
-  clientName: string
-  clientEmail: string
-  company: string
-  typeLabel: string
-  language?: string
+  clientName: string; clientEmail: string; company: string
+  typeLabel: string; language?: string
 }) {
+  const isEN = language === 'en-US'
   try {
-    const html = baseTemplate(`
+    const html = baseTemplate(isEN ? `
+      <h1>Briefing received successfully! ✅</h1>
+      <p>Hello, <strong>${clientName}</strong>!</p>
+      <p style="margin-top:12px">We received the <strong>${typeLabel}</strong> briefing for <strong>${company}</strong>. Thank you so much for your time!</p>
+      <div class="highlight">
+        Our team will review your answers and will be in touch soon to move the project forward.
+      </div>
+      <p style="margin-top:16px;font-size:14px;color:#888">If you need anything or want to add more information, just reply to this email.</p>
+    ` : `
       <h1>Briefing recebido com sucesso! ✅</h1>
       <p>Olá, <strong>${clientName}</strong>!</p>
       <p style="margin-top:12px">Recebemos o briefing de <strong>${typeLabel}</strong> da <strong>${company}</strong>. Muito obrigado pelo seu tempo!</p>
@@ -194,10 +188,9 @@ export async function sendClientConfirmation({
       <p style="margin-top:16px;font-size:14px;color:#888">Se precisar de qualquer coisa ou quiser adicionar alguma informação, basta responder este email.</p>
     `)
     const result = await getResend().emails.send({
-      from: FROM,
-      to: clientEmail,
+      from: FROM, to: clientEmail,
       replyTo: process.env.NOTIFICATION_EMAIL || FROM,
-      subject: `Briefing recebido — ${company}`,
+      subject: isEN ? `Briefing received — ${company}` : `Briefing recebido — ${company}`,
       html,
     })
     return { ok: true, id: result.data?.id }
@@ -207,12 +200,11 @@ export async function sendClientConfirmation({
   }
 }
 
-// WhatsApp via CallMeBot
+// ─── WhatsApp via CallMeBot ───────────────────────────────────────────────────
 export async function sendWhatsApp(message: string) {
   const phone = process.env.CALLMEBOT_PHONE
   const apikey = process.env.CALLMEBOT_APIKEY
   if (!phone || !apikey) return { ok: false, reason: 'not configured' }
-
   try {
     const encoded = encodeURIComponent(message)
     const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=${apikey}`
