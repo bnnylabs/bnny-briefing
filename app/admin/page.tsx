@@ -340,8 +340,8 @@ export default function AdminPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{ACTION_LABELS[log.action] || log.action}</div>
-                        {log.details?.company && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>{String(log.details.company)} · {String(log.details.type_label || '')}</div>}
-                        {log.details?.count && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>{String(log.details.count)} briefings excluídos</div>}
+                        {log.details?.company ? <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>{String(log.details.company)} · {String(log.details.type_label ?? '')}</div> : null}
+                        {log.details?.count ? <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>{String(log.details.count)} briefings excluídos</div> : null}
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{fmt(log.created_at)}</div>
                     </div>
