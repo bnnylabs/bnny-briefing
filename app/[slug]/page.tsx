@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { BRIEFING_TEMPLATES, BriefingType, BriefingField } from '@/lib/briefing-types'
+import { getTemplate, BriefingType, BriefingField } from '@/lib/briefing-types'
 
 interface BriefingData {
   id: string; slug: string; type: BriefingType; type_label: string; status: string
   prefilled_data: Record<string, unknown>
+  language?: string
   clients: { name: string; company: string; website: string }
 }
 
@@ -151,7 +152,7 @@ export default function BriefingFormPage() {
   )
 
   if (!briefing) return null
-  const template = BRIEFING_TEMPLATES[briefing.type]
+  const template = getTemplate(briefing.type, (briefing.language as 'pt-BR' | 'en-US') || 'pt-BR')
   if (!template) return null
 
   if (submitted) return (
@@ -244,7 +245,7 @@ export default function BriefingFormPage() {
           ) : (
             <button onClick={handleSubmit} disabled={submitting}
               style={{ flex: 1, padding: '14px', borderRadius: 12, border: 'none', background: submitting ? 'var(--bg-3)' : 'var(--accent)', color: submitting ? 'var(--text-2)' : '#000', cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              {submitting ? <><div className="spinner" /> Enviando...</> : '✓ Concluir briefing'}
+              {submitting ? <><div className="spinner" /> Enviando...</> : briefing.language === 'en-US' ? '✓ Submit briefing' : '✓ Concluir briefing'}
             </button>
           )}
         </div>

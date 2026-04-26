@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { BRIEFING_TEMPLATES, BriefingType } from '@/lib/briefing-types'
+import { BRIEFING_TEMPLATES, BriefingLanguage, getTemplate, BriefingType } from '@/lib/briefing-types'
 import { Suspense } from 'react'
 
 interface ClientData {
@@ -93,6 +93,7 @@ function NovoBriefingContent() {
   const [clientForm, setClientForm] = useState<ClientData>({ name: '', company: '', website: '', email: '', phone: '', extraText: '' })
   const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null)
   const [selectedType, setSelectedType] = useState<BriefingType | null>(null)
+  const [language, setLanguage] = useState<BriefingLanguage>('pt-BR')
   const [generatedLink, setGeneratedLink] = useState('')
   const [emailSent, setEmailSent] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -164,6 +165,7 @@ function NovoBriefingContent() {
           briefingTypeLabel: template.label,
           prefilledData: prefilled,
           internalNotes: extraNote || null,
+          language,
           sendEmail: !!clientForm.email,
         }),
       })
@@ -358,11 +360,20 @@ function NovoBriefingContent() {
             )}
 
             <h2 style={{ fontSize: 21, fontWeight: 700, marginBottom: 6, letterSpacing: '-0.02em' }}>Tipo de briefing</h2>
-            <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 20 }}>Escolha o serviço que será desenvolvido.</p>
+            <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 16 }}>Escolha o serviço que será desenvolvido.</p>
+
+            {/* Language toggle */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20, padding: '12px 16px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10 }}>
+              <span style={{ fontSize: 13, color: 'var(--text-2)', flex: 1 }}>🌐 Idioma do briefing para o cliente</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setLanguage('pt-BR')} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: `1px solid ${language === 'pt-BR' ? 'var(--accent-border)' : 'var(--border)'}`, background: language === 'pt-BR' ? 'var(--accent-dim)' : 'transparent', color: language === 'pt-BR' ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: language === 'pt-BR' ? 700 : 400 }}>🇧🇷 Português</button>
+                <button onClick={() => setLanguage('en-US')} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: `1px solid ${language === 'en-US' ? 'var(--accent-border)' : 'var(--border)'}`, background: language === 'en-US' ? 'var(--accent-dim)' : 'transparent', color: language === 'en-US' ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: language === 'en-US' ? 700 : 400 }}>🇺🇸 English</button>
+              </div>
+            </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
               {(Object.keys(BRIEFING_TEMPLATES) as BriefingType[]).map(type => {
-                const t = BRIEFING_TEMPLATES[type]
+                const t = getTemplate(type, language)
                 return (
                   <button key={type} onClick={() => setSelectedType(type)}
                     style={{ background: selectedType === type ? 'var(--accent-dim)' : 'var(--bg-2)', border: `1px solid ${selectedType === type ? 'var(--accent-border)' : 'var(--border)'}`, borderRadius: 10, padding: '14px 18px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>

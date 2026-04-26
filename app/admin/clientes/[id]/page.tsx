@@ -54,6 +54,11 @@ export default function ClientePerfilPage() {
   const [aiProfile, setAiProfile] = useState<Record<string, string>>({})
   const [editingAi, setEditingAi] = useState(false)
   const [savingAi, setSavingAi] = useState(false)
+  const [viewingResponses, setViewingResponses] = useState<string | null>(null)
+  const [responses, setResponses] = useState<Record<string, unknown> | null>(null)
+  const [loadingResponses, setLoadingResponses] = useState(false)
+  const [copiedResponses, setCopiedResponses] = useState(false)
+  const { toasts, toast, remove } = useToast()
   const [aiExpanded, setAiExpanded] = useState(false)
   const { toasts, toast, remove } = useToast()
   const [analyzeUrl, setAnalyzeUrl] = useState('')
@@ -113,6 +118,29 @@ export default function ClientePerfilPage() {
     setSavingAi(false); setEditingAi(false); load()
   }
 
+  async function viewResponses(slug: string) {
+    setViewingResponses(slug)
+    setLoadingResponses(true)
+    const res = await fetch(`/api/briefings/${slug}/responses`)
+    if (res.ok) { const d = await res.json(); setResponses(d.answers || {}) }
+    setLoadingResponses(false)
+  }
+
+  async function copyResponses(briefingTitle: string) {
+    if (!responses) return
+    const lines = [`BRIEFING — ${briefingTitle}`, `Empresa: ${client?.company}`, '']
+    Object.entries(responses).filter(([,v]) => v).forEach(([k, v]) => {
+      const label = FIELD_LABELS_PT[k] || k.replace(/_/g, ' ').toUpperCase()
+      lines.push(label.toUpperCase())
+      lines.push(Array.isArray(v) ? (v as string[]).join(', ') : String(v))
+      lines.push('')
+    })
+    await navigator.clipboard.writeText(lines.join('\n'))
+    setCopiedResponses(true)
+    toast('Respostas copiadas!', 'success', 2000)
+    setTimeout(() => setCopiedResponses(false), 2000)
+  }
+
   function newBriefing() {
     router.push(`/admin/novo?client_id=${id}`)
   }
@@ -125,9 +153,13 @@ export default function ClientePerfilPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <ToastContainer toasts={toasts} remove={remove} />
+      <ToastContainer toasts={toasts} remove={remove} />
       <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58, position: 'sticky', top: 0, background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(8px)', zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => router.push('/admin/clientes')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18, padding: 0 }}>←</button>
+          <button onClick={() => router.push('/admin/clientes')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18, padding: '4px 6px', borderRadius: 6 }}>←</button>
+          <span style={{ color: 'var(--border-2)', fontSize: 14 }}>/</span>
+          <button onClick={() => router.push('/admin')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 12, padding: '4px 6px', borderRadius: 6, fontFamily: 'inherit' }}>Painel</button>
+          <span style={{ color: 'var(--border-2)', fontSize: 14 }}>/</span>
           <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <span style={{ color: 'var(--accent)' }}>{client.company}</span>
           </div>
@@ -305,6 +337,10 @@ export default function ClientePerfilPage() {
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/${b.slug}`)}
                         style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>🔗 Link</button>
+                      {b.status === 'concluido' && (
+                        <button onClick={() => viewResponses(b.slug)}
+                          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 }}>Ver respostas</button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -314,6 +350,54 @@ export default function ClientePerfilPage() {
         </div>
 
       </div>
+      {/* RESPONSES MODAL */}
+      {viewingResponses && (
+        <div className="modal-bg" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 50 }}
+          onClick={e => { if (e.target === e.currentTarget) { setViewingResponses(null); setResponses(null) } }}>
+          <div className="modal-box" style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, maxWidth: 680, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 18 }}>{client?.company}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>Respostas do briefing</div>
+              </div>
+              <button onClick={() => { setViewingResponses(null); setResponses(null) }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 22 }}>×</button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+              <button onClick={() => copyResponses(viewingResponses)}
+                style={{ flex: 1, fontSize: 13, padding: '9px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                {copiedResponses ? '✓ Copiado!' : '📋 Copiar tudo'}
+              </button>
+            </div>
+            {loadingResponses ? (
+              <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>
+            ) : responses ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {Object.entries(responses).filter(([,v]) => v).map(([key, value]) => {
+                  const label = FIELD_LABELS_PT[key] || key.replace(/_/g, ' ')
+                  const displayValue = Array.isArray(value) ? (value as string[]).join(', ') : String(value)
+                  const isShort = displayValue.length < 60
+                  const isFile = /arquivo|logo|referencia|anexo|upload|files/i.test(key)
+                  return (
+                    <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                      <div style={{ padding: '8px 14px', background: 'var(--bg-3)', borderBottom: isShort ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                          {isFile && '📎 '}{label}
+                        </span>
+                        {isShort && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{displayValue}</span>}
+                      </div>
+                      {!isShort && (
+                        <div style={{ padding: '12px 14px', fontSize: 14, color: 'var(--text)', lineHeight: 1.7, background: 'var(--bg-2)', whiteSpace: 'pre-wrap' }}>
+                          {isFile ? <a href={displayValue} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline', wordBreak: 'break-all' }}>📎 {displayValue}</a> : displayValue}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>Sem respostas ainda</div>}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

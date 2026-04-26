@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { FIELD_LABELS_PT } from '@/lib/briefing-types'
 import { useToast, ToastContainer } from '@/components/toast'
 
 interface Client { id: string; name: string; company: string; email: string; phone: string }
@@ -610,7 +611,7 @@ export default function AdminPage() {
                   <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
                     <div style={{ padding: '8px 14px', background: 'var(--bg-3)', borderBottom: isShort ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                        {isFile && '📎 '}{key.replace(/_/g, ' ')}
+                        {isFile && '📎 '}{FIELD_LABELS_PT[key] || key.replace(/_/g, ' ')}
                       </span>
                       {isShort && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{displayValue}</span>}
                     </div>

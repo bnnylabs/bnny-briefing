@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!isAuthed(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await req.json()
-  const { client, briefingType, briefingTypeLabel, prefilledData, expiryDays, internalNotes, sendEmail } = body
+  const { client, briefingType, briefingTypeLabel, prefilledData, expiryDays, internalNotes, sendEmail, language } = body
 
   let clientId: string
   if (client.id) {
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     .from('briefings').insert({
       client_id: clientId, slug, type: briefingType, type_label: briefingTypeLabel,
       status: 'enviado', prefilled_data: prefilledData || {},
-      internal_notes: internalNotes || null, expires_at: expiresAt,
+      internal_notes: internalNotes || null, expires_at: expiresAt, language: language || 'pt-BR',
     }).select().single()
 
   if (briefingError) return NextResponse.json({ error: briefingError.message }, { status: 500 })
