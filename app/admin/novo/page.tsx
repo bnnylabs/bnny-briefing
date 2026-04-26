@@ -389,6 +389,20 @@ function NovoBriefingContent() {
               })}
             </div>
 
+            {/* Preview button */}
+            {selectedType && (
+              <div style={{ marginBottom: 20 }}>
+                <button
+                  onClick={() => window.open(
+                    `/admin/preview?type=${selectedType}&lang=${language}&company=${encodeURIComponent(clientForm.company || 'Empresa')}`,
+                    '_blank', 'width=500,height=800,scrollbars=yes'
+                  )}
+                  style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  👁 Ver preview — como o cliente vai ver
+                </button>
+              </div>
+            )}
+
             {/* Extra note */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Observação interna (opcional)</label>
