@@ -692,7 +692,20 @@ export default function AdminPage() {
                           {copiedId === b.slug ? '✓' : '🔗 Link'}
                         </button>
                         {b.status === 'concluido' && (
-                          <button onClick={() => viewResponses(b)} style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Ver respostas</button>
+                          <>
+                            <button onClick={() => viewResponses(b)} style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Ver respostas</button>
+                            <button onClick={() => toggleEditingLock(b.slug, !!b.editing_locked)}
+                              title={b.editing_locked ? 'Liberar edição ao cliente' : 'Bloquear edição ao cliente'}
+                              style={{ fontSize: 13, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}>
+                              {b.editing_locked ? '🔓' : '🔒'}
+                            </button>
+                            {(b.update_count || 0) > 0 && (
+                              <span title={`Atualizado ${b.update_count}x pelo cliente`}
+                                style={{ fontSize: 11, color: 'var(--accent)', background: 'var(--accent-dim)', padding: '2px 8px', borderRadius: 999, border: '1px solid var(--accent-border)', whiteSpace: 'nowrap', fontWeight: 700 }}>
+                                ✏️ {b.update_count}x
+                              </span>
+                            )}
+                          </>
                         )}
                         <button onClick={() => setDeleteBriefing(b)} title="Excluir" style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,60,60,0.25)', background: 'transparent', color: '#ff6060', cursor: 'pointer' }}>🗑️</button>
                       </div>
@@ -717,7 +730,12 @@ export default function AdminPage() {
                         {copiedId === b.slug ? '✓ Copiado' : '🔗 Link'}
                       </button>
                       {b.status === 'concluido' && (
-                        <button onClick={() => viewResponses(b)} style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer' }}>Ver respostas</button>
+                        <>
+                          <button onClick={() => viewResponses(b)} style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer' }}>Ver respostas</button>
+                          <button onClick={() => toggleEditingLock(b.slug, !!b.editing_locked)} title={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'} style={{ fontSize: 13, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}>
+                            {b.editing_locked ? '🔓' : '🔒'}
+                          </button>
+                        </>
                       )}
                       <button onClick={() => setDeleteBriefing(b)} style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid rgba(255,60,60,0.25)', background: 'transparent', color: '#ff6060', cursor: 'pointer' }}>🗑️ Excluir</button>
                     </div>
@@ -726,6 +744,11 @@ export default function AdminPage() {
                       <StatusBadge status={b.status} />
                       <span style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-3)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{b.type_label}</span>
                       {b.language === 'en-US' && <span title="Briefing em inglês" style={{ fontSize: 12 }}>🇺🇸</span>}
+                      {(b.update_count || 0) > 0 && (
+                        <span title={`Atualizado ${b.update_count}x pelo cliente`} style={{ fontSize: 11, color: '#000', background: 'var(--accent)', padding: '2px 8px', borderRadius: 999, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                          ✏️ {b.update_count}x
+                        </span>
+                      )}
                       <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{b.clients?.name}</span>
                       <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· {timeAgo(b.created_at)}</span>
                       <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>({fmt(b.created_at)})</span>
