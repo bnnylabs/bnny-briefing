@@ -60,7 +60,6 @@ export default function ClientePerfilPage() {
   const [copiedResponses, setCopiedResponses] = useState(false)
   const { toasts, toast, remove } = useToast()
   const [aiExpanded, setAiExpanded] = useState(false)
-  const { toasts, toast, remove } = useToast()
   const [analyzeUrl, setAnalyzeUrl] = useState('')
   const [extraText, setExtraText] = useState('')
 
