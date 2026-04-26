@@ -507,19 +507,9 @@ export default function AdminPage() {
         }
       `}</style>
 
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58, position: 'sticky', top: 0, background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(10px)', zIndex: 20 }}>
-        <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.02em', cursor: 'pointer' }} onClick={() => setView('list')}>
-          <span style={{ color: 'var(--accent)' }}>Bnny</span> Labs <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: 12, marginLeft: 6 }}>Briefings</span><span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 8 }}>v2</span>
-        </div>
-        <div className="header-btns" style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => router.push('/admin/clientes')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>👥 Clientes</button>
-          <button onClick={() => { setView('log'); loadActivityLog() }} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: `1px solid ${view === 'log' ? 'var(--accent-border)' : 'var(--border)'}`, background: view === 'log' ? 'var(--accent-dim)' : 'transparent', color: view === 'log' ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>📋 Log</button>
-          <button onClick={() => setView(view === 'settings' ? 'list' : 'settings')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: `1px solid ${view === 'settings' ? 'var(--accent-border)' : 'var(--border)'}`, background: view === 'settings' ? 'var(--accent-dim)' : 'transparent', color: view === 'settings' ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>⚙️ Config</button>
-          <button onClick={() => router.push('/admin/novo')} style={{ background: 'var(--accent)', color: '#000', fontWeight: 600, padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>+ Novo</button>
-        </div>
-      </header>
 
-      <div style={{ padding: '16px', maxWidth: 860, margin: '0 auto' }}>
+
+      <div className="px-6 py-5 max-w-5xl mx-auto">
 
         {/* ACTIVITY LOG */}
         {view === 'log' && (
@@ -533,7 +523,7 @@ export default function AdminPage() {
                 Nenhuma atividade registrada ainda
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="flex flex-col gap-2">
                 {activityLogs.map(log => (
                   <div key={log.id} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
