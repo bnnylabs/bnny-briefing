@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       details: {
         count: slugs.length,
         slugs,
-        companies: briefings.map((b: { clients?: { company?: string } }) => b.clients?.company).filter(Boolean),
+        companies: briefings.map((b) => b.clients?.company as string | undefined).filter(Boolean),
       }
     })
   } catch (_e) {}
