@@ -17,15 +17,18 @@ const STATUS_ICONS: Record<string, string> = { enviado: '📨', visualizado: '�
 
 const AI_FIELDS = [
   { key: 'company_name', label: 'Nome da empresa' },
-  { key: 'segment', label: 'Segmento / Tipo de negócio' },
+  { key: 'segment', label: 'Segmento / Nicho' },
   { key: 'description', label: 'Sobre a empresa' },
-  { key: 'differentials', label: 'Diferenciais' },
+  { key: 'key_features', label: 'Produtos / Serviços principais' },
+  { key: 'differentials', label: 'Diferenciais competitivos' },
+  { key: 'unique_value_proposition', label: 'Proposta de valor única' },
   { key: 'target_audience', label: 'Público-alvo' },
   { key: 'brand_personality', label: 'Personalidade da marca' },
   { key: 'price_positioning', label: 'Posicionamento de preço' },
-  { key: 'key_features', label: 'Principais características' },
-  { key: 'unique_value_proposition', label: 'Proposta de valor única' },
   { key: 'geographic_focus', label: 'Foco geográfico' },
+  { key: 'tone_of_voice', label: 'Tom de voz' },
+  { key: 'colors_hint', label: 'Direção de cores' },
+  { key: 'extra_notes', label: 'Observações para design' },
 ]
 
 function fmt(d: string | null) {
