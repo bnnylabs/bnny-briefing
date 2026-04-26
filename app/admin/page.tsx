@@ -483,7 +483,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div className="min-h-screen bg-background">
       <ToastContainer toasts={toasts} remove={removeToast} />
       <style>{`
         .card-row1 { display: flex; align-items: center; gap: 10px; }
@@ -797,9 +797,9 @@ export default function AdminPage() {
             </div>
             <button onClick={() => { setResponsesBriefing(null); setResponses(null) }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 22, flexShrink: 0 }}>×</button>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            <button onClick={copyAll} style={{ flex: 1, fontSize: 13, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? '✓ Copiado!' : '📋 Copiar tudo'}</button>
-            <button onClick={exportPDF} style={{ flex: 1, fontSize: 13, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit' }}>📄 Exportar PDF</button>
+          <div className="flex gap-2 mb-5">
+            <Button onClick={copyAll} variant="outline" className="flex-1">{copied ? '✓ Copiado!' : '📋 Copiar tudo'}</Button>
+            <Button onClick={exportPDF} variant="accent" className="flex-1">📄 Exportar PDF</Button>
           </div>
           {responseVersions > 1 && responseDiff && (
             <div style={{ marginBottom: 16 }}>
