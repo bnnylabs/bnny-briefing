@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   let previousAnswers: Record<string, unknown> = {}
   if (isUpdate) {
     const { data: prevResponse } = await supabaseAdmin
-      .from('responses').select('answers').eq('briefing_id', briefing.id).order('created_at', { ascending: false }).limit(1).single()
+      .from('responses').select('answers').eq('briefing_id', briefing.id).order('id', { ascending: false }).limit(1).single()
     if (prevResponse) previousAnswers = prevResponse.answers as Record<string, unknown>
   }
 
@@ -67,10 +67,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   // Build diff for updates
   let diffHtml = ''
-  if (isUpdate && Object.keys(previousAnswers).length > 0) {
+  if (isUpdate) {
     const changes: { field: string; old: string; new: string }[] = []
     for (const [key, newVal] of Object.entries(answers)) {
-      const oldVal = previousAnswers[key]
+      const oldVal = (previousAnswers as Record<string, unknown>)[key]
       const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
       const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
       if (oldStr !== newStr && newStr && key !== 'filled_by') {
