@@ -590,9 +590,9 @@ export default function AdminPage() {
                 { label: 'Concluído',   value: briefings.filter(b => b.status === 'concluido').length,    status: 'concluido' },
               ] as { label: string; value: number; status: string }[]).map(s => (
                 <button key={s.label} onClick={() => setStatusFilter(prev => prev === s.status ? '' : s.status)}
-                  className={`rounded-xl border p-3 text-left transition-all duration-150 cursor-pointer ${statusFilter === s.status ? 'border-primary/50 bg-primary/5' : 'border-border bg-card hover:border-border/60'}`}>
-                  <div className={`text-2xl font-extrabold tabular-nums leading-tight ${statusFilter === s.status ? 'text-primary' : 'text-foreground'}`}>{s.value}</div>
-                  <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mt-0.5">{s.label}</div>
+                  className={`rounded-xl border p-4 text-left transition-all duration-150 cursor-pointer card-shadow ${statusFilter === s.status ? 'border-primary/40 bg-primary/8 shadow-primary/5' : 'border-border bg-card hover:border-border/60 hover:bg-secondary/30'}`}>
+                  <div className={`text-3xl font-extrabold tabular-nums leading-none ${statusFilter === s.status ? 'text-primary' : 'text-foreground'}`}>{s.value}</div>
+                  <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.08em] mt-1.5">{s.label}</div>
                 </button>
               ))}
             </div>
@@ -600,9 +600,9 @@ export default function AdminPage() {
             {/* Search + Filters */}
             <div className="flex gap-2 items-center mb-3 flex-wrap">
               <div className="flex-1 min-w-[180px] relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none">🔍</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none pointer-events-none">🔍</span>
                 <Input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Buscar cliente, empresa ou tipo..." className="pl-9" />
+                  placeholder="Buscar cliente, empresa ou tipo..." className="pl-9 bg-card border-border/70 focus:border-primary/50" />
               </div>
               <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-auto text-xs" />
               <span className="text-muted-foreground text-sm">→</span>
@@ -667,12 +667,12 @@ export default function AdminPage() {
               <div className="flex flex-col gap-2">
                 {filtered.map(b => (
                   <div key={b.id}
-                    className={`rounded-xl border px-4 py-3.5 transition-all duration-150 ${selectedIds.has(b.id) ? 'border-primary/40 bg-primary/[0.04]' : 'border-border bg-card hover:border-border/80'}`}>
+                    className={`rounded-xl border px-4 py-3.5 transition-all duration-150 card-shadow ${selectedIds.has(b.id) ? 'border-primary/40 bg-primary/[0.05]' : 'border-border bg-card hover:border-secondary/50 hover:shadow-md'}`}>
                     {/* Row: checkbox + name + actions */}
                     <div className="flex items-center gap-2.5">
                       <Checkbox checked={selectedIds.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} className="shrink-0" />
                       <button onClick={() => viewClientHistory(b.clients)}
-                        className="font-semibold text-[15px] text-left flex-1 min-w-0 truncate hover:text-primary transition-colors bg-transparent border-none p-0 cursor-pointer">
+                        className="font-bold text-[15px] text-left flex-1 min-w-0 truncate hover:text-primary transition-colors bg-transparent border-none p-0 cursor-pointer tracking-tight">
                         {b.clients?.company}
                       </button>
                       <div className="flex items-center gap-1 shrink-0">
