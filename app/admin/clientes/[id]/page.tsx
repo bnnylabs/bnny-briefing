@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, ReactNode } from 'react'
 import { useToast, ToastContainer } from '@/components/toast'
 import { useRouter, useParams } from 'next/navigation'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
+import { downloadAsZip } from '@/lib/download-zip'
 
 interface Client {
   id: string; name: string; company: string; email: string; phone: string
@@ -438,18 +439,8 @@ export default function ClientePerfilPage() {
                 !f.type?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
               )
               async function downloadAll() {
-                for (const f of allFiles) {
-                  try {
-                    const response = await fetch(f.url)
-                    const blob = await response.blob()
-                    const blobUrl = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = blobUrl; a.download = f.name
-                    document.body.appendChild(a); a.click()
-                    document.body.removeChild(a); URL.revokeObjectURL(blobUrl)
-                    await new Promise(r => setTimeout(r, 400))
-                  } catch { window.open(f.url, '_blank') }
-                }
+                const name = client?.company || 'briefing'
+                await downloadAsZip(allFiles, `${name} - arquivos.zip`)
               }
               return <>
               {allFiles.length > 0 && (
@@ -468,7 +459,7 @@ export default function ClientePerfilPage() {
                     <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{allFiles.map(f => f.name).join(', ')}</div>
                   </div>
                   <button onClick={downloadAll} style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, fontSize: 12, padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
-                    ⬇ Baixar todos
+                    ⬇ Baixar ZIP
                   </button>
                 </div>
               )}

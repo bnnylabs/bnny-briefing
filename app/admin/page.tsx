@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
+import { downloadAsZip } from '@/lib/download-zip'
 import { useToast, ToastContainer } from '@/components/toast'
 
 interface Client { id: string; name: string; company: string; email: string; phone: string }
@@ -688,24 +689,8 @@ export default function AdminPage() {
             )
 
             async function downloadAll() {
-              for (const f of allFiles) {
-                try {
-                  const response = await fetch(f.url)
-                  const blob = await response.blob()
-                  const blobUrl = URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = blobUrl
-                  a.download = f.name
-                  document.body.appendChild(a)
-                  a.click()
-                  document.body.removeChild(a)
-                  URL.revokeObjectURL(blobUrl)
-                  await new Promise(r => setTimeout(r, 400))
-                } catch {
-                  // fallback: open in new tab
-                  window.open(f.url, '_blank')
-                }
-              }
+              const company = responsesBriefing?.clients?.name || responsesBriefing?.type_label || 'briefing'
+              await downloadAsZip(allFiles, `${company} - arquivos.zip`)
             }
 
             return <>
@@ -729,7 +714,7 @@ export default function AdminPage() {
                   <button
                     onClick={downloadAll}
                     style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, fontSize: 12, padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
-                    ⬇ Baixar todos
+                    ⬇ Baixar ZIP
                   </button>
                 </div>
               )}
