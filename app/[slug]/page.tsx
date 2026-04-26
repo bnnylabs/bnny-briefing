@@ -167,13 +167,22 @@ export default function BriefingFormPage() {
   if (submitted) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)', textAlign: 'center', padding: '40px 24px' }}>
       <div style={{ fontSize: 64, marginBottom: 20 }}>✅</div>
-      <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 12, letterSpacing: '-0.02em' }}>Briefing enviado!</h1>
+      <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 12, letterSpacing: '-0.02em' }}>
+        {briefing.language === 'en-US' ? 'Briefing submitted!' : 'Briefing enviado!'}
+      </h1>
       <p style={{ color: 'var(--text-2)', fontSize: 15, maxWidth: 360, lineHeight: 1.7 }}>
-        Obrigado, <strong style={{ color: 'var(--text)' }}>{String(answers.responsible_name || briefing.clients?.name || '')}</strong>!<br />
-        A equipe da <strong style={{ color: 'var(--accent)' }}>Bnny Labs</strong> vai analisar suas respostas e em breve entrará em contato.
+        {briefing.language === 'en-US' ? 'Thank you, ' : 'Obrigado, '}
+        <strong style={{ color: 'var(--text)' }}>{String(answers.responsible_name || briefing.clients?.name || '')}</strong>!<br />
+        {briefing.language === 'en-US'
+          ? <span>The <strong style={{ color: 'var(--accent)' }}>Bnny Labs</strong> team will review your answers and get in touch soon.</span>
+          : <span>A equipe da <strong style={{ color: 'var(--accent)' }}>Bnny Labs</strong> vai analisar suas respostas e em breve entrará em contato.</span>
+        }
       </p>
       <div style={{ marginTop: 24, padding: '14px 20px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 13, color: 'var(--text-3)', maxWidth: 320 }}>
-        📧 Você também receberá um email de confirmação em instantes.
+        {briefing.language === 'en-US'
+          ? '📧 You will also receive a confirmation email shortly.'
+          : '📧 Você também receberá um email de confirmação em instantes.'
+        }
       </div>
     </div>
   )
