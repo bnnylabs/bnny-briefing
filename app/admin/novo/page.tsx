@@ -1,21 +1,54 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { BRIEFING_TEMPLATES, BriefingType } from '@/lib/briefing-types'
+import { Suspense } from 'react'
+
+interface ClientData {
+  id?: string; name: string; company: string; website: string
+  email: string; phone: string; extraText: string
+  analysis?: Record<string, unknown> | null
+}
 
 type Step = 'client' | 'type' | 'preview'
 
-export default function NovoBriefingPage() {
+function NovoBriefingContent() {
   const router = useRouter()
-  const [step, setStep] = useState<Step>('client')
+  const searchParams = useSearchParams()
+  const clientId = searchParams.get('client_id')
+
+  const [step, setStep] = useState<Step>(clientId ? 'type' : 'client')
   const [loading, setLoading] = useState(false)
-  const [clientForm, setClientForm] = useState({ name: '', company: '', website: '', email: '', phone: '', extraText: '' })
+  const [clientForm, setClientForm] = useState<ClientData>({ name: '', company: '', website: '', email: '', phone: '', extraText: '' })
   const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null)
   const [selectedType, setSelectedType] = useState<BriefingType | null>(null)
   const [generatedLink, setGeneratedLink] = useState('')
   const [emailSent, setEmailSent] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [extraNote, setExtraNote] = useState('')
+
+  // Load existing client when client_id param is present
+  const loadClient = useCallback(async () => {
+    if (!clientId) return
+    setLoading(true)
+    const res = await fetch(`/api/admin/clients/${clientId}`)
+    if (res.ok) {
+      const d = await res.json()
+      const c = d.client
+      setClientForm({
+        id: c.id, name: c.name, company: c.company,
+        website: c.website || '', email: c.email || '',
+        phone: c.phone || '', extraText: '',
+        analysis: c.analysis || null,
+      })
+      if (c.analysis) setAnalysis(c.analysis)
+      setStep('type')
+    }
+    setLoading(false)
+  }, [clientId])
+
+  useEffect(() => { loadClient() }, [loadClient])
 
   async function handleAnalyze(e: React.FormEvent) {
     e.preventDefault()
@@ -23,8 +56,7 @@ export default function NovoBriefingPage() {
     setLoading(true)
     try {
       const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ website: clientForm.website, text: clientForm.extraText }),
       })
       const data = await res.json()
@@ -41,25 +73,27 @@ export default function NovoBriefingPage() {
     if (!selectedType) return
     setLoading(true)
     const template = BRIEFING_TEMPLATES[selectedType]
+    const ai = analysis || clientForm.analysis || {}
     const prefilled: Record<string, unknown> = {}
-    if (analysis) {
-      if (analysis.company_name) prefilled.company_name = analysis.company_name
-      if (analysis.segment) prefilled.segment = analysis.segment
-      if (analysis.description) prefilled.description = analysis.description
-      if (analysis.differentials) prefilled.differentials = analysis.differentials
-      if (analysis.target_audience) prefilled.target_audience = analysis.target_audience
-      if (analysis.brand_personality) prefilled.brand_personality = analysis.brand_personality
-      if (analysis.price_positioning) prefilled.price_positioning = analysis.price_positioning
-    }
+    if (ai.company_name) prefilled.company_name = ai.company_name
+    if (ai.segment) prefilled.segment = ai.segment
+    if (ai.description) prefilled.description = ai.description
+    if (ai.differentials) prefilled.differentials = ai.differentials
+    if (ai.target_audience) prefilled.target_audience = ai.target_audience
+    if (ai.brand_personality) prefilled.brand_personality = ai.brand_personality
+    if (ai.price_positioning) prefilled.price_positioning = ai.price_positioning
+    if (ai.key_features) prefilled.key_features = ai.key_features
+    if (ai.unique_value_proposition) prefilled.unique_value_proposition = ai.unique_value_proposition
+
     try {
       const res = await fetch('/api/briefings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client: { ...clientForm, analysis },
+          client: { ...clientForm, analysis: ai },
           briefingType: selectedType,
           briefingTypeLabel: template.label,
           prefilledData: prefilled,
+          internalNotes: extraNote || null,
           sendEmail: !!clientForm.email,
         }),
       })
@@ -80,18 +114,32 @@ export default function NovoBriefingPage() {
     <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>{label}</label>
   )
 
+  const stepLabels = clientId
+    ? [{ key: 'type', label: '1. Tipo' }, { key: 'preview', label: '2. Link' }]
+    : [{ key: 'client', label: '1. Cliente' }, { key: 'type', label: '2. Tipo' }, { key: 'preview', label: '3. Link' }]
+
+  if (loading && step === 'client') return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+      <div className="spinner" />
+    </div>
+  )
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <header style={{ borderBottom: '1px solid var(--border)', padding: '0 24px', display: 'flex', alignItems: 'center', gap: 14, height: 58 }}>
-        <button onClick={() => router.push('/admin')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18 }}>←</button>
+        <button onClick={() => clientId ? router.push(`/admin/clientes/${clientId}`) : router.push('/admin')}
+          style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18 }}>←</button>
         <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>
-          <span style={{ color: 'var(--accent)' }}>Bnny</span> Labs <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>/ Novo Briefing</span>
+          <span style={{ color: 'var(--accent)' }}>Bnny</span> Labs{' '}
+          <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>
+            / {clientId && clientForm.company ? clientForm.company + ' / ' : ''}Novo Briefing
+          </span>
         </span>
       </header>
 
       {/* Progress */}
       <div style={{ borderBottom: '1px solid var(--border)', padding: '0 24px', display: 'flex', gap: 0 }}>
-        {[{ key: 'client', label: '1. Cliente' }, { key: 'type', label: '2. Tipo' }, { key: 'preview', label: '3. Link' }].map(s => (
+        {stepLabels.map(s => (
           <div key={s.key} style={{ padding: '12px 0', marginRight: 24, fontSize: 13, fontWeight: 500, borderBottom: `2px solid ${step === s.key ? 'var(--accent)' : 'transparent'}`, color: step === s.key ? 'var(--text)' : 'var(--text-3)', marginBottom: -1 }}>
             {s.label}
           </div>
@@ -100,7 +148,8 @@ export default function NovoBriefingPage() {
 
       <div style={{ maxWidth: 600, margin: '36px auto', padding: '0 24px' }}>
 
-        {step === 'client' && (
+        {/* STEP: client (only when no client_id) */}
+        {step === 'client' && !clientId && (
           <form onSubmit={handleAnalyze} className="animate-in">
             <h2 style={{ fontSize: 21, fontWeight: 700, marginBottom: 6, letterSpacing: '-0.02em' }}>Informações do cliente</h2>
             <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 26 }}>Preencha os dados. O Claude vai analisar o site automaticamente.</p>
@@ -129,19 +178,39 @@ export default function NovoBriefingPage() {
           </form>
         )}
 
+        {/* STEP: type */}
         {step === 'type' && (
           <div className="animate-in">
+            {/* Client summary when coming from client profile */}
+            {clientId && clientForm.company && (
+              <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+                  {clientForm.company[0].toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{clientForm.company}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{clientForm.name}{clientForm.email && ` · ${clientForm.email}`}</div>
+                </div>
+                {analysis && Object.keys(analysis).length > 0 && (
+                  <span title="Perfil IA disponível" style={{ marginLeft: 'auto', fontSize: 18 }}>🤖</span>
+                )}
+              </div>
+            )}
+
+            {/* AI analysis summary (when analysis exists) */}
             {analysis && Object.keys(analysis).length > 0 && (
-              <div style={{ background: 'var(--bg-2)', border: '1px solid var(--accent-border)', borderRadius: 12, padding: 18, marginBottom: 24 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>✦ Análise do Claude</div>
+              <div style={{ background: 'var(--bg-2)', border: '1px solid var(--accent-border)', borderRadius: 12, padding: 18, marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>✦ Perfil IA do cliente</div>
                 <div style={{ fontSize: 14, lineHeight: 1.6 }}>{String(analysis.description || '')}</div>
                 {analysis.target_audience ? <div style={{ marginTop: 8, fontSize: 13, color: 'var(--text-2)' }}><strong style={{ color: 'var(--text-3)' }}>Público: </strong>{String(analysis.target_audience)}</div> : null}
                 {analysis.differentials ? <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-2)' }}><strong style={{ color: 'var(--text-3)' }}>Diferenciais: </strong>{String(analysis.differentials)}</div> : null}
               </div>
             )}
+
             <h2 style={{ fontSize: 21, fontWeight: 700, marginBottom: 6, letterSpacing: '-0.02em' }}>Tipo de briefing</h2>
             <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 20 }}>Escolha o serviço que será desenvolvido.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
               {(Object.keys(BRIEFING_TEMPLATES) as BriefingType[]).map(type => {
                 const t = BRIEFING_TEMPLATES[type]
                 return (
@@ -153,6 +222,18 @@ export default function NovoBriefingPage() {
                 )
               })}
             </div>
+
+            {/* Extra note field */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>
+                Observação interna (opcional)
+              </label>
+              <textarea value={extraNote} onChange={e => setExtraNote(e.target.value)}
+                placeholder="Contexto específico deste briefing — ex: cliente quer foco em produto X, reunião marcada para dia Y, preferência por cores escuras..."
+                style={{ minHeight: 80 }} />
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 5 }}>Visível só para você no painel. Ajuda o Claude a personalizar melhor as sugestões.</div>
+            </div>
+
             <button onClick={handleCreate} disabled={!selectedType || loading}
               style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '13px', borderRadius: 10, border: 'none', cursor: !selectedType || loading ? 'not-allowed' : 'pointer', fontSize: 14, opacity: !selectedType || loading ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
               {loading ? <><div className="spinner" /> Gerando briefing...</> : 'Gerar e enviar briefing →'}
@@ -160,6 +241,7 @@ export default function NovoBriefingPage() {
           </div>
         )}
 
+        {/* STEP: preview */}
         {step === 'preview' && (
           <div className="animate-in" style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 52, marginBottom: 14 }}>🎉</div>
@@ -168,7 +250,6 @@ export default function NovoBriefingPage() {
               Pronto para <strong style={{ color: 'var(--text)' }}>{clientForm.name}</strong> da <strong style={{ color: 'var(--text)' }}>{clientForm.company}</strong>
             </p>
 
-            {/* Email status */}
             {clientForm.email && (
               <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 10, background: emailSent ? 'rgba(200,255,0,0.08)' : 'rgba(255,100,100,0.08)', border: `1px solid ${emailSent ? 'var(--accent-border)' : 'rgba(255,100,100,0.3)'}`, fontSize: 13, color: emailSent ? 'var(--accent)' : '#ff6464' }}>
                 {emailSent ? `✅ Email enviado para ${clientForm.email}` : `⚠️ Email não enviado — copie e envie o link manualmente`}
@@ -180,17 +261,31 @@ export default function NovoBriefingPage() {
               <div style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--accent)', wordBreak: 'break-all' }}>{generatedLink}</div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
               <button onClick={copyLink} style={{ flex: 1, background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 14 }}>
                 {copied ? '✓ Copiado!' : '📋 Copiar link'}
               </button>
-              <button onClick={() => router.push('/admin')} style={{ flex: 1, background: 'transparent', color: 'var(--text-2)', fontWeight: 500, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 14 }}>
-                Ver painel
+              <button onClick={() => clientId ? router.push(`/admin/clientes/${clientId}`) : router.push('/admin')}
+                style={{ flex: 1, background: 'transparent', color: 'var(--text-2)', fontWeight: 500, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 14 }}>
+                {clientId ? 'Ver cliente' : 'Ver painel'}
               </button>
             </div>
+            {clientId && (
+              <button onClick={() => router.push('/admin')} style={{ width: '100%', background: 'transparent', color: 'var(--text-3)', fontWeight: 400, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 13 }}>
+                Ir para o painel
+              </button>
+            )}
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+export default function NovoBriefingPage() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><div className="spinner" /></div>}>
+      <NovoBriefingContent />
+    </Suspense>
   )
 }
