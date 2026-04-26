@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 import { useToast, ToastContainer } from '@/components/toast'
 import { Button } from '@/components/ui/button'
-import { Pencil, FileText, Bell, Copy, RefreshCw, Link, CheckSquare, Trash2, Lock, Unlock, ClipboardList } from 'lucide-react'
+import { Pencil, FileText, Bell, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -24,13 +24,10 @@ interface ActivityLog {
 const STATUS_LABELS: Record<string, string> = {
   enviado: 'Enviado', visualizado: 'Visualizado', em_andamento: 'Em andamento', concluido: 'Concluído',
 }
-const STATUS_ICONS: Record<string, string> = {
-  enviado: '📨', visualizado: '👁', em_andamento: '⏳', concluido: '✅',
-}
 const ACTION_LABELS: Record<string, string> = {
-  delete_briefing: '🗑️ Briefing excluído',
-  bulk_delete_briefings: '🗑️ Exclusão em lote',
-  duplicate_briefing: '📋 Briefing duplicado',
+  delete_briefing: 'Briefing excluído',
+  bulk_delete_briefings: 'Exclusão em lote',
+  duplicate_briefing: 'Briefing duplicado',
 }
 
 function fmt(d: string | null) {
@@ -49,13 +46,24 @@ function timeAgo(d: string) {
   return `há ${days} dias`
 }
 
+function StatusIcon({ status, size = 11 }: { status: string; size?: number }) {
+  switch (status) {
+    case 'enviado':       return <Send size={size} />
+    case 'visualizado':   return <Eye size={size} />
+    case 'em_andamento':  return <Clock size={size} />
+    case 'concluido':     return <CheckCircle2 size={size} />
+    default:              return null
+  }
+}
+
 function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, 'muted' | 'outline' | 'warning' | 'success'> = {
     enviado: 'outline', visualizado: 'muted', em_andamento: 'warning', concluido: 'success'
   }
   return (
-    <Badge variant={variants[status] || 'muted'} className="text-[11px] font-semibold whitespace-nowrap">
-      {STATUS_ICONS[status]} {STATUS_LABELS[status] || status}
+    <Badge variant={variants[status] || 'muted'} className="text-[11px] font-medium whitespace-nowrap">
+      <StatusIcon status={status} />
+      {STATUS_LABELS[status] || status}
     </Badge>
   )
 }
@@ -112,7 +120,7 @@ function ResponsesContent({ responses, language, companyName, renderFileValue, l
     <>
       {allFiles.length > 0 && (
         <div className="mb-4 px-4 py-3 bg-secondary border border-border rounded-xl flex items-center gap-3">
-          <span className="text-xl">📎</span>
+          <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold">
               {allFiles.length} {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
@@ -120,7 +128,7 @@ function ResponsesContent({ responses, language, companyName, renderFileValue, l
             </div>
             <div className="text-xs text-muted-foreground mt-0.5 truncate">{allFiles.map(f => f.name).join(', ')}</div>
           </div>
-          <Button onClick={handleDownloadAll} size="sm" className="shrink-0">⬇ Baixar ZIP</Button>
+          <Button onClick={handleDownloadAll} size="sm" className="shrink-0"><Download size={14} /> Baixar ZIP</Button>
         </div>
       )}
       <div className="flex flex-col gap-2">
@@ -131,8 +139,9 @@ function ResponsesContent({ responses, language, companyName, renderFileValue, l
           return (
             <div key={key} className="rounded-xl overflow-hidden border border-border">
               <div className={`px-3.5 py-2 bg-secondary flex items-center justify-between gap-2 ${(!isShort || isFileField) ? 'border-b border-border' : ''}`}>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  {isFileField && '📎 '}{labelMap[key] || key.replace(/_/g, ' ')}
+                <span className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {isFileField && <Paperclip size={10} />}
+                  {labelMap[key] || key.replace(/_/g, ' ')}
                 </span>
                 {isShort && !isFileField && <span className="text-sm font-semibold text-foreground">{displayValue}</span>}
               </div>
@@ -255,7 +264,7 @@ export default function AdminPage() {
       body: JSON.stringify({ editing_locked: !currentLocked }),
     })
     setBriefings(prev => prev.map(b => b.slug === slug ? { ...b, editing_locked: !currentLocked } : b))
-    toast(!currentLocked ? '🔒 Edição bloqueada' : '🔓 Edição liberada', 'success', 2000)
+    toast(!currentLocked ? 'Edição bloqueada' : 'Edição liberada', 'success', 2000)
   }
 
   async function copyLink(slug: string) {
@@ -442,7 +451,7 @@ export default function AdminPage() {
         )
         return (
           <div key={i} className="flex items-center gap-2 px-3 py-2 bg-secondary border border-border rounded-lg opacity-60">
-            <span className="text-xl">🖼️</span>
+            <ImageIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
             <div className="flex-1 min-w-0">
               <div className="text-sm truncate">{f.name}</div>
               <div className="text-xs text-muted-foreground">{sizeLabel} · upload não concluído</div>
@@ -454,18 +463,22 @@ export default function AdminPage() {
       if (hasUrl) return (
         <a key={i} href={f.url} target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-2 px-3 py-2 bg-secondary border border-border rounded-lg no-underline text-foreground hover:border-border/60 transition-colors">
-          <span className="text-xl">{f.type?.includes('pdf') ? '📄' : '📎'}</span>
+          {f.type?.includes('pdf')
+            ? <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+            : <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />}
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold truncate">{f.name}</div>
             {sizeLabel && <div className="text-xs text-muted-foreground">{sizeLabel}</div>}
           </div>
-          <span className="text-xs text-primary shrink-0">↗ Abrir</span>
+          <span className="inline-flex items-center gap-1 text-xs text-foreground shrink-0">
+            <ExternalLink size={12} /> Abrir
+          </span>
         </a>
       )
 
       return (
         <div key={i} className="flex items-center gap-2 px-3 py-2 bg-secondary border border-border rounded-lg opacity-60">
-          <span className="text-xl">📎</span>
+          <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />
           <div className="flex-1 min-w-0">
             <div className="text-sm truncate">{f.name}</div>
             <div className="text-xs text-muted-foreground">{sizeLabel} · upload não concluído</div>
@@ -486,8 +499,8 @@ export default function AdminPage() {
     const str = String(value)
     const isUrl = str.startsWith('http')
     return isUrl
-      ? <a href={str} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all text-sm">📎 {str.split('/').pop()}</a>
-      : <span className="text-muted-foreground text-sm">📎 {str}</span>
+      ? <a href={str} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all text-sm inline-flex items-center gap-1"><Paperclip size={12} /> {str.split('/').pop()}</a>
+      : <span className="text-muted-foreground text-sm inline-flex items-center gap-1"><Paperclip size={12} /> {str}</span>
   }
 
   return (
@@ -507,7 +520,7 @@ export default function AdminPage() {
               <div className="flex items-center justify-center py-20"><div className="spinner" /></div>
             ) : activityLogs.length === 0 ? (
               <div className="text-center py-20 text-muted-foreground">
-                <div className="text-4xl mb-3">📋</div>
+                <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-40" />
                 <div className="font-medium">Nenhuma atividade registrada ainda</div>
               </div>
             ) : (
@@ -535,7 +548,7 @@ export default function AdminPage() {
               <button onClick={() => setView('list')} className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto">← Voltar</button>
             </div>
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <div className="text-sm font-semibold">📬 Notificações</div>
+              <div className="flex items-center gap-2 text-sm font-semibold"><Mail size={14} /> Notificações</div>
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Email que recebe notificações</label>
@@ -549,7 +562,7 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <div className="text-sm font-semibold">⏱ Prazos automáticos</div>
+              <div className="flex items-center gap-2 text-sm font-semibold"><Clock size={14} /> Prazos automáticos</div>
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Validade padrão do link (dias)</label>
@@ -566,14 +579,14 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <div className="text-sm font-semibold">🔒 Segurança</div>
+              <div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck size={14} /> Segurança</div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Nova senha de acesso</label>
                 <Input type="password" value={settings.admin_password} onChange={e => setSettings(s => ({ ...s, admin_password: e.target.value }))} placeholder="••••••••" />
               </div>
             </div>
             <Button onClick={saveSettings} disabled={savingSettings} className="w-full h-11">
-              {savingSettings ? 'Salvando...' : settingsSaved ? '✓ Salvo!' : 'Salvar configurações'}
+              {savingSettings ? 'Salvando...' : settingsSaved ? <><Check size={14} /> Salvo!</> : 'Salvar configurações'}
             </Button>
           </div>
         )}
@@ -591,8 +604,8 @@ export default function AdminPage() {
                 { label: 'Concluído',   value: briefings.filter(b => b.status === 'concluido').length,    status: 'concluido' },
               ] as { label: string; value: number; status: string }[]).map(s => (
                 <button key={s.label} onClick={() => setStatusFilter(prev => prev === s.status ? '' : s.status)}
-                  className={`rounded-lg border p-3.5 text-left transition-colors duration-100 cursor-pointer ${statusFilter === s.status ? 'border-primary/30 bg-primary/5' : 'border-border bg-card hover:border-border/70'}`}>
-                  <div className={`text-2xl font-bold tabular-nums leading-none font-mono ${statusFilter === s.status ? 'text-primary' : 'text-foreground'}`}>{s.value}</div>
+                  className={`rounded-lg border p-3.5 text-left transition-colors duration-100 cursor-pointer ${statusFilter === s.status ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
+                  <div className="text-2xl font-bold tabular-nums leading-none font-mono text-foreground">{s.value}</div>
                   <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-1.5">{s.label}</div>
                 </button>
               ))}
@@ -601,9 +614,9 @@ export default function AdminPage() {
             {/* Search + Filters */}
             <div className="flex gap-2 items-center mb-3 flex-wrap">
               <div className="flex-1 min-w-[180px] relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm select-none pointer-events-none">🔍</span>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Buscar cliente, empresa ou tipo..." className="pl-9 bg-card border-border/70 focus:border-primary/50" />
+                  placeholder="Buscar cliente, empresa ou tipo..." className="pl-9 bg-card" />
               </div>
               <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-auto text-xs" />
               <span className="text-muted-foreground text-sm">→</span>
@@ -626,7 +639,9 @@ export default function AdminPage() {
                 {selectedIds.size > 0 && (
                   <div className="flex items-center gap-2 ml-auto animate-in fade-in-0 duration-150">
                     <span className="text-xs text-muted-foreground">{selectedIds.size} selecionado{selectedIds.size > 1 ? 's' : ''}</span>
-                    <Button variant="destructive" size="sm" onClick={() => setBatchDeleteConfirm(true)}>🗑️ Excluir {selectedIds.size}</Button>
+                    <Button variant="destructive" size="sm" onClick={() => setBatchDeleteConfirm(true)}>
+                      <Trash2 size={13} /> Excluir {selectedIds.size}
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Cancelar</Button>
                   </div>
                 )}
@@ -653,7 +668,7 @@ export default function AdminPage() {
               </div>
             ) : filtered.length === 0 ? (
               <div className="text-center py-20 text-muted-foreground">
-                <div className="text-5xl mb-4">📋</div>
+                <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-40" />
                 <div className="font-semibold text-foreground mb-1">
                   {search || dateFrom || dateTo ? 'Nenhum resultado' : 'Nenhum briefing ainda'}
                 </div>
@@ -668,40 +683,40 @@ export default function AdminPage() {
               <div className="flex flex-col gap-2">
                 {filtered.map(b => (
                   <div key={b.id}
-                    className={`rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-primary/40 bg-primary/[0.04]' : 'border-border bg-card hover:border-border/70'}`}>
+                    className={`rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
                     {/* Row: checkbox + name + actions */}
                     <div className="flex items-center gap-2.5">
                       <Checkbox checked={selectedIds.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} className="shrink-0" />
                       <button onClick={() => viewClientHistory(b.clients)}
-                        className="font-bold text-[15px] text-left flex-1 min-w-0 truncate hover:text-primary transition-colors bg-transparent border-none p-0 cursor-pointer tracking-tight">
+                        className="font-bold text-[15px] text-left flex-1 min-w-0 truncate hover:text-foreground transition-colors bg-transparent border-none p-0 cursor-pointer tracking-tight">
                         {b.clients?.company}
                       </button>
                       <div className="flex items-center gap-1 shrink-0">
                         <Button variant="ghost" size="icon-sm" onClick={() => openEdit(b)} title="Editar"><Pencil size={13} /></Button>
-                        <Button variant="ghost" size="icon-sm" className={b.internal_notes ? 'text-primary' : ''}
+                        <Button variant="ghost" size="icon-sm" className={b.internal_notes ? 'text-foreground' : ''}
                           onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }} title="Anotações"><FileText size={13} /></Button>
                         <Button variant="ghost" size="icon-sm" onClick={() => viewNotifications(b)} title="Envios"><Bell size={13} /></Button>
                         <Button variant="ghost" size="icon-sm" disabled={duplicating === b.id} onClick={() => duplicateBriefing(b)} title="Duplicar">
                           <Copy size={13} />
                         </Button>
                         {b.status !== 'concluido' && b.clients?.email && (
-                          <Button variant="ghost" size="sm" className={reminderSent === b.id + '_resend' ? 'text-primary' : ''}
-                            disabled={sendingResend === b.id} onClick={() => resendEmail(b)}>
-                            {sendingResend === b.id ? '...' : reminderSent === b.id + '_resend' ? '✓ Reenviado' : '📧 Reenviar'}
+                          <Button variant="ghost" size="sm" className={reminderSent === b.id + '_resend' ? 'text-foreground' : ''}
+                            disabled={sendingResend === b.id} onClick={() => resendEmail(b)} title="Reenviar email">
+                            {sendingResend === b.id ? <RefreshCw size={13} className="animate-spin" /> : reminderSent === b.id + '_resend' ? <Check size={13} /> : <Mail size={13} />}
                           </Button>
                         )}
                         {b.status !== 'concluido' && (
-                          <Button variant="ghost" size="icon-sm" className={reminderSent === b.id ? 'text-primary' : ''}
+                          <Button variant="ghost" size="icon-sm" className={reminderSent === b.id ? 'text-foreground' : ''}
                             disabled={sendingReminder === b.id} onClick={() => sendReminder(b)} title="Lembrete">
-                            {sendingReminder === b.id ? '...' : reminderSent === b.id ? '✓' : '🔔'}
+                            {sendingReminder === b.id ? <RefreshCw size={13} className="animate-spin" /> : reminderSent === b.id ? <Check size={13} /> : <Bell size={13} />}
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => copyLink(b.slug)}>
-                          {copiedId === b.slug ? '✓ Copiado' : '🔗 Link'}
+                        <Button variant="ghost" size="sm" onClick={() => copyLink(b.slug)} title="Copiar link">
+                          {copiedId === b.slug ? <Check size={13} /> : <Link size={13} />}
                         </Button>
                         {b.status === 'concluido' && (
                           <>
-                            <Button variant="accent" size="sm" onClick={() => viewResponses(b)}>Ver respostas</Button>
+                            <Button variant="secondary" size="sm" onClick={() => viewResponses(b)}>Ver respostas</Button>
                             <Button variant="ghost" size="icon-sm" title={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
                               onClick={() => toggleEditingLock(b.slug, !!b.editing_locked)}>
                               {b.editing_locked ? <Unlock size={13} /> : <Lock size={13} />}
@@ -715,17 +730,17 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 mt-2.5 ml-[26px] flex-wrap">
                       <StatusBadge status={b.status} />
                       <Badge variant="outline" className="text-[11px] font-medium">{b.type_label}</Badge>
-                      {b.language === 'en-US' && <span className="text-xs" title="Briefing em inglês">🇺🇸</span>}
+                      {b.language === 'en-US' && <Badge variant="outline" className="text-[10px] font-medium uppercase tracking-wider">EN</Badge>}
                       {(b.update_count || 0) > 0 && (
                         <button onClick={() => openDiffModal(b)} title="Ver alterações"
-                          className="text-[11px] font-bold text-primary-foreground bg-primary px-2 py-0.5 rounded-full cursor-pointer border-none hover:bg-primary/90 transition-colors">
-                          ✏️ {b.update_count}x
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-muted hover:bg-muted/70 px-2 py-0.5 rounded-full cursor-pointer border border-border transition-colors">
+                          <Pencil size={10} /> {b.update_count}x
                         </button>
                       )}
                       <span className="text-[11px] text-muted-foreground">{b.clients?.name}</span>
                       <span className="text-[11px] text-muted-foreground">· {timeAgo(b.created_at)} ({fmt(b.created_at)})</span>
                       {b.completed_at && <span className="text-[11px] text-muted-foreground">· concluído {fmt(b.completed_at)}</span>}
-                      {b.expires_at && new Date(b.expires_at) > new Date() && <span className="text-[11px] text-yellow-500">· expira {fmt(b.expires_at)}</span>}
+                      {b.expires_at && new Date(b.expires_at) > new Date() && <span className="text-[11px] text-warning">· expira {fmt(b.expires_at)}</span>}
                       {b.expires_at && new Date(b.expires_at) < new Date() && <span className="text-[11px] text-destructive">· expirado</span>}
                     </div>
                   </div>
@@ -752,20 +767,20 @@ export default function AdminPage() {
             </div>
           </div>
           <div className="flex gap-2 mb-5">
-            <Button onClick={copyAll} variant="outline" className="flex-1"><><ClipboardList size={14} />{copied ? 'Copiado!' : 'Copiar tudo'}</></Button>
-            <Button onClick={exportPDF} variant="accent" className="flex-1">📄 Exportar PDF</Button>
+            <Button onClick={copyAll} variant="outline" className="flex-1"><Clipboard size={14} />{copied ? 'Copiado!' : 'Copiar tudo'}</Button>
+            <Button onClick={exportPDF} variant="outline" className="flex-1"><FileText size={14} /> Exportar PDF</Button>
           </div>
           {responseVersions > 1 && responseDiff && (
             <div className="mb-4">
               <div className="flex gap-2">
                 <button onClick={() => setShowDiffView(false)}
-                  className={`flex-1 text-xs py-2 rounded-lg border transition-colors ${!showDiffView ? 'border-primary/40 bg-primary/10 text-primary font-semibold' : 'border-border text-muted-foreground hover:text-foreground'}`}>
-                  📋 Respostas atuais
+                  className={`flex-1 text-xs py-2 rounded-lg border transition-colors inline-flex items-center justify-center gap-1.5 ${!showDiffView ? 'border-foreground/20 bg-muted text-foreground font-medium' : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}>
+                  <ClipboardList size={12} /> Respostas atuais
                 </button>
                 <button onClick={() => setShowDiffView(true)}
-                  className={`flex-1 text-xs py-2 rounded-lg border transition-colors flex items-center justify-center gap-2 ${showDiffView ? 'border-primary/40 bg-primary/10 text-primary font-semibold' : 'border-border text-muted-foreground hover:text-foreground'}`}>
-                  ✏️ Ver alterações
-                  <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">{Object.keys(responseDiff).length}</span>
+                  className={`flex-1 text-xs py-2 rounded-lg border transition-colors inline-flex items-center justify-center gap-2 ${showDiffView ? 'border-foreground/20 bg-muted text-foreground font-medium' : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}>
+                  <Pencil size={12} /> Ver alterações
+                  <span className="bg-foreground/10 text-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">{Object.keys(responseDiff).length}</span>
                 </button>
               </div>
               {showDiffView && (
@@ -778,9 +793,9 @@ export default function AdminPage() {
                     const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
                     const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
                     return (
-                      <div key={key} className="rounded-lg overflow-hidden border border-primary/20">
-                        <div className="px-3.5 py-2 bg-primary/5 border-b border-primary/20">
-                          <span className="text-[10px] font-bold text-primary uppercase tracking-wider">✏️ {label}</span>
+                      <div key={key} className="rounded-lg overflow-hidden border border-border">
+                        <div className="px-3.5 py-2 bg-muted/40 border-b border-border">
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-foreground uppercase tracking-wider"><Pencil size={10} /> {label}</span>
                         </div>
                         <div className="px-3.5 py-3 bg-card flex flex-col gap-2">
                           <div className="text-xs text-muted-foreground line-through">{oldStr || '—'}</div>
@@ -807,16 +822,16 @@ export default function AdminPage() {
         <Modal onClose={() => setDiffModal(null)} wide>
           <div className="font-extrabold text-xl tracking-tight mb-1">{diffModal.briefing.clients?.company}</div>
           <div className="flex items-center gap-2 mb-5">
-            <Badge variant="default" className="text-[10px] font-bold">✏️ {diffModal.briefing.update_count}x atualizado</Badge>
+            <Badge variant="outline" className="text-[10px] font-medium gap-1"><Pencil size={10} /> {diffModal.briefing.update_count}x atualizado</Badge>
             <span className="text-sm text-muted-foreground">{diffModal.briefing.type_label}</span>
           </div>
           {loadingDiff ? (
             <div className="flex justify-center py-10"><div className="spinner" /></div>
           ) : Object.keys(diffModal.diff).length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
-              <div className="text-4xl mb-3">🔍</div>
+              <Search className="h-10 w-10 mx-auto mb-3 opacity-40" />
               <div className="text-sm mb-4">Não foi possível comparar versões.</div>
-              <Button variant="accent" onClick={() => { setDiffModal(null); viewResponses(diffModal.briefing) }}>Ver respostas →</Button>
+              <Button variant="outline" onClick={() => { setDiffModal(null); viewResponses(diffModal.briefing) }}>Ver respostas →</Button>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
@@ -827,9 +842,9 @@ export default function AdminPage() {
                 const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
                 const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
                 return (
-                  <div key={key} className="rounded-lg overflow-hidden border border-primary/20">
-                    <div className="px-3.5 py-2 bg-primary/5 border-b border-primary/20">
-                      <span className="text-[10px] font-bold text-primary uppercase tracking-wider">✏️ {label}</span>
+                  <div key={key} className="rounded-lg overflow-hidden border border-border">
+                    <div className="px-3.5 py-2 bg-muted/40 border-b border-border">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-foreground uppercase tracking-wider"><Pencil size={10} /> {label}</span>
                     </div>
                     <div className="px-3.5 py-3 bg-card flex flex-col gap-2">
                       <div className="text-xs text-muted-foreground line-through">{oldStr || '—'}</div>
@@ -858,8 +873,8 @@ export default function AdminPage() {
                 <Input value={editForm[f.key]} onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
               </div>
             ))}
-            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-              💡 Após salvar, use 🔗 Link para copiar e reenviar o briefing.
+            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground inline-flex items-center gap-1.5">
+              <Link size={12} /> Após salvar, copie o link e reenvie o briefing.
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setEditBriefing(null)} className="flex-1">Cancelar</Button>
@@ -890,8 +905,8 @@ export default function AdminPage() {
           <div className="font-bold text-lg mb-0.5">Histórico de envios</div>
           <div className="text-xs text-muted-foreground mb-4">{notifBriefing.clients?.company} · {notifBriefing.type_label}</div>
           {notifBriefing.clients?.email && (
-            <div className="rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm mb-4">
-              📧 Email: <span className="font-semibold">{notifBriefing.clients.email}</span>
+            <div className="rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm mb-4 inline-flex items-center gap-2">
+              <Mail size={14} className="text-muted-foreground" /> Email: <span className="font-semibold">{notifBriefing.clients.email}</span>
             </div>
           )}
           {notifHistory.length === 0 ? (
@@ -899,12 +914,20 @@ export default function AdminPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {notifHistory.map((n, i) => {
-                const lbl: Record<string, string> = { email_client: '📧 Email pro cliente', email_admin: '📧 Email pro admin', reminder: '🔔 Lembrete', resend: '📧 Reenvio' }
+                const lblMap: Record<string, { icon: React.ReactNode; label: string }> = {
+                  email_client: { icon: <Mail size={13} />, label: 'Email pro cliente' },
+                  email_admin:  { icon: <Mail size={13} />, label: 'Email pro admin' },
+                  reminder:     { icon: <Bell size={13} />, label: 'Lembrete' },
+                  resend:       { icon: <RefreshCw size={13} />, label: 'Reenvio' },
+                }
+                const entry = lblMap[n.type] || { icon: null, label: n.type }
                 return (
                   <div key={i} className="rounded-lg border border-border bg-secondary px-4 py-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{lbl[n.type] || n.type}</span>
-                      <span className={`text-xs font-semibold ${n.status === 'sent' ? 'text-primary' : 'text-destructive'}`}>{n.status === 'sent' ? '✓ Enviado' : '✗ Falhou'}</span>
+                      <span className="inline-flex items-center gap-1.5 text-sm font-medium">{entry.icon} {entry.label}</span>
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium ${n.status === 'sent' ? 'text-success' : 'text-destructive'}`}>
+                        {n.status === 'sent' ? <><Check size={12} /> Enviado</> : <><Trash2 size={12} /> Falhou</>}
+                      </span>
                     </div>
                     {n.details?.to && <div className="text-xs text-muted-foreground mt-1">Para: {n.details.to}</div>}
                     <div className="text-xs text-muted-foreground mt-0.5">{new Date(n.sent_at).toLocaleString('pt-BR')}</div>

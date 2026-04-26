@@ -46,6 +46,16 @@
     --destructive:        0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Semantic status colors — sóbrios, não fluorescentes
+       Cada um vem com uma cor "10%" implícita via /10 quando precisar
+       de fundo suave (text-success + bg-success/10) */
+    --success:            142 60% 42%;        /* emerald-600-ish */
+    --success-foreground: 0 0% 100%;
+    --warning:            38 92% 45%;         /* amber-600 */
+    --warning-foreground: 0 0% 100%;
+    --info:               217 91% 55%;        /* blue-600 */
+    --info-foreground:    0 0% 100%;
+
     /* Border: cinza bem sutil */
     --border:             0 0% 90%;
     --input:              0 0% 90%;

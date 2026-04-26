@@ -204,7 +204,7 @@ export default function ClientesPage() {
     )
     .sort(sortFns[sort])
 
-  const filterLabels: { key: Filter; label: string; count: number }[] = [
+  const filterLabels: { key: Filter; label: React.ReactNode; count: number }[] = [
     { key: 'all', label: 'Todos', count: clients.length },
     {
       key: 'with_briefing',
@@ -218,7 +218,11 @@ export default function ClientesPage() {
     },
     {
       key: 'with_ai',
-      label: 'Com IA 🤖',
+      label: (
+        <span className="inline-flex items-center gap-1">
+          Com IA <Bot size={11} />
+        </span>
+      ),
       count: clients.filter(filterFns.with_ai).length,
     },
   ]
@@ -303,13 +307,13 @@ export default function ClientesPage() {
               key={key}
               onClick={() => setFilter(key)}
               className={cn(
-                'rounded-full border px-3 py-1.5 text-xs transition-colors',
+                'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition-colors',
                 filter === key
-                  ? 'border-primary/30 bg-primary/10 font-medium text-primary'
-                  : 'border-border bg-transparent text-muted-foreground hover:text-foreground',
+                  ? 'border-foreground/20 bg-muted font-medium text-foreground'
+                  : 'border-border bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground',
               )}
             >
-              {label} ({count})
+              {label} <span className="opacity-70">({count})</span>
             </button>
           ))}
         </div>
@@ -413,15 +417,12 @@ export default function ClientesPage() {
                     className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
                     onClick={() => router.push(`/admin/clientes/${c.id}`)}
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 font-mono text-sm font-bold text-primary">
-                      {c.company?.[0]?.toUpperCase() || '?'}
-                    </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 truncate text-sm font-bold">
+                      <div className="flex items-center gap-1.5 truncate text-sm font-semibold">
                         <span className="truncate">{c.company}</span>
                         {c.analysis &&
                           Object.keys(c.analysis).length > 0 && (
-                            <Bot className="h-3.5 w-3.5 shrink-0 text-primary" />
+                            <Bot className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                           )}
                       </div>
                       <div className="truncate text-xs text-muted-foreground">

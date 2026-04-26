@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Bot,
@@ -439,18 +440,15 @@ function NovoBriefingContent() {
                   <button
                     key={c.id}
                     onClick={() => selectExistingClient(c)}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-card p-3.5 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
+                    className="flex items-center gap-3 rounded-lg border border-border bg-card p-3.5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 font-mono text-sm font-bold text-primary">
-                      {c.company?.[0]?.toUpperCase() || '?'}
-                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 truncate text-sm font-semibold">
                         <span className="truncate">{c.company}</span>
                         {c.analysis &&
                           Object.keys(c.analysis).length > 0 && (
                             <Bot
-                              className="h-3.5 w-3.5 shrink-0 text-primary"
+                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
                               aria-label="Perfil IA disponível"
                             />
                           )}
@@ -654,9 +652,6 @@ function NovoBriefingContent() {
             {/* Client summary */}
             {clientForm.company && (
               <Card className="mb-5 flex items-center gap-2.5 p-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 font-mono text-sm font-bold text-primary">
-                  {clientForm.company[0].toUpperCase()}
-                </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold">
                     {clientForm.company}
@@ -668,7 +663,7 @@ function NovoBriefingContent() {
                 </div>
                 {analysis && Object.keys(analysis).length > 0 && (
                   <Bot
-                    className="h-4 w-4 text-primary"
+                    className="h-4 w-4 text-muted-foreground"
                     aria-label="Perfil IA disponível — campos serão preenchidos automaticamente"
                   />
                 )}
@@ -732,10 +727,10 @@ function NovoBriefingContent() {
                   onClick={() => setLanguage('pt-BR')}
                   className={cn(
                     language === 'pt-BR' &&
-                      'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
+                      'border-foreground/20 bg-muted text-foreground hover:bg-muted/80',
                   )}
                 >
-                  🇧🇷 Português
+                  PT
                 </Button>
                 <Button
                   variant={language === 'en-US' ? 'secondary' : 'outline'}
@@ -743,10 +738,10 @@ function NovoBriefingContent() {
                   onClick={() => setLanguage('en-US')}
                   className={cn(
                     language === 'en-US' &&
-                      'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
+                      'border-foreground/20 bg-muted text-foreground hover:bg-muted/80',
                   )}
                 >
-                  🇺🇸 English
+                  EN
                 </Button>
               </div>
             </Card>
@@ -863,8 +858,8 @@ function NovoBriefingContent() {
                 className={cn(
                   'mb-5 p-3 text-sm',
                   emailSent
-                    ? 'border-primary/30 bg-primary/5 text-primary'
-                    : 'border-destructive/30 bg-destructive/5 text-destructive',
+                    ? 'border-success/30 bg-success/10 text-success'
+                    : 'border-destructive/30 bg-destructive/10 text-destructive',
                 )}
               >
                 {emailSent ? (
@@ -873,8 +868,9 @@ function NovoBriefingContent() {
                     Email enviado para {clientForm.email}
                   </span>
                 ) : (
-                  <span>
-                    ⚠️ Email não enviado — copie e envie o link manualmente
+                  <span className="inline-flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Email não enviado — copie e envie o link manualmente
                   </span>
                 )}
               </Card>

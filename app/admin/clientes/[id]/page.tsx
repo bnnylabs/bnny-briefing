@@ -592,15 +592,10 @@ export default function ClientePerfilPage() {
         {/* Client data card */}
         <Card className="p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 font-mono text-lg font-bold text-primary">
-                {client.company?.[0]?.toUpperCase() || '?'}
-              </div>
-              <div>
-                <div className="text-base font-bold">{client.company}</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
-                  cliente desde {fmt(client.created_at).split(',')[0]}
-                </div>
+            <div>
+              <div className="text-base font-semibold">{client.company}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                cliente desde {fmt(client.created_at).split(',')[0]}
               </div>
             </div>
             <Button
@@ -925,11 +920,11 @@ export default function ClientePerfilPage() {
                           className={cn(
                             'inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium',
                             b.status === 'concluido' &&
-                              'border-primary/30 bg-primary/10 text-primary',
+                              'border-success/30 bg-success/10 text-success',
                             b.status === 'em_andamento' &&
-                              'border-yellow-500/30 bg-yellow-500/10 text-yellow-700',
+                              'border-warning/30 bg-warning/10 text-warning',
                             b.status === 'visualizado' &&
-                              'border-blue-500/30 bg-blue-500/10 text-blue-700',
+                              'border-info/30 bg-info/10 text-info',
                             b.status === 'enviado' &&
                               'border-border bg-muted text-muted-foreground',
                           )}
@@ -966,7 +961,6 @@ export default function ClientePerfilPage() {
                             variant="secondary"
                             size="sm"
                             onClick={() => viewResponses(b.slug)}
-                            className="border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
                           >
                             Ver respostas
                           </Button>
@@ -1046,11 +1040,7 @@ export default function ClientePerfilPage() {
                   variant={!showDiff2 ? 'secondary' : 'outline'}
                   size="sm"
                   onClick={() => setShowDiff2(false)}
-                  className={cn(
-                    'flex-1',
-                    !showDiff2 &&
-                      'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
-                  )}
+                  className="flex-1"
                 >
                   Respostas atuais
                 </Button>
@@ -1058,15 +1048,11 @@ export default function ClientePerfilPage() {
                   variant={showDiff2 ? 'secondary' : 'outline'}
                   size="sm"
                   onClick={() => setShowDiff2(true)}
-                  className={cn(
-                    'flex-1',
-                    showDiff2 &&
-                      'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
-                  )}
+                  className="flex-1"
                 >
                   <Pencil className="mr-1.5 h-3 w-3" />
                   Alterações
-                  <span className="ml-1.5 rounded-full bg-primary px-1.5 py-px text-[10px] font-bold text-primary-foreground">
+                  <span className="ml-1.5 rounded-full bg-foreground/10 px-1.5 py-px text-[10px] font-bold text-foreground">
                     {Object.keys(responseDiff2).length}
                   </span>
                 </Button>
