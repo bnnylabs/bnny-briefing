@@ -199,7 +199,7 @@ export default function AdminPage() {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [logsLoading, setLogsLoading] = useState(false)
 
-  const [settings, setSettings] = useState({ notification_email: '', notification_whatsapp: '', briefing_expiry_days: '30', reminder_days: '3' })
+  const [settings, setSettings] = useState({ notification_email: '', notification_whatsapp: '', briefing_expiry_days: '30', reminder_days: '3', editing_hours: '48', admin_password: '' })
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
 
