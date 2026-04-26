@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
       company: client.company,
       typeLabel: briefingTypeLabel,
       link,
+      language: language || 'pt-BR',
     })
     emailSent = emailResult.ok
 

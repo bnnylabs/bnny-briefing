@@ -195,12 +195,17 @@ export default function BriefingFormPage() {
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{template.label}</div>
             <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2, marginBottom: 10 }}>Briefing de {template.label}</h1>
             <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.7 }}>
-              Olá! Preparamos este formulário para <strong style={{ color: 'var(--text)' }}>{briefing.clients?.company}</strong>.
-              Alguns campos já foram preenchidos — fique à vontade para editar.
+              {briefing.language === 'en-US'
+                ? <>Hello! We prepared this form for <strong style={{ color: 'var(--text)' }}>{briefing.clients?.company}</strong>. Some fields are pre-filled — feel free to edit.</>
+                : <>Olá! Preparamos este formulário para <strong style={{ color: 'var(--text)' }}>{briefing.clients?.company}</strong>. Alguns campos já foram preenchidos — fique à vontade para editar.</>
+              }
             </p>
             {Object.values(briefing.prefilled_data || {}).some(v => v) && (
               <div style={{ marginTop: 14, padding: '12px 14px', background: 'rgba(200,255,0,0.06)', border: '1px solid var(--accent-border)', borderRadius: 10, fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}>
-                ✦ Campos em <span style={{ background: 'rgba(200,255,0,0.1)', color: 'var(--accent)', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999 }}>verde</span> foram preenchidos automaticamente. Confirme ou edite.
+                {briefing.language === 'en-US'
+                  ? <>✦ Fields in <span style={{ background: 'rgba(200,255,0,0.1)', color: 'var(--accent)', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999 }}>green</span> were pre-filled automatically. Confirm or edit.</>
+                  : <>✦ Campos em <span style={{ background: 'rgba(200,255,0,0.1)', color: 'var(--accent)', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999 }}>verde</span> foram preenchidos automaticamente. Confirme ou edite.</>
+                }
               </div>
             )}
           </div>

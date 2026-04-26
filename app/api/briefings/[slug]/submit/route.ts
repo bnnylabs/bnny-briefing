@@ -48,6 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       clientName, clientEmail,
       company: briefing.clients?.company,
       typeLabel: briefing.type_label,
+      language: briefing.language || 'pt-BR',
     })
     try { await supabaseAdmin.from('notifications').insert({ briefing_id: briefing.id, type: 'email_client_confirmation', status: 'sent', details: { to: clientEmail } }) } catch(_e) {}
   }
