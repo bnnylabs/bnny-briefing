@@ -6,7 +6,7 @@ function getResend() {
 
 const FROM = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
 
-function baseTemplate(content: string) {
+function baseTemplate(content: string, lang = 'pt-BR') {
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -38,7 +38,7 @@ function baseTemplate(content: string) {
   </div>
   <div class="footer">
     Bnny Labs · briefing.bnnylabs.com<br>
-    Este é um email automático, não responda diretamente.
+    ${lang === 'en-US' ? 'This is an automated email, please do not reply directly.' : 'Este é um email automático, não responda diretamente.'}
   </div>
 </div>
 </body>
@@ -74,7 +74,7 @@ export async function sendBriefingToClient({
       <p>O processo é simples e leva poucos minutos. Clique no botão abaixo para começar:</p>
       <a href="${link}" class="btn">Preencher briefing →</a>
       <p style="margin-top:24px;font-size:13px;color:#999">Se o botão não funcionar, acesse: <a href="${link}" style="color:#000">${link}</a></p>
-    `)
+    `, language)
     const result = await getResend().emails.send({
       from: FROM, to: clientEmail,
       subject: isEN ? `${typeLabel} Briefing — ${company}` : `Briefing de ${typeLabel} — ${company}`,
@@ -146,7 +146,7 @@ export async function sendReminderToClient({
       </div>
       <a href="${link}" class="btn">Preencher agora →</a>
       <p style="margin-top:24px;font-size:13px;color:#999">Link direto: <a href="${link}" style="color:#000">${link}</a></p>
-    `)
+    `, language)
     const result = await getResend().emails.send({
       from: FROM, to: clientEmail,
       subject: isEN
@@ -186,7 +186,7 @@ export async function sendClientConfirmation({
         Nossa equipe vai analisar suas respostas e em breve entrará em contato para dar andamento ao projeto.
       </div>
       <p style="margin-top:16px;font-size:14px;color:#888">Se precisar de qualquer coisa ou quiser adicionar alguma informação, basta responder este email.</p>
-    `)
+    `, language)
     const result = await getResend().emails.send({
       from: FROM, to: clientEmail,
       replyTo: process.env.NOTIFICATION_EMAIL || FROM,
