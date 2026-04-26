@@ -10,7 +10,7 @@ interface Briefing {
   id: string; slug: string; type: string; type_label: string; status: string
   created_at: string; viewed_at: string | null; started_at: string | null
   completed_at: string | null; expires_at: string | null; internal_notes: string | null
-  language?: string; clients: Client
+  language?: string; editing_locked?: boolean; editing_expires_at?: string | null; update_count?: number; clients: Client
 }
 interface ActivityLog {
   id: string; action: string; details: Record<string, unknown>; created_at: string
@@ -224,6 +224,15 @@ export default function AdminPage() {
     const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
     if (res.ok) { setAuthed(true); loadBriefings(); loadSettings() }
     else setLoginError('Senha incorreta')
+  }
+
+  async function toggleEditingLock(slug: string, currentLocked: boolean) {
+    await fetch(`/api/briefings/${slug}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ editing_locked: !currentLocked }),
+    })
+    setBriefings(prev => prev.map(b => b.slug === slug ? { ...b, editing_locked: !currentLocked } : b))
+    showToast(!currentLocked ? '🔒 Edição bloqueada' : '🔓 Edição liberada', 'success')
   }
 
   async function copyLink(slug: string) {

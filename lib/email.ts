@@ -89,13 +89,14 @@ export async function sendBriefingToClient({
 
 // ─── Email to admin — briefing completed ─────────────────────────────────────
 export async function sendCompletionToAdmin({
-  adminEmail, clientName, company, typeLabel, slug, baseUrl,
+  adminEmail, clientName, company, typeLabel, slug, baseUrl, customSubject, customBody,
 }: {
   adminEmail: string; clientName: string; company: string
   typeLabel: string; slug: string; baseUrl: string
+  customSubject?: string; customBody?: string
 }) {
   try {
-    const html = baseTemplate(`
+    const bodyContent = customBody || `
       <h1>Briefing concluído! ✅</h1>
       <p>O cliente <strong>${clientName}</strong> da <strong>${company}</strong> acabou de concluir o briefing de <strong>${typeLabel}</strong>.</p>
       <div class="highlight">
@@ -106,10 +107,11 @@ export async function sendCompletionToAdmin({
       </div>
       <p>Acesse o painel para ver as respostas completas:</p>
       <a href="${baseUrl}/admin" class="btn">Ver respostas no painel →</a>
-    `)
+    `
+    const html = baseTemplate(bodyContent)
     const result = await getResend().emails.send({
       from: FROM, to: adminEmail,
-      subject: `✅ Briefing concluído — ${company} (${typeLabel})`,
+      subject: customSubject || `✅ Briefing concluído — ${company} (${typeLabel})`,
       html,
     })
     return { ok: true, id: result.data?.id }

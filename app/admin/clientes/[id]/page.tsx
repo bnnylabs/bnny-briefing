@@ -5,13 +5,16 @@ import { useToast, ToastContainer } from '@/components/toast'
 import { useRouter, useParams } from 'next/navigation'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 
+interface Contact { name: string; email: string; phone?: string; role?: string; is_primary?: boolean }
 interface Client {
   id: string; name: string; company: string; email: string; phone: string
   website: string | null; analysis: Record<string, unknown> | null; created_at: string
+  contacts?: Contact[]
 }
 interface Briefing {
   id: string; slug: string; type: string; type_label: string; status: string; language?: string
   created_at: string; completed_at: string | null; internal_notes: string | null
+  editing_locked?: boolean; editing_expires_at?: string | null; update_count?: number
 }
 
 const STATUS_LABELS: Record<string, string> = { enviado: 'Enviado', visualizado: 'Visualizado', em_andamento: 'Em andamento', concluido: 'Concluído' }
@@ -121,6 +124,9 @@ export default function ClientePerfilPage() {
   const [editingAi, setEditingAi] = useState(false)
   const [savingAi, setSavingAi] = useState(false)
   const [viewingResponses, setViewingResponses] = useState<string | null>(null)
+  const [showAddContact, setShowAddContact] = useState(false)
+  const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', role: '' })
+  const [savingContact, setSavingContact] = useState(false)
   const [responses, setResponses] = useState<Record<string, unknown> | null>(null)
   const [loadingResponses, setLoadingResponses] = useState(false)
   const [copiedResponses, setCopiedResponses] = useState(false)
@@ -256,6 +262,41 @@ export default function ClientePerfilPage() {
     setCopiedResponses(true)
     toast('Respostas copiadas!', 'success', 2000)
     setTimeout(() => setCopiedResponses(false), 2000)
+  }
+
+  async function toggleLock(briefingSlug: string, currentLocked: boolean) {
+    await fetch(`/api/briefings/${briefingSlug}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ editing_locked: !currentLocked }),
+    })
+    setBriefings(prev => prev.map(b => b.slug === briefingSlug ? { ...b, editing_locked: !currentLocked } : b))
+    toast(!currentLocked ? 'Edição bloqueada' : 'Edição liberada', 'success')
+  }
+
+  async function addContact() {
+    if (!newContact.name || !newContact.email || !client) return
+    setSavingContact(true)
+    const contacts = [...(client.contacts || []), { ...newContact, is_primary: (client.contacts || []).length === 0 }]
+    await fetch(`/api/admin/clients/${client.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contacts }),
+    })
+    setClient(prev => prev ? { ...prev, contacts } : prev)
+    setNewContact({ name: '', email: '', phone: '', role: '' })
+    setShowAddContact(false)
+    setSavingContact(false)
+    toast('Contato adicionado!', 'success')
+  }
+
+  async function removeContact(idx: number) {
+    if (!client) return
+    const contacts = (client.contacts || []).filter((_, i) => i !== idx)
+    await fetch(`/api/admin/clients/${client.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contacts }),
+    })
+    setClient(prev => prev ? { ...prev, contacts } : prev)
+    toast('Contato removido', 'info')
   }
 
   function newBriefing() {
@@ -455,8 +496,15 @@ export default function ClientePerfilPage() {
                       <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/${b.slug}`)}
                         style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>🔗 Link</button>
                       {b.status === 'concluido' && (
-                        <button onClick={() => viewResponses(b.slug)}
-                          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 }}>Ver respostas</button>
+                        <>
+                          <button onClick={() => viewResponses(b.slug)}
+                            style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 }}>Ver respostas</button>
+                          <button onClick={() => toggleLock(b.slug, !!b.editing_locked)}
+                            title={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
+                            style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            {b.editing_locked ? '🔓' : '🔒'}
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>

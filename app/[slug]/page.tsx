@@ -8,6 +8,9 @@ interface BriefingData {
   id: string; slug: string; type: BriefingType; type_label: string; status: string
   prefilled_data: Record<string, unknown>
   language?: string
+  canEdit?: boolean
+  editing_expires_at?: string
+  editing_locked?: boolean
   clients: { name: string; company: string; website: string }
 }
 
@@ -109,13 +112,32 @@ export default function BriefingFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<string>('')
   const [submitted, setSubmitted] = useState(false)
+  const [isUpdate, setIsUpdate] = useState(false)
+  const [editingMode, setEditingMode] = useState(false)
+  const [previousAnswers, setPreviousAnswers] = useState<Record<string, unknown>>({})
   const [currentSection, setCurrentSection] = useState(0)
   const [started, setStarted] = useState(false)
 
   const loadBriefing = useCallback(async () => {
     const res = await fetch(`/api/briefings/${slug}`)
-    if (res.ok) { const data = await res.json(); setBriefing(data.briefing); setAnswers(data.briefing.prefilled_data || {}) }
-    else setNotFound(true)
+    if (res.ok) {
+      const data = await res.json()
+      const b = data.briefing
+      setBriefing(b)
+      // If already completed, load previous answers
+      if (b.status === 'concluido') {
+        const rRes = await fetch(`/api/briefings/${slug}/responses`)
+        if (rRes.ok) {
+          const rData = await rRes.json()
+          const prevAnswers = rData.answers || {}
+          setPreviousAnswers(prevAnswers)
+          setAnswers(prevAnswers)
+          setSubmitted(true)
+        }
+      } else {
+        setAnswers(b.prefilled_data || {})
+      }
+    } else setNotFound(true)
     setLoading(false)
   }, [slug])
 
@@ -173,12 +195,17 @@ export default function BriefingFormPage() {
     }
 
     try {
-      await fetch(`/api/briefings/${slug}/submit`, {
+      const res2 = await fetch(`/api/briefings/${slug}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: serializableAnswers }),
+        body: JSON.stringify({ answers: serializableAnswers, isUpdate }),
       })
-      setSubmitted(true)
+      if (res2.ok) {
+        setPreviousAnswers(serializableAnswers)
+        setEditingMode(false)
+        setIsUpdate(false)
+        setSubmitted(true)
+      }
     } catch (e) { console.error(e) }
     setSubmitting(false)
   }
@@ -201,28 +228,63 @@ export default function BriefingFormPage() {
   const template = getTemplate(briefing.type, (briefing.language as 'pt-BR' | 'en-US') || 'pt-BR')
   if (!template) return null
 
-  if (submitted) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)', textAlign: 'center', padding: '40px 24px' }}>
-      <div style={{ fontSize: 64, marginBottom: 20 }}>✅</div>
-      <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 12, letterSpacing: '-0.02em' }}>
-        {briefing.language === 'en-US' ? 'Briefing submitted!' : 'Briefing enviado!'}
-      </h1>
-      <p style={{ color: 'var(--text-2)', fontSize: 15, maxWidth: 360, lineHeight: 1.7 }}>
-        {briefing.language === 'en-US' ? 'Thank you, ' : 'Obrigado, '}
-        <strong style={{ color: 'var(--text)' }}>{String(answers.responsible_name || briefing.clients?.name || '')}</strong>!<br />
-        {briefing.language === 'en-US'
-          ? <span>The <strong style={{ color: 'var(--accent)' }}>Bnny Labs</strong> team will review your answers and get in touch soon.</span>
-          : <span>A equipe da <strong style={{ color: 'var(--accent)' }}>Bnny Labs</strong> vai analisar suas respostas e em breve entrará em contato.</span>
-        }
-      </p>
-      <div style={{ marginTop: 24, padding: '14px 20px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 13, color: 'var(--text-3)', maxWidth: 320 }}>
-        {briefing.language === 'en-US'
-          ? '📧 You will also receive a confirmation email shortly.'
-          : '📧 Você também receberá um email de confirmação em instantes.'
-        }
+  if (submitted && !editingMode) {
+    const isEN = briefing?.language === 'en-US'
+    const canEdit = briefing?.canEdit
+    const editingExpires = briefing?.editing_expires_at
+    const hoursLeft = editingExpires
+      ? Math.max(0, Math.round((new Date(editingExpires).getTime() - Date.now()) / 3600000))
+      : null
+    const clientName = briefing?.clients?.name || ''
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)', textAlign: 'center', padding: '40px 24px' }}>
+        <div style={{ fontSize: 64, marginBottom: 20 }}>✅</div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 12, letterSpacing: '-0.02em' }}>
+          {isEN ? 'Briefing submitted!' : 'Briefing enviado!'}
+        </h1>
+        <p style={{ color: 'var(--text-2)', fontSize: 15, maxWidth: 380, lineHeight: 1.7 }}>
+          {isEN ? 'Thank you, ' : 'Obrigado, '}
+          <strong style={{ color: 'var(--text)' }}>{clientName}</strong>!<br />
+          {isEN
+            ? <span>The <strong style={{ color: 'var(--accent)' }}>Bnny Labs</strong> team will review your answers and get in touch soon.</span>
+            : <span>A equipe da <strong style={{ color: 'var(--accent)' }}>Bnny Labs</strong> vai analisar suas respostas e em breve entrará em contato.</span>
+          }
+        </p>
+
+        {canEdit && hoursLeft !== null && hoursLeft > 0 && (
+          <div style={{ marginTop: 20, padding: '16px 20px', background: 'var(--bg-2)', border: '1px solid var(--accent-border)', borderRadius: 12, maxWidth: 360, width: '100%' }}>
+            <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, marginBottom: 6 }}>
+              ⏱ {isEN ? `You have ${hoursLeft}h to review your answers` : `Você tem ${hoursLeft}h para revisar suas respostas`}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12 }}>
+              {isEN ? 'You can update your answers during this period.' : 'Você pode atualizar suas respostas durante este período.'}
+            </div>
+            <button onClick={() => { setEditingMode(true); setIsUpdate(true); setCurrentSection(0) }}
+              style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '11px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>
+              {isEN ? '✏️ Edit my answers' : '✏️ Editar minhas respostas'}
+            </button>
+          </div>
+        )}
+
+        {canEdit && (hoursLeft === null || hoursLeft === 0) && (
+          <div style={{ marginTop: 20, padding: '14px 20px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 13, color: 'var(--text-3)', maxWidth: 360 }}>
+            {isEN ? '⏰ The 48h editing period has expired. Contact us if you need to change something.' : '⏰ O período de edição de 48h expirou. Entre em contato se precisar alterar algo.'}
+          </div>
+        )}
+
+        {!canEdit && briefing?.editing_locked && (
+          <div style={{ marginTop: 20, padding: '14px 20px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 13, color: 'var(--text-3)', maxWidth: 360 }}>
+            {isEN ? '🔒 Editing is currently locked. Contact us to request changes.' : '🔒 Edição bloqueada. Entre em contato se precisar alterar algo.'}
+          </div>
+        )}
+
+        <div style={{ marginTop: 16, padding: '14px 20px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 13, color: 'var(--text-3)', maxWidth: 360 }}>
+          {isEN ? '📧 You will also receive a confirmation email shortly.' : '📧 Você também receberá um email de confirmação em instantes.'}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const sections = template.sections
   const totalSections = sections.length
@@ -244,6 +306,25 @@ export default function BriefingFormPage() {
       </div>
 
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '28px 20px 100px' }}>
+        {/* Editing mode banner */}
+        {editingMode && (
+          <div style={{ marginBottom: 20, padding: '12px 16px', background: 'rgba(200,255,0,0.08)', border: '1px solid var(--accent-border)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 18 }}>✏️</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>
+                {briefing.language === 'en-US' ? 'Editing mode — update your answers' : 'Modo edição — atualize suas respostas'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                {briefing.language === 'en-US' ? 'Changed fields will be highlighted for our team.' : 'Campos alterados serão destacados para nossa equipe.'}
+              </div>
+            </div>
+            <button onClick={() => { setEditingMode(false); setIsUpdate(false); setAnswers(previousAnswers) }}
+              style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer' }}>
+              {briefing.language === 'en-US' ? 'Cancel' : 'Cancelar'}
+            </button>
+          </div>
+        )}
+
         {/* Intro */}
         {currentSection === 0 && (
           <div style={{ marginBottom: 28 }}>
