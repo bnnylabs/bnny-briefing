@@ -9,6 +9,15 @@ import { Pencil, FileText, Bell, Copy, RefreshCw, Link, Trash2, Lock, Unlock, Cl
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+
+/** Format Date as YYYY-MM-DD string in local time, matching the existing date filter format */
+function toIsoDay(d: Date): string {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
 
 interface Client { id: string; name: string; company: string; email: string; phone: string }
 interface Briefing {
@@ -17,17 +26,9 @@ interface Briefing {
   completed_at: string | null; expires_at: string | null; internal_notes: string | null
   language?: string; editing_locked?: boolean; editing_expires_at?: string | null; update_count?: number; clients: Client
 }
-interface ActivityLog {
-  id: string; action: string; details: Record<string, unknown>; created_at: string
-}
 
 const STATUS_LABELS: Record<string, string> = {
   enviado: 'Enviado', visualizado: 'Visualizado', em_andamento: 'Em andamento', concluido: 'Concluído',
-}
-const ACTION_LABELS: Record<string, string> = {
-  delete_briefing: 'Briefing excluído',
-  bulk_delete_briefings: 'Exclusão em lote',
-  duplicate_briefing: 'Briefing duplicado',
 }
 
 function fmt(d: string | null) {
@@ -170,7 +171,6 @@ export default function AdminPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [view, setView] = useState<'list' | 'settings' | 'log'>('list')
   const { toasts, toast, remove: removeToast } = useToast()
 
   const [responsesBriefing, setResponsesBriefing] = useState<Briefing | null>(null)
@@ -206,13 +206,6 @@ export default function AdminPage() {
   const [clientHistoryClient, setClientHistoryClient] = useState<Client | null>(null)
   const [clientHistoryBriefings, setClientHistoryBriefings] = useState<Briefing[]>([])
 
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
-  const [logsLoading, setLogsLoading] = useState(false)
-
-  const [settings, setSettings] = useState({ notification_email: '', notification_whatsapp: '', briefing_expiry_days: '30', reminder_days: '3', editing_hours: '48', admin_password: '' })
-  const [savingSettings, setSavingSettings] = useState(false)
-  const [settingsSaved, setSettingsSaved] = useState(false)
-
   const router = useRouter()
 
   const loadBriefings = useCallback(async () => {
@@ -222,29 +215,17 @@ export default function AdminPage() {
     setLoading(false)
   }, [])
 
-  const loadSettings = useCallback(async () => {
-    const res = await fetch('/api/admin/settings')
-    if (res.ok) { const data = await res.json(); setSettings(s => ({ ...s, ...data.settings })) }
-  }, [])
-
-  const loadActivityLog = useCallback(async () => {
-    setLogsLoading(true)
-    const res = await fetch('/api/admin/activity-log')
-    if (res.ok) { const data = await res.json(); setActivityLogs(data.logs || []) }
-    setLogsLoading(false)
-  }, [])
-
   useEffect(() => {
     fetch('/api/briefings').then(r => {
       if (r.status === 401) setAuthed(false)
-      else { setAuthed(true); loadBriefings(); loadSettings() }
+      else { setAuthed(true); loadBriefings() }
     })
-  }, [loadBriefings, loadSettings])
+  }, [loadBriefings])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
-    if (res.ok) { setAuthed(true); loadBriefings(); loadSettings() }
+    if (res.ok) { setAuthed(true); loadBriefings() }
     else setLoginError('Senha incorreta')
   }
 
@@ -304,12 +285,6 @@ export default function AdminPage() {
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111;padding:48px;max-width:800px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #c8ff00;margin-bottom:32px}.logo{font-size:22px;font-weight:800;letter-spacing:-0.04em}.logo span{color:#c8ff00;background:#111;padding:2px 8px;border-radius:4px}.badge{background:#111;color:#c8ff00;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:inline-block}.cb{background:#f8f8f8;border-radius:12px;padding:20px 24px;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.cf label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;display:block;margin-bottom:3px}.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}.f{margin-bottom:18px}.fl{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}.fv{font-size:14px;color:#111;line-height:1.6;background:#f8f8f8;padding:10px 14px;border-radius:8px;border-left:3px solid #c8ff00}.footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="hdr"><div><div class="logo"><span>Bnny</span> Labs</div><div style="font-size:12px;color:#555;margin-top:4px">Sistema de Briefings</div></div><div style="text-align:right"><div style="font-size:17px;font-weight:700">${b.type_label}</div><div class="badge">${STATUS_LABELS[b.status]||b.status}</div></div></div><div class="cb"><div class="cf"><label>Empresa</label><span style="font-size:15px;font-weight:700">${b.clients?.company||'—'}</span></div><div class="cf"><label>Contato</label><span>${b.clients?.name||'—'}</span></div><div class="cf"><label>Email</label><span>${b.clients?.email||'—'}</span></div><div class="cf"><label>WhatsApp</label><span>${b.clients?.phone||'—'}</span></div><div class="cf"><label>Concluído em</label><span>${fmt(b.completed_at)}</span></div><div class="cf"><label>Tipo</label><span>${b.type_label}</span></div></div><div class="st">Respostas do briefing</div>${fields.map(([k,v])=>`<div class="f"><div class="fl">${k.replace(/_/g,' ')}</div><div class="fv">${Array.isArray(v)?(v as string[]).join(', '):String(v)}</div></div>`).join('')}<div class="footer">Gerado por Bnny Labs · briefing.bnnylabs.com · ${new Date().toLocaleDateString('pt-BR')}</div></body></html>`
     const win = window.open('', '_blank')
     if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
-  }
-
-  async function saveSettings() {
-    setSavingSettings(true)
-    await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) })
-    setSavingSettings(false); setSettingsSaved(true); setTimeout(() => setSettingsSaved(false), 2000)
   }
 
   function openEdit(b: Briefing) {
@@ -509,92 +484,9 @@ export default function AdminPage() {
 
       <div className="px-6 py-6 max-w-5xl mx-auto">
 
-        {/* ── ACTIVITY LOG ─────────────────────────────────────────── */}
-        {view === 'log' && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-6">
-              <h1 className="text-xl font-bold tracking-tight">Log de Atividades</h1>
-              <button onClick={() => setView('list')} className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto">← Voltar</button>
-            </div>
-            {logsLoading ? (
-              <div className="flex items-center justify-center py-20"><div className="spinner" /></div>
-            ) : activityLogs.length === 0 ? (
-              <div className="text-center py-20 text-muted-foreground">
-                <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                <div className="font-medium">Nenhuma atividade registrada ainda</div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {activityLogs.map(log => (
-                  <div key={log.id} className="rounded-lg border border-border bg-card px-4 py-3 flex items-start justify-between gap-4">
-                    <div>
-                      <div className="font-semibold text-sm">{ACTION_LABELS[log.action] || log.action}</div>
-                      {log.details?.company ? <div className="text-xs text-muted-foreground mt-1">{String(log.details.company)} · {String(log.details.type_label ?? '')}</div> : null}
-                      {log.details?.count ? <div className="text-xs text-muted-foreground mt-1">{String(log.details.count)} briefings excluídos</div> : null}
-                    </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">{fmt(log.created_at)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── SETTINGS ─────────────────────────────────────────────── */}
-        {view === 'settings' && (
-          <div className="space-y-4 max-w-xl">
-            <div className="flex items-center gap-3 mb-6">
-              <h1 className="text-xl font-bold tracking-tight">Configurações</h1>
-              <button onClick={() => setView('list')} className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto">← Voltar</button>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold"><Mail size={14} /> Notificações</div>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Email que recebe notificações</label>
-                  <Input value={settings.notification_email} onChange={e => setSettings(s => ({ ...s, notification_email: e.target.value }))} placeholder="seu@email.com" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">WhatsApp para notificações</label>
-                  <Input value={settings.notification_whatsapp} onChange={e => setSettings(s => ({ ...s, notification_whatsapp: e.target.value }))} placeholder="+55 47 99999-9999" />
-                  <p className="text-xs text-muted-foreground mt-1">Em breve — integração com WhatsApp API</p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold"><Clock size={14} /> Prazos automáticos</div>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Validade padrão do link (dias)</label>
-                  <Input type="number" value={settings.briefing_expiry_days} onChange={e => setSettings(s => ({ ...s, briefing_expiry_days: e.target.value }))} className="w-28" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Lembrete automático após X dias sem resposta</label>
-                  <Input type="number" value={settings.reminder_days} onChange={e => setSettings(s => ({ ...s, reminder_days: e.target.value }))} className="w-28" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Janela de edição pelo cliente (horas)</label>
-                  <Input type="number" value={settings.editing_hours} onChange={e => setSettings(s => ({ ...s, editing_hours: e.target.value }))} className="w-28" />
-                </div>
-              </div>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck size={14} /> Segurança</div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Nova senha de acesso</label>
-                <Input type="password" value={settings.admin_password} onChange={e => setSettings(s => ({ ...s, admin_password: e.target.value }))} placeholder="••••••••" />
-              </div>
-            </div>
-            <Button onClick={saveSettings} disabled={savingSettings} className="w-full h-11">
-              {savingSettings ? 'Salvando...' : settingsSaved ? <><Check size={14} /> Salvo!</> : 'Salvar configurações'}
-            </Button>
-          </div>
-        )}
-
         {/* ── BRIEFINGS LIST ────────────────────────────────────────── */}
-        {view === 'list' && (
-          <>
-            {/* Stats grid */}
+        <>
+          {/* Stats grid */}
             <div className="grid grid-cols-5 gap-2 mb-5">
               {([
                 { label: 'Total',       value: briefings.length,                                          status: '' },
@@ -618,12 +510,21 @@ export default function AdminPage() {
                 <Input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar cliente, empresa ou tipo..." className="pl-9 bg-card" />
               </div>
-              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-auto text-xs" />
-              <span className="text-muted-foreground text-sm">→</span>
-              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-auto text-xs" />
-              {(dateFrom || dateTo) && (
-                <Button variant="ghost" size="icon-sm" onClick={() => { setDateFrom(''); setDateTo('') }}>×</Button>
-              )}
+              <DateRangePicker
+                value={
+                  dateFrom || dateTo
+                    ? {
+                        from: dateFrom ? new Date(dateFrom) : undefined,
+                        to: dateTo ? new Date(dateTo) : undefined,
+                      }
+                    : undefined
+                }
+                onChange={(range) => {
+                  setDateFrom(range?.from ? toIsoDay(range.from) : '')
+                  setDateTo(range?.to ? toIsoDay(range.to) : '')
+                }}
+                placeholder="Filtrar por período"
+              />
             </div>
 
             {/* Select all + bulk actions */}
@@ -748,7 +649,6 @@ export default function AdminPage() {
               </div>
             )}
           </>
-        )}
 
       </div>
 
