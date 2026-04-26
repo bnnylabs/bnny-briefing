@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() { return new Resend(process.env.RESEND_API_KEY || 'placeholder') }
 
 const FROM = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
 
@@ -70,7 +70,7 @@ export async function sendBriefingToClient({
       <p style="margin-top:24px;font-size:13px;color:#999">Se o botão não funcionar, acesse: <a href="${link}" style="color:#000">${link}</a></p>
     `)
 
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: FROM,
       to: clientEmail,
       subject: `Briefing de ${typeLabel} — ${company}`,
@@ -113,7 +113,7 @@ export async function sendCompletionToAdmin({
       <a href="${baseUrl}/admin" class="btn">Ver respostas no painel →</a>
     `)
 
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: FROM,
       to: adminEmail,
       subject: `✅ Briefing concluído — ${company} (${typeLabel})`,
@@ -152,7 +152,7 @@ export async function sendReminderToClient({
       <p style="margin-top:24px;font-size:13px;color:#999">Link direto: <a href="${link}" style="color:#000">${link}</a></p>
     `)
 
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: FROM,
       to: clientEmail,
       subject: `Lembrete: briefing de ${typeLabel} aguardando — ${company}`,
@@ -187,7 +187,7 @@ export async function sendClientConfirmation({
       </div>
       <p style="margin-top:16px;font-size:14px;color:#888">Se precisar de qualquer coisa ou quiser adicionar alguma informação, basta responder este email.</p>
     `)
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: FROM,
       to: clientEmail,
       replyTo: process.env.NOTIFICATION_EMAIL || FROM,
