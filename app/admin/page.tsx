@@ -309,41 +309,69 @@ export default function AdminPage() {
 
   function renderFileValue(value: unknown): React.ReactNode {
     if (!value) return null
-    // New format: array of {url, name, size, type} objects
-    if (Array.isArray(value)) {
+
+    const renderFileCard = (f: { url: string; name: string; size?: number; type?: string }, i: number) => {
+      const isImage = f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
+      const hasUrl = f.url && f.url.startsWith('http')
+      const sizeLabel = f.size ? `${(f.size / 1024).toFixed(0)}kb` : ''
+
+      if (isImage) {
+        if (hasUrl) return (
+          <div key={i}>
+            <a href={f.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+              <img src={f.url} alt={f.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, display: 'block', objectFit: 'contain', background: '#111', cursor: 'pointer' }} />
+            </a>
+            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{f.name}{sizeLabel ? ` · ${sizeLabel}` : ''}</div>
+          </div>
+        )
+        return (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--border)', opacity: 0.6 }}>
+            <span style={{ fontSize: 20 }}>🖼️</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{sizeLabel} · upload não concluído</div>
+            </div>
+          </div>
+        )
+      }
+
+      if (hasUrl) return (
+        <a key={i} href={f.url} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-3)', borderRadius: 8, textDecoration: 'none', color: 'var(--text)', border: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 20 }}>{f.type?.includes('pdf') ? '📄' : '📎'}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
+            {sizeLabel && <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{sizeLabel}</div>}
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--accent)', flexShrink: 0 }}>↗ Abrir</span>
+        </a>
+      )
+
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {(value as { url: string; name: string; size: number; type: string }[]).map((f, i) => {
-            const isImage = f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
-            if (isImage && f.url) return (
-              <div key={i}>
-                <a href={f.url} target="_blank" rel="noopener noreferrer">
-                  <img src={f.url} alt={f.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, display: 'block', objectFit: 'contain', background: '#111' }} />
-                </a>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{f.name} · {f.size ? (f.size / 1024).toFixed(0) + 'kb' : ''}</div>
-              </div>
-            )
-            return (
-              <a key={i} href={f.url || '#'} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-3)', borderRadius: 8, textDecoration: 'none', color: 'var(--text)', border: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 20 }}>{f.type?.includes('pdf') ? '📄' : '📎'}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
-                  {f.size && <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{(f.size / 1024).toFixed(0)}kb</div>}
-                </div>
-                <span style={{ fontSize: 11, color: 'var(--accent)', flexShrink: 0 }}>↗</span>
-              </a>
-            )
-          })}
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--border)', opacity: 0.6 }}>
+          <span style={{ fontSize: 20 }}>📎</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{sizeLabel} · upload não concluído</div>
+          </div>
         </div>
       )
     }
-    // Legacy format: plain string (filename or URL)
+
+    if (Array.isArray(value)) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {(value as { url: string; name: string; size?: number; type?: string }[]).map((f, i) => renderFileCard(f, i))}
+        </div>
+      )
+    }
+
+    // Legacy: plain string
     const str = String(value)
     const isUrl = str.startsWith('http')
     return isUrl
       ? <a href={str} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline', wordBreak: 'break-all' }}>📎 {str.split('/').pop()}</a>
-      : <span style={{ color: 'var(--text-3)' }}>📎 {str}</span>
+      : <span style={{ color: 'var(--text-3)', fontSize: 13 }}>📎 {str}</span>
   }
 
   return (

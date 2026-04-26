@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateSlug } from '@/lib/briefing-types'
 import { sendBriefingToClient, sendWhatsApp } from '@/lib/email'
@@ -21,6 +22,34 @@ export async function GET(req: NextRequest) {
     .from('briefings').select(`*, clients(*)`).order('created_at', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ briefings: data })
+}
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+
+async function translateAnalysisToEN(analysis: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const textFields = ['description', 'key_features', 'differentials', 'unique_value_proposition',
+    'target_audience', 'brand_personality', 'geographic_focus', 'tone_of_voice', 'colors_hint',
+    'extra_notes', 'segment']
+  const toTranslate: Record<string, string> = {}
+  for (const f of textFields) {
+    if (analysis[f] && typeof analysis[f] === 'string') toTranslate[f] = analysis[f] as string
+  }
+  if (Object.keys(toTranslate).length === 0) return analysis
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: `Translate these values from Portuguese to English. Return ONLY valid JSON with the same keys, no extra text:
+${JSON.stringify(toTranslate)}` }]
+    })
+    const content = msg.content[0]
+    if (content.type !== 'text') return analysis
+    const match = content.text.match(/\{[\s\S]*\}/)
+    if (!match) return analysis
+    const translated = JSON.parse(match[0])
+    return { ...analysis, ...translated }
+  } catch { return analysis }
 }
 
 export async function POST(req: NextRequest) {

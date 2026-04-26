@@ -581,12 +581,10 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         ]
       },
       {
-        title: '07 — Timeline, budget and approval',
+        title: '07 — Timeline and approval',
         fields: [
           { id: 'deadline', label: 'Do you have a deadline or important date?', type: 'text', placeholder: 'Ex: August 15th, September launch, no set deadline...' },
-          { id: 'budget', label: 'Investment range', type: 'radio', options: ['Up to $500', '$500 – $1,500', '$1,500 – $3,000', 'Above $3,000', 'Prefer to discuss in person'] },
           { id: 'approver', label: 'Who will give final approval?', type: 'text', placeholder: 'Name and title of the final decision maker' },
-          { id: 'revision_expectation', label: 'How many revision rounds do you expect?', type: 'radio', options: ['1 round (fast approval)', '2-3 rounds (standard process)', 'Collaborative process (define together)'] },
           { id: 'responsible_name', label: 'Project contact name', type: 'text', required: true },
           { id: 'responsible_email', label: 'Main contact email', type: 'text', required: true },
           { id: 'responsible_phone', label: 'WhatsApp / phone', type: 'text', required: true },
@@ -666,12 +664,10 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         ]
       },
       {
-        title: '08 — Timeline, budget and approval',
+        title: '08 — Timeline and approval',
         fields: [
           { id: 'deadline', label: 'Do you have a deadline or important date?', type: 'text' },
-          { id: 'budget', label: 'Investment range', type: 'radio', options: ['Up to $1,000', '$1,000 – $3,000', '$3,000 – $6,000', 'Above $6,000', 'Prefer to discuss in person'] },
           { id: 'approver', label: 'Who will give final approval?', type: 'text' },
-          { id: 'revision_expectation', label: 'How many revision rounds do you expect?', type: 'radio', options: ['1 round (fast approval)', '2-3 rounds (standard process)', 'Collaborative process (define together)'] },
           { id: 'responsible_name', label: 'Project contact name', type: 'text', required: true },
           { id: 'responsible_email', label: 'Main contact email', type: 'text', required: true },
           { id: 'responsible_phone', label: 'WhatsApp / phone', type: 'text', required: true },
@@ -746,10 +742,9 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         ]
       },
       {
-        title: '08 — Timeline, budget and approval',
+        title: '08 — Timeline and approval',
         fields: [
           { id: 'deadline', label: 'When do you want to start publishing?', type: 'text' },
-          { id: 'budget', label: 'Monthly investment in social management', type: 'radio', options: ['Up to $500/month', '$500 – $1,000/month', '$1,000 – $2,000/month', 'Above $2,000/month', 'Prefer to discuss in person'] },
           { id: 'approver', label: 'Who will approve content before publishing?', type: 'text' },
           { id: 'responsible_name', label: 'Project contact name', type: 'text', required: true },
           { id: 'responsible_email', label: 'Main contact email', type: 'text', required: true },
@@ -830,12 +825,10 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         ]
       },
       {
-        title: '08 — Timeline, budget and approval',
+        title: '08 — Timeline and approval',
         fields: [
           { id: 'deadline', label: 'Do you have a launch date or deadline?', type: 'text' },
-          { id: 'budget', label: 'Project investment range', type: 'radio', options: ['Up to $2,000', '$2,000 – $5,000', '$5,000 – $10,000', '$10,000 – $25,000', 'Above $25,000', 'Prefer to discuss in person'] },
           { id: 'approver', label: 'Who will give final approval?', type: 'text', required: true },
-          { id: 'revision_expectation', label: 'How many revision rounds do you expect?', type: 'radio', options: ['1 round (fast approval)', '2-3 rounds (standard process)', 'Collaborative process (define together)'] },
           { id: 'responsible_name', label: 'Project contact name', type: 'text', required: true },
           { id: 'responsible_email', label: 'Main contact email', type: 'text', required: true },
           { id: 'responsible_phone', label: 'WhatsApp / phone', type: 'text', required: true },
