@@ -1,8 +1,5 @@
 import type { Metadata } from 'next'
-import { DM_Sans } from 'next/font/google'
 import './globals.css'
-
-const dmSans = DM_Sans({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'] })
 
 export const metadata: Metadata = {
   title: 'Bnny Labs — Briefing',
@@ -11,8 +8,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
-      <body className={dmSans.className}>{children}</body>
+    <html lang="pt-BR" className="dark">
+      <body>{children}</body>
     </html>
   )
 }

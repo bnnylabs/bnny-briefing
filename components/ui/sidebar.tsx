@@ -3,6 +3,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { FileText, Users, ScrollText, Settings, Plus } from 'lucide-react'
 import { Button } from './button'
 import { Separator } from './separator'
 

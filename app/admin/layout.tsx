@@ -1,22 +1,20 @@
 'use client'
 import { Sidebar, SidebarLayout } from '@/components/ui/sidebar'
-import { usePathname, useRouter } from 'next/navigation'
+import { FileText, Users, ScrollText, Settings } from 'lucide-react'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-
   const NAV_ITEMS = [
-    { href: '/admin',          label: 'Briefings', icon: '📋' },
-    { href: '/admin/clientes', label: 'Clientes',  icon: '👥' },
-    { href: '/admin#log',      label: 'Log',       icon: '📊' },
-    { href: '/admin#config',   label: 'Config',    icon: '⚙️' },
+    { href: '/admin',          label: 'Briefings', icon: <FileText size={15} /> },
+    { href: '/admin/clientes', label: 'Clientes',  icon: <Users size={15} /> },
+    { href: '/admin#log',      label: 'Log',       icon: <ScrollText size={15} /> },
+    { href: '/admin#config',   label: 'Config',    icon: <Settings size={15} /> },
   ]
 
   return (
     <>
       <Sidebar items={NAV_ITEMS} actions={
         <a href="/admin/novo"
-          className="flex items-center justify-center gap-2 w-full h-9 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 active:scale-95 transition-all duration-150">
+          className="flex items-center justify-center gap-1.5 w-full h-8 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90 transition-colors">
           + Novo briefing
         </a>
       } />

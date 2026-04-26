@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 import { useToast, ToastContainer } from '@/components/toast'
 import { Button } from '@/components/ui/button'
+import { Pencil, FileText, Bell, Copy, RefreshCw, Link, CheckSquare, Trash2, Lock, Unlock, ClipboardList } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -676,12 +677,12 @@ export default function AdminPage() {
                         {b.clients?.company}
                       </button>
                       <div className="flex items-center gap-1 shrink-0">
-                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(b)} title="Editar">✏️</Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(b)} title="Editar"><Pencil size={13} /></Button>
                         <Button variant="ghost" size="icon-sm" className={b.internal_notes ? 'text-primary' : ''}
-                          onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }} title="Anotações">📝</Button>
-                        <Button variant="ghost" size="icon-sm" onClick={() => viewNotifications(b)} title="Envios">📬</Button>
+                          onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }} title="Anotações"><FileText size={13} /></Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => viewNotifications(b)} title="Envios"><Bell size={13} /></Button>
                         <Button variant="ghost" size="icon-sm" disabled={duplicating === b.id} onClick={() => duplicateBriefing(b)} title="Duplicar">
-                          {duplicating === b.id ? '⏳' : '⿻'}
+                          <Copy size={13} />
                         </Button>
                         {b.status !== 'concluido' && b.clients?.email && (
                           <Button variant="ghost" size="sm" className={reminderSent === b.id + '_resend' ? 'text-primary' : ''}
@@ -703,11 +704,11 @@ export default function AdminPage() {
                             <Button variant="accent" size="sm" onClick={() => viewResponses(b)}>Ver respostas</Button>
                             <Button variant="ghost" size="icon-sm" title={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
                               onClick={() => toggleEditingLock(b.slug, !!b.editing_locked)}>
-                              {b.editing_locked ? '🔓' : '🔒'}
+                              {b.editing_locked ? <Unlock size={13} /> : <Lock size={13} />}
                             </Button>
                           </>
                         )}
-                        <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteBriefing(b)}>🗑️</Button>
+                        <Button variant="ghost" size="icon-sm" className="text-destructive/70 hover:text-destructive" onClick={() => setDeleteBriefing(b)}><Trash2 size={13} /></Button>
                       </div>
                     </div>
                     {/* Meta row */}
@@ -751,7 +752,7 @@ export default function AdminPage() {
             </div>
           </div>
           <div className="flex gap-2 mb-5">
-            <Button onClick={copyAll} variant="outline" className="flex-1">{copied ? '✓ Copiado!' : '📋 Copiar tudo'}</Button>
+            <Button onClick={copyAll} variant="outline" className="flex-1"><><ClipboardList size={14} />{copied ? 'Copiado!' : 'Copiar tudo'}</></Button>
             <Button onClick={exportPDF} variant="accent" className="flex-1">📄 Exportar PDF</Button>
           </div>
           {responseVersions > 1 && responseDiff && (
@@ -919,7 +920,7 @@ export default function AdminPage() {
       {deleteBriefing && (
         <Modal onClose={() => setDeleteBriefing(null)}>
           <div className="text-center py-2">
-            <div className="text-5xl mb-4">🗑️</div>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mx-auto mb-4"><Trash2 size={22} className="text-destructive" /></div>
             <div className="font-bold text-lg mb-1">Excluir briefing?</div>
             <div className="text-sm text-muted-foreground mb-1"><span className="font-semibold text-foreground">{deleteBriefing.clients?.company}</span> — {deleteBriefing.type_label}</div>
             <div className="text-xs text-muted-foreground mb-6">Esta ação não pode ser desfeita.</div>
@@ -935,7 +936,7 @@ export default function AdminPage() {
       {batchDeleteConfirm && (
         <Modal onClose={() => setBatchDeleteConfirm(false)}>
           <div className="text-center py-2">
-            <div className="text-5xl mb-4">🗑️</div>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mx-auto mb-4"><Trash2 size={22} className="text-destructive" /></div>
             <div className="font-bold text-lg mb-1">Excluir {selectedIds.size} briefings?</div>
             <div className="text-xs text-muted-foreground mb-6">Esta ação não pode ser desfeita.</div>
             <div className="flex gap-2">
