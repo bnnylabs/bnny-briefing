@@ -940,7 +940,7 @@ export default function AdminPage() {
             <div className="text-xs text-muted-foreground mb-6">Esta ação não pode ser desfeita.</div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setBatchDeleteConfirm(false)} className="flex-1">Cancelar</Button>
-              <Button variant="destructive" onClick={handleBulkDelete} disabled={batchDeleting} className="flex-1">{batchDeleting ? 'Excluindo...' : `Excluir ${selectedIds.size}`}</Button>
+              <Button variant="destructive" onClick={confirmBatchDelete} disabled={batchDeleting} className="flex-1">{batchDeleting ? 'Excluindo...' : `Excluir ${selectedIds.size}`}</Button>
             </div>
           </div>
         </Modal>
