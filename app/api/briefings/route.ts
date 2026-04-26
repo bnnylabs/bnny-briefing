@@ -48,12 +48,23 @@ export async function POST(req: NextRequest) {
   const baseUrl = getBaseUrl(req)
   const link = `${baseUrl}/${slug}`
 
-  const { data: briefing, error: briefingError } = await supabaseAdmin
-    .from('briefings').insert({
-      client_id: clientId, slug, type: briefingType, type_label: briefingTypeLabel,
-      status: 'enviado', prefilled_data: prefilledData || {},
-      internal_notes: internalNotes || null, expires_at: expiresAt, language: language || 'pt-BR',
-    }).select().single()
+  // Try inserting with language field (requires SQL migration)
+  // Falls back without language if column doesn't exist yet
+  let briefing, briefingError
+  const briefingPayload = {
+    client_id: clientId, slug, type: briefingType, type_label: briefingTypeLabel,
+    status: 'enviado', prefilled_data: prefilledData || {},
+    internal_notes: internalNotes || null, expires_at: expiresAt,
+  }
+  const resultWithLang = await supabaseAdmin
+    .from('briefings').insert({ ...briefingPayload, language: language || 'pt-BR' }).select().single()
+  if (resultWithLang.error?.message?.includes('column') || resultWithLang.error?.code === '42703') {
+    // Column doesn't exist yet — insert without language
+    const resultNoLang = await supabaseAdmin.from('briefings').insert(briefingPayload).select().single()
+    briefing = resultNoLang.data; briefingError = resultNoLang.error
+  } else {
+    briefing = resultWithLang.data; briefingError = resultWithLang.error
+  }
 
   if (briefingError) return NextResponse.json({ error: briefingError.message }, { status: 500 })
 

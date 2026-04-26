@@ -170,10 +170,15 @@ function NovoBriefingContent() {
         }),
       })
       const data = await res.json()
-      setGeneratedLink(data.link)
+      if (!res.ok) {
+        alert('Erro ao criar briefing: ' + (data.error || res.status))
+        setLoading(false)
+        return
+      }
+      setGeneratedLink(data.link || '')
       setEmailSent(data.emailSent)
       setStep('preview')
-    } catch (e) { console.error(e) }
+    } catch (e) { console.error(e); alert('Erro inesperado ao criar briefing') }
     setLoading(false)
   }
 
