@@ -670,7 +670,69 @@ export default function AdminPage() {
             <button onClick={copyAll} style={{ flex: 1, fontSize: 13, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? '✓ Copiado!' : '📋 Copiar tudo'}</button>
             <button onClick={exportPDF} style={{ flex: 1, fontSize: 13, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit' }}>📄 Exportar PDF</button>
           </div>
-          {responses ? (
+          {responses && (() => {
+            // Collect all files with real URLs for download
+            const allFiles: { url: string; name: string; type?: string; size?: number }[] = []
+            Object.entries(responses).forEach(([, value]) => {
+              if (Array.isArray(value)) {
+                (value as { url: string; name: string; type?: string; size?: number }[]).forEach(f => {
+                  if (f && f.name && f.url?.startsWith('http')) allFiles.push(f)
+                })
+              }
+            })
+            const imageFiles = allFiles.filter(f =>
+              f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
+            )
+            const otherFiles = allFiles.filter(f =>
+              !f.type?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
+            )
+
+            async function downloadAll() {
+              for (const f of allFiles) {
+                try {
+                  const response = await fetch(f.url)
+                  const blob = await response.blob()
+                  const blobUrl = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = blobUrl
+                  a.download = f.name
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  URL.revokeObjectURL(blobUrl)
+                  await new Promise(r => setTimeout(r, 400))
+                } catch {
+                  // fallback: open in new tab
+                  window.open(f.url, '_blank')
+                }
+              }
+            }
+
+            return <>
+              {allFiles.length > 0 && (
+                <div style={{ marginBottom: 14, padding: '12px 16px', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 20 }}>📎</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                      {allFiles.length} {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
+                      {imageFiles.length > 0 && (
+                        <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-3)', fontWeight: 400 }}>
+                          · {imageFiles.length} {imageFiles.length === 1 ? 'imagem' : 'imagens'}
+                          {otherFiles.length > 0 && `, ${otherFiles.length} ${otherFiles.length === 1 ? 'documento' : 'documentos'}`}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                      {allFiles.map(f => f.name).join(', ')}
+                    </div>
+                  </div>
+                  <button
+                    onClick={downloadAll}
+                    style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, fontSize: 12, padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+                    ⬇ Baixar todos
+                  </button>
+                </div>
+              )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {Object.entries(responses).filter(([, v]) => v).map(([key, value]) => {
                 const isFileField = /arquivo|logo|referencia|anexo|upload|files/i.test(key) || (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'url' in (value[0] as object))
@@ -694,7 +756,9 @@ export default function AdminPage() {
                 )
               })}
             </div>
-          ) : <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>}
+            </>
+          }})()}
+          {!responses && <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>}
         </Modal>
       )}
 

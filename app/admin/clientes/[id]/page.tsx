@@ -422,7 +422,56 @@ export default function ClientePerfilPage() {
             </div>
             {loadingResponses ? (
               <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>
-            ) : responses ? (
+            ) : responses ? (() => {
+              const allFiles: { url: string; name: string; type?: string; size?: number }[] = []
+              Object.entries(responses).forEach(([, value]) => {
+                if (Array.isArray(value)) {
+                  (value as { url: string; name: string; type?: string; size?: number }[]).forEach(f => {
+                    if (f && f.name && f.url?.startsWith('http')) allFiles.push(f)
+                  })
+                }
+              })
+              const imageFiles = allFiles.filter(f =>
+                f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
+              )
+              const otherFiles = allFiles.filter(f =>
+                !f.type?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
+              )
+              async function downloadAll() {
+                for (const f of allFiles) {
+                  try {
+                    const response = await fetch(f.url)
+                    const blob = await response.blob()
+                    const blobUrl = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = blobUrl; a.download = f.name
+                    document.body.appendChild(a); a.click()
+                    document.body.removeChild(a); URL.revokeObjectURL(blobUrl)
+                    await new Promise(r => setTimeout(r, 400))
+                  } catch { window.open(f.url, '_blank') }
+                }
+              }
+              return <>
+              {allFiles.length > 0 && (
+                <div style={{ marginBottom: 14, padding: '12px 16px', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 20 }}>📎</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                      {allFiles.length} {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
+                      {imageFiles.length > 0 && (
+                        <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-3)', fontWeight: 400 }}>
+                          · {imageFiles.length} {imageFiles.length === 1 ? 'imagem' : 'imagens'}
+                          {otherFiles.length > 0 && `, ${otherFiles.length} ${otherFiles.length === 1 ? 'documento' : 'documentos'}`}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{allFiles.map(f => f.name).join(', ')}</div>
+                  </div>
+                  <button onClick={downloadAll} style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, fontSize: 12, padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+                    ⬇ Baixar todos
+                  </button>
+                </div>
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {Object.entries(responses).filter(([,v]) => v).map(([key, value]) => {
                   const bLang = briefings.find(b => b.slug === viewingResponses)?.language
@@ -448,7 +497,8 @@ export default function ClientePerfilPage() {
                   )
                 })}
               </div>
-            ) : <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>Sem respostas ainda</div>}
+              </>
+            })() : <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>Sem respostas ainda</div>}
           </div>
         </div>
       )}
