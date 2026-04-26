@@ -457,53 +457,52 @@ export default function AdminPage() {
                     onMouseEnter={e => { if (!selectedIds.has(b.id)) e.currentTarget.style.borderColor = 'var(--border-2)' }}
                     onMouseLeave={e => { if (!selectedIds.has(b.id)) e.currentTarget.style.borderColor = 'var(--border)' }}>
 
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    {/* Row 1: checkbox + company name */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                       <input type="checkbox" checked={selectedIds.has(b.id)} onChange={() => toggleSelect(b.id)}
-                        style={{ marginTop: 4, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Row 1: company + actions */}
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                          <button onClick={() => viewClientHistory(b.clients)} style={{ fontWeight: 600, fontSize: 15, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', padding: 0, textAlign: 'left' }} title="Ver histórico deste cliente">
-                            {b.clients?.company}
-                          </button>
-                          <div className="card-actions" style={{ display: 'flex', gap: 5, flexWrap: 'wrap', flexShrink: 0 }}>
-                            <button onClick={() => openEdit(b)} title="Editar cliente" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer' }}>✏️</button>
-                            <button onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }} title="Anotações internas" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: `1px solid ${b.internal_notes ? 'var(--accent-border)' : 'var(--border)'}`, background: b.internal_notes ? 'var(--accent-dim)' : 'transparent', color: b.internal_notes ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer' }}>📝</button>
-                            <button onClick={() => viewNotifications(b)} title="Histórico de envios" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer' }}>📬</button>
-                            <button onClick={() => duplicateBriefing(b)} disabled={duplicating === b.id} title="Duplicar briefing" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', opacity: duplicating === b.id ? 0.5 : 1 }}>
-                              {duplicating === b.id ? '⏳' : '⿻'}
-                            </button>
-                            {b.status !== 'concluido' && b.clients?.email && (
-                              <button onClick={() => resendEmail(b)} disabled={sendingResend === b.id} title={`Reenviar email para ${b.clients.email}`} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: `1px solid ${reminderSent === b.id + '_resend' ? 'var(--accent-border)' : 'var(--border)'}`, background: reminderSent === b.id + '_resend' ? 'var(--accent-dim)' : 'transparent', color: reminderSent === b.id + '_resend' ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                {sendingResend === b.id ? '...' : reminderSent === b.id + '_resend' ? '✓ Reenviado' : '📧 Reenviar'}
-                              </button>
-                            )}
-                            {b.status !== 'concluido' && (
-                              <button onClick={() => sendReminder(b)} disabled={sendingReminder === b.id} title="Enviar lembrete" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: `1px solid ${reminderSent === b.id ? 'var(--accent-border)' : 'var(--border)'}`, background: reminderSent === b.id ? 'var(--accent-dim)' : 'transparent', color: reminderSent === b.id ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                {sendingReminder === b.id ? '...' : reminderSent === b.id ? '✓' : '🔔'}
-                              </button>
-                            )}
-                            <button onClick={() => copyLink(b.slug)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                              {copiedId === b.slug ? '✓ Copiado' : '🔗 Link'}
-                            </button>
-                            {b.status === 'concluido' && (
-                              <button onClick={() => viewResponses(b)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Ver respostas</button>
-                            )}
-                            <button onClick={() => setDeleteBriefing(b)} title="Excluir" style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,60,60,0.25)', background: 'transparent', color: '#ff6060', cursor: 'pointer' }}>🗑️</button>
-                          </div>
-                        </div>
-                        {/* Row 2: meta */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <StatusBadge status={b.status} />
-                          <span style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-3)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{b.type_label}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{b.clients?.name}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· {timeAgo(b.created_at)}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>({fmt(b.created_at)})</span>
-                          {b.completed_at && <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· concluído {fmt(b.completed_at)}</span>}
-                          {b.expires_at && new Date(b.expires_at) > new Date() && <span style={{ fontSize: 11, color: '#ffd700', whiteSpace: 'nowrap' }}>· expira {fmt(b.expires_at)}</span>}
-                          {b.expires_at && new Date(b.expires_at) < new Date() && <span style={{ fontSize: 11, color: '#ff4545', whiteSpace: 'nowrap' }}>· expirado</span>}
-                        </div>
-                      </div>
+                        style={{ accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0, width: 15, height: 15 }} />
+                      <button onClick={() => viewClientHistory(b.clients)}
+                        style={{ fontWeight: 700, fontSize: 15, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', padding: 0, textAlign: 'left', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title="Ver histórico deste cliente">
+                        {b.clients?.company}
+                      </button>
+                    </div>
+                    {/* Row 2: action buttons — full width, wraps freely */}
+                    <div className="card-actions" style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10, marginLeft: 25 }}>
+                      <button onClick={() => openEdit(b)} title="Editar cliente" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer' }}>✏️</button>
+                      <button onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }} title="Anotações internas" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: `1px solid ${b.internal_notes ? 'var(--accent-border)' : 'var(--border)'}`, background: b.internal_notes ? 'var(--accent-dim)' : 'transparent', color: b.internal_notes ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer' }}>📝</button>
+                      <button onClick={() => viewNotifications(b)} title="Histórico de envios" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer' }}>📬</button>
+                      <button onClick={() => duplicateBriefing(b)} disabled={duplicating === b.id} title="Duplicar briefing" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', opacity: duplicating === b.id ? 0.5 : 1 }}>
+                        {duplicating === b.id ? '⏳' : '⿻'}
+                      </button>
+                      {b.status !== 'concluido' && b.clients?.email && (
+                        <button onClick={() => resendEmail(b)} disabled={sendingResend === b.id} title={`Reenviar email para ${b.clients.email}`} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: `1px solid ${reminderSent === b.id + '_resend' ? 'var(--accent-border)' : 'var(--border)'}`, background: reminderSent === b.id + '_resend' ? 'var(--accent-dim)' : 'transparent', color: reminderSent === b.id + '_resend' ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          {sendingResend === b.id ? '...' : reminderSent === b.id + '_resend' ? '✓ Reenviado' : '📧 Reenviar'}
+                        </button>
+                      )}
+                      {b.status !== 'concluido' && (
+                        <button onClick={() => sendReminder(b)} disabled={sendingReminder === b.id} title="Enviar lembrete" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: `1px solid ${reminderSent === b.id ? 'var(--accent-border)' : 'var(--border)'}`, background: reminderSent === b.id ? 'var(--accent-dim)' : 'transparent', color: reminderSent === b.id ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          {sendingReminder === b.id ? '...' : reminderSent === b.id ? '✓' : '🔔'}
+                        </button>
+                      )}
+                      <button onClick={() => copyLink(b.slug)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        {copiedId === b.slug ? '✓ Copiado' : '🔗 Link'}
+                      </button>
+                      {b.status === 'concluido' && (
+                        <button onClick={() => viewResponses(b)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Ver respostas</button>
+                      )}
+                      <button onClick={() => setDeleteBriefing(b)} title="Excluir" style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,60,60,0.25)', background: 'transparent', color: '#ff6060', cursor: 'pointer' }}>🗑️</button>
+                    </div>
+                    {/* Row 3: meta */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 25 }}>
+                      <StatusBadge status={b.status} />
+                      <span style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-3)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{b.type_label}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{b.clients?.name}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· {timeAgo(b.created_at)}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>({fmt(b.created_at)})</span>
+                      {b.completed_at && <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· concluído {fmt(b.completed_at)}</span>}
+                      {b.expires_at && new Date(b.expires_at) > new Date() && <span style={{ fontSize: 11, color: '#ffd700', whiteSpace: 'nowrap' }}>· expira {fmt(b.expires_at)}</span>}
+                      {b.expires_at && new Date(b.expires_at) < new Date() && <span style={{ fontSize: 11, color: '#ff4545', whiteSpace: 'nowrap' }}>· expirado</span>}
                     </div>
                   </div>
                 ))}
