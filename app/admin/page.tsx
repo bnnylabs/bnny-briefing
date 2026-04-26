@@ -495,7 +495,7 @@ export default function AdminPage() {
                 <div style={{ fontSize: 13, marginBottom: 20 }}>
                   {search || dateFrom || dateTo ? 'Tente ajustar os filtros' : 'Crie o primeiro briefing para começar'}
                 </div>
-                {!search && !dateFrom && !dateTo && <button onClick={() => router.push('/admin/novo')} style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '10px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13 }}>Criar primeiro briefing</button>}
+                {!search && !dateFrom && !dateTo && <button onClick={() => router.push('/admin/clientes')} style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '10px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13 }}>Criar primeiro briefing</button>}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

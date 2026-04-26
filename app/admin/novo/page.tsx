@@ -75,15 +75,65 @@ function NovoBriefingContent() {
     const template = BRIEFING_TEMPLATES[selectedType]
     const ai = analysis || clientForm.analysis || {}
     const prefilled: Record<string, unknown> = {}
-    if (ai.company_name) prefilled.company_name = ai.company_name
-    if (ai.segment) prefilled.segment = ai.segment
-    if (ai.description) prefilled.description = ai.description
-    if (ai.differentials) prefilled.differentials = ai.differentials
-    if (ai.target_audience) prefilled.target_audience = ai.target_audience
-    if (ai.brand_personality) prefilled.brand_personality = ai.brand_personality
-    if (ai.price_positioning) prefilled.price_positioning = ai.price_positioning
-    if (ai.key_features) prefilled.key_features = ai.key_features
-    if (ai.unique_value_proposition) prefilled.unique_value_proposition = ai.unique_value_proposition
+
+    // ── Direct field mappings (AI key → briefing field id) ──────────────
+    const directMap: Record<string, string[]> = {
+      company_name:             ['company_name'],
+      segment:                  ['segment'],
+      description:              ['description'],
+      differentials:            ['differentials'],
+      target_audience:          ['target_audience'],
+      key_features:             ['key_features'],
+      unique_value_proposition: ['unique_value_proposition', 'positioning'],
+      geographic_focus:         ['geographic_focus'],
+      extra_notes:              ['extra_notes'],
+      colors_hint:              ['color_preferences', 'color_palette'],
+    }
+    for (const [aiKey, fieldIds] of Object.entries(directMap)) {
+      if (ai[aiKey]) { for (const fid of fieldIds) prefilled[fid] = ai[aiKey] }
+    }
+
+    // ── Smart price_positioning matching ────────────────────────────────
+    if (ai.price_positioning) {
+      const p = String(ai.price_positioning).toLowerCase()
+      if (p.includes('premium') || p.includes('alto')) prefilled.price_positioning = 'Premium / Alto padrão'
+      else if (p.includes('intermediário') || p.includes('intermediario') || p.includes('custo')) prefilled.price_positioning = 'Intermediário'
+      else if (p.includes('acess') || p.includes('popular')) prefilled.price_positioning = 'Acessível / Popular'
+      else prefilled.price_positioning = ai.price_positioning
+    }
+
+    // ── Smart brand_personality matching (string → array of options) ─────
+    if (ai.brand_personality) {
+      const optionsMap: Record<string, string> = {
+        moderna: 'Moderna', moderna_: 'Moderna', classica: 'Clássica', clássica: 'Clássica',
+        ousada: 'Ousada', elegante: 'Elegante', divertida: 'Divertida', séria: 'Séria',
+        seria: 'Séria', minimalista: 'Minimalista', sofisticada: 'Sofisticada',
+        acessível: 'Acessível', acessivel: 'Acessível', tecnológica: 'Tecnológica',
+        tecnologica: 'Tecnológica', humana: 'Humana', sustentável: 'Sustentável',
+        sustentavel: 'Sustentável', inovadora: 'Moderna', criativa: 'Ousada',
+        profissional: 'Séria', jovem: 'Divertida', luxo: 'Sofisticada',
+      }
+      const raw = String(ai.brand_personality)
+      const words = raw.split(/[,\s]+/).map(w => w.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''))
+      const matched = [...new Set(words.map(w => optionsMap[w]).filter(Boolean))]
+      if (matched.length > 0) prefilled.brand_personality = matched
+    }
+
+    // ── Smart tone_of_voice → brand_tone / content_tone matching ─────────
+    if (ai.tone_of_voice) {
+      const t = String(ai.tone_of_voice).toLowerCase()
+      let tone = ''
+      if (t.includes('formal') || t.includes('institucional')) tone = 'Formal e institucional'
+      else if (t.includes('próximo') || t.includes('proximo') || t.includes('profissional')) tone = 'Profissional mas próximo'
+      else if (t.includes('descontraído') || t.includes('descontraido') || t.includes('jovem')) tone = 'Descontraído e jovem'
+      else if (t.includes('técnico') || t.includes('tecnico') || t.includes('especialista')) tone = 'Técnico e especialista'
+      if (tone) { prefilled.brand_tone = tone; prefilled.content_tone = tone }
+    }
+
+    // ── Client contact data auto-fill ─────────────────────────────────────
+    if (clientForm.name)  prefilled.responsible_name  = clientForm.name
+    if (clientForm.email) prefilled.responsible_email = clientForm.email
+    if (clientForm.phone) prefilled.responsible_phone = clientForm.phone
 
     try {
       const res = await fetch('/api/briefings', {
