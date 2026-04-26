@@ -161,6 +161,8 @@ export default function AdminPage() {
   const [responseDiff, setResponseDiff] = useState<Record<string, { old: unknown; new: unknown }> | null>(null)
   const [responseVersions, setResponseVersions] = useState(0)
   const [showDiffView, setShowDiffView] = useState(false)
+  const [diffModal, setDiffModal] = useState<{ briefing: Briefing; diff: Record<string, { old: unknown; new: unknown }>; versions: number } | null>(null)
+  const [loadingDiff, setLoadingDiff] = useState(false)
   const [copied, setCopied] = useState(false)
   const [editBriefing, setEditBriefing] = useState<Briefing | null>(null)
   const [notesBriefing, setNotesBriefing] = useState<Briefing | null>(null)
@@ -227,6 +229,16 @@ export default function AdminPage() {
     const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
     if (res.ok) { setAuthed(true); loadBriefings(); loadSettings() }
     else setLoginError('Senha incorreta')
+  }
+
+  async function openDiffModal(b: Briefing) {
+    setLoadingDiff(true)
+    const res = await fetch(`/api/briefings/${b.slug}/responses`)
+    if (res.ok) {
+      const d = await res.json()
+      setDiffModal({ briefing: b, diff: d.diff || {}, versions: d.versions || 0 })
+    }
+    setLoadingDiff(false)
   }
 
   async function toggleEditingLock(slug: string, currentLocked: boolean) {
@@ -745,9 +757,9 @@ export default function AdminPage() {
                       <span style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-3)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{b.type_label}</span>
                       {b.language === 'en-US' && <span title="Briefing em inglês" style={{ fontSize: 12 }}>🇺🇸</span>}
                       {(b.update_count || 0) > 0 && (
-                        <span title={`Atualizado ${b.update_count}x pelo cliente`} style={{ fontSize: 11, color: '#000', background: 'var(--accent)', padding: '2px 8px', borderRadius: 999, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        <button onClick={() => openDiffModal(b)} title="Ver o que foi alterado" style={{ fontSize: 11, color: '#000', background: 'var(--accent)', padding: '2px 8px', borderRadius: 999, fontWeight: 700, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                           ✏️ {b.update_count}x
-                        </span>
+                        </button>
                       )}
                       <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{b.clients?.name}</span>
                       <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· {timeAgo(b.created_at)}</span>
@@ -834,6 +846,62 @@ export default function AdminPage() {
             labelMapEN={FIELD_LABELS_EN}
           />}
           {!responses && <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>}
+        </Modal>
+      )}
+
+      {/* DIFF MODAL */}
+      {diffModal && (
+        <Modal onClose={() => setDiffModal(null)} wide>
+          <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>{diffModal.briefing.clients?.company}</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 20 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--accent)', color: '#000', padding: '2px 8px', borderRadius: 999 }}>✏️ {diffModal.briefing.update_count}x atualizado</span>
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{diffModal.briefing.type_label}</span>
+          </div>
+          {loadingDiff ? (
+            <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>
+          ) : Object.keys(diffModal.diff).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
+              <div>Não foi possível comparar versões — apenas a versão mais recente está disponível.</div>
+              <button onClick={() => { setDiffModal(null); viewResponses(diffModal.briefing) }}
+                style={{ marginTop: 16, padding: '9px 18px', borderRadius: 8, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}>
+                Ver respostas completas →
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 4 }}>
+                {Object.keys(diffModal.diff).length} {Object.keys(diffModal.diff).length === 1 ? 'campo alterado' : 'campos alterados'}
+              </div>
+              {Object.entries(diffModal.diff).map(([key, { old: oldVal, new: newVal }]) => {
+                const labelMap = diffModal.briefing.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
+                const label = labelMap[key] || key.replace(/_/g, ' ')
+                const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
+                const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
+                return (
+                  <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--accent-border)' }}>
+                    <div style={{ padding: '8px 14px', background: 'rgba(200,255,0,0.06)', borderBottom: '1px solid var(--accent-border)' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>✏️ {label}</span>
+                    </div>
+                    <div style={{ padding: '12px 14px', background: 'var(--bg-2)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ fontSize: 13, color: 'var(--text-3)', textDecoration: 'line-through', lineHeight: 1.5 }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-3)', marginRight: 8, textDecoration: 'none', display: 'inline-block' }}>ERA</span>
+                        {oldStr || '—'}
+                      </div>
+                      <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600, lineHeight: 1.5 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', marginRight: 8, display: 'inline-block' }}>AGORA</span>
+                        {newStr}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              <button onClick={() => { setDiffModal(null); viewResponses(diffModal.briefing) }}
+                style={{ marginTop: 8, padding: '10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
+                Ver todas as respostas →
+              </button>
+            </div>
+          )}
         </Modal>
       )}
 
