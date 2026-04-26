@@ -58,6 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   settingsData?.forEach((s: { key: string; value: string }) => { settings[s.key] = s.value })
 
   const adminEmail = settings.notification_email || process.env.NOTIFICATION_EMAIL || ''
+    const editingHours = parseInt(settings.editing_hours || '48', 10)
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`
   const clientName = briefing.clients?.name || 'Cliente'
   const clientEmail = briefing.clients?.email
