@@ -14,9 +14,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Nenhum slug fornecido' }, { status: 400 })
   }
 
-  // Get briefings for logging
+  // Get briefings for logging (no join to avoid type issues)
   const { data: briefings } = await supabaseAdmin
-    .from('briefings').select('id, slug, type_label, status, clients(company)').in('slug', slugs)
+    .from('briefings').select('id, slug, type_label, status').in('slug', slugs)
 
   if (!briefings?.length) return NextResponse.json({ error: 'Briefings não encontrados' }, { status: 404 })
 
@@ -34,11 +34,7 @@ export async function POST(req: NextRequest) {
   try {
     await supabaseAdmin.from('activity_log').insert({
       action: 'bulk_delete_briefings',
-      details: {
-        count: slugs.length,
-        slugs,
-        companies: briefings.map((b) => b.clients?.company as string | undefined).filter(Boolean),
-      }
+      details: { count: slugs.length, slugs }
     })
   } catch (_e) {}
 
