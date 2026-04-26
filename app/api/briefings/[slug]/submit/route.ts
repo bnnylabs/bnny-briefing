@@ -13,11 +13,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   if (briefingError || !briefing) return NextResponse.json({ error: 'Briefing não encontrado' }, { status: 404 })
 
+  // Use client data as canonical contact — not form answers
   const { error: responseError } = await supabaseAdmin.from('responses').insert({
     briefing_id: briefing.id, answers,
-    responsible_name: answers.responsible_name,
-    responsible_email: answers.responsible_email,
-    responsible_phone: answers.responsible_phone,
+    responsible_name: briefing.clients?.name,
+    responsible_email: briefing.clients?.email,
+    responsible_phone: briefing.clients?.phone,
   })
 
   if (responseError) return NextResponse.json({ error: responseError.message }, { status: 500 })
@@ -30,8 +31,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   const adminEmail = settings.notification_email || process.env.NOTIFICATION_EMAIL || ''
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`
-  const clientName = answers.responsible_name || briefing.clients?.name
-  const clientEmail = answers.responsible_email || briefing.clients?.email
+  const clientName = briefing.clients?.name || answers.filled_by || 'Cliente'
+  const clientEmail = briefing.clients?.email
 
   // Email to admin
   if (adminEmail) {

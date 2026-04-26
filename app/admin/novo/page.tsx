@@ -71,9 +71,7 @@ function buildPrefilled(ai: Record<string, unknown>, clientForm: ClientData): Re
     if (tone) { prefilled.brand_tone = tone; prefilled.content_tone = tone }
   }
 
-  if (clientForm.name)  prefilled.responsible_name  = clientForm.name
-  if (clientForm.email) prefilled.responsible_email = clientForm.email
-  if (clientForm.phone) prefilled.responsible_phone = clientForm.phone
+  // Contact info now comes from client record — not pre-filled in form
 
   return prefilled
 }

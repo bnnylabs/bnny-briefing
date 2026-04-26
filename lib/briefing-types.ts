@@ -60,6 +60,7 @@ export const FIELD_LABELS_PT: Record<string, string> = {
   responsible_name: 'Nome do responsável',
   responsible_email: 'Email de contato',
   responsible_phone: 'WhatsApp / celular',
+  filled_by: 'Preenchido por',
   visual_references_files: 'Referências visuais (arquivos)',
   existing_logo: 'Logo atual',
   existing_brand_files: 'Arquivos da marca atual',
@@ -151,6 +152,7 @@ export const FIELD_LABELS_EN: Record<string, string> = {
   responsible_name: 'Contact name',
   responsible_email: 'Contact email',
   responsible_phone: 'WhatsApp / phone',
+  filled_by: 'Filled by',
   visual_references_files: 'Visual references (files)',
   existing_logo: 'Current logo',
   existing_brand_files: 'Current brand files',
@@ -266,9 +268,7 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'deadline', label: 'Tem prazo ou data importante?', type: 'text', placeholder: 'Ex: 15 de agosto, lançamento em setembro, sem prazo definido...' },
           { id: 'approver', label: 'Quem dá a palavra final na aprovação?', type: 'text', placeholder: 'Nome e cargo de quem decide — ex: CEO, sócio, diretora de marketing' },
-          { id: 'responsible_name', label: 'Nome do responsável pelo projeto', type: 'text', required: true },
-          { id: 'responsible_email', label: 'Email principal de contato', type: 'text', required: true },
-          { id: 'responsible_phone', label: 'WhatsApp / celular', type: 'text', required: true },
+          { id: 'filled_by', label: 'Quem preencheu este briefing?', type: 'text', placeholder: 'Deixe em branco se foi você mesmo — só preencha se for outra pessoa da equipe' },
           { id: 'visual_references_files', label: 'Anexe referências visuais (logos que admira, prints, moodboard)', type: 'file', hint: 'Imagens, PDFs, prints — qualquer referência visual ajuda muito' },
           { id: 'existing_logo', label: 'Logo atual (se tiver)', type: 'file', hint: 'Qualquer arquivo que tiver — PNG, foto, PDF' },
           { id: 'extra_notes', label: 'Algo mais que queira nos contar?', type: 'textarea', placeholder: 'Contexto extra, história da empresa, inspirações, restrições...' },
@@ -348,9 +348,7 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'deadline', label: 'Tem prazo ou data importante?', type: 'text', placeholder: 'Ex: lançamento em outubro, reunião com investidores em novembro...' },
           { id: 'approver', label: 'Quem dá a palavra final na aprovação?', type: 'text', placeholder: 'Nome e cargo de quem decide' },
-          { id: 'responsible_name', label: 'Nome do responsável pelo projeto', type: 'text', required: true },
-          { id: 'responsible_email', label: 'Email principal de contato', type: 'text', required: true },
-          { id: 'responsible_phone', label: 'WhatsApp / celular', type: 'text', required: true },
+          { id: 'filled_by', label: 'Quem preencheu este briefing?', type: 'text', placeholder: 'Deixe em branco se foi você mesmo — só preencha se for outra pessoa da equipe' },
           { id: 'extra_notes', label: 'Algo mais que queira nos contar?', type: 'textarea', placeholder: 'Contexto extra, história da empresa, restrições específicas...' },
         ]
       },
@@ -426,9 +424,7 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'deadline', label: 'Quando quer começar a publicar?', type: 'text', placeholder: 'Ex: início de outubro, o mais rápido possível...' },
           { id: 'approver', label: 'Quem aprova os conteúdos antes de publicar?', type: 'text', placeholder: 'Nome de quem dá o OK final para ir ao ar' },
-          { id: 'responsible_name', label: 'Nome do responsável pelo projeto', type: 'text', required: true },
-          { id: 'responsible_email', label: 'Email principal de contato', type: 'text', required: true },
-          { id: 'responsible_phone', label: 'WhatsApp / celular', type: 'text', required: true },
+          { id: 'filled_by', label: 'Quem preencheu este briefing?', type: 'text', placeholder: 'Deixe em branco se foi você mesmo — só preencha se for outra pessoa da equipe' },
           { id: 'extra_notes', label: 'Algo mais que queira nos contar?', type: 'textarea', placeholder: 'Campanhas planejadas, datas comemorativas, restrições, contexto extra...' },
         ]
       },
@@ -509,9 +505,7 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'deadline', label: 'Tem prazo ou data de lançamento?', type: 'text', placeholder: 'Ex: outubro, antes do evento X, início do Q1, o mais rápido possível...' },
           { id: 'approver', label: 'Quem dá a palavra final na aprovação?', type: 'text', required: true, placeholder: 'Nome de quem decide — ex: Rafael Peixer (Founder)' },
-          { id: 'responsible_name', label: 'Nome do responsável pelo projeto', type: 'text', required: true },
-          { id: 'responsible_email', label: 'Email principal de contato', type: 'text', required: true },
-          { id: 'responsible_phone', label: 'WhatsApp / celular', type: 'text', required: true },
+          { id: 'filled_by', label: 'Quem preencheu este briefing?', type: 'text', placeholder: 'Deixe em branco se foi você mesmo — só preencha se for outra pessoa da equipe' },
           { id: 'attachments', label: 'Anexos (logo, identidade visual, textos, sitemap, referências)', type: 'file', hint: 'Aceita imagens, PDFs, documentos Word, apresentações' },
           { id: 'extra_notes', label: 'Algo mais que queira nos contar?', type: 'textarea', placeholder: 'Contexto extra, funcionalidades específicas, restrições, histórico do projeto...' },
         ]
@@ -585,9 +579,7 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'deadline', label: 'Do you have a deadline or important date?', type: 'text', placeholder: 'Ex: August 15th, September launch, no set deadline...' },
           { id: 'approver', label: 'Who will give final approval?', type: 'text', placeholder: 'Name and title of the final decision maker' },
-          { id: 'responsible_name', label: 'Project contact name', type: 'text', required: true },
-          { id: 'responsible_email', label: 'Main contact email', type: 'text', required: true },
-          { id: 'responsible_phone', label: 'WhatsApp / phone', type: 'text', required: true },
+          { id: 'filled_by', label: 'Who filled this briefing?', type: 'text', placeholder: 'Leave blank if it was you — only fill if it was someone else from your team' },
           { id: 'visual_references_files', label: 'Attach visual references (logos you admire, prints, moodboard)', type: 'file', hint: 'Images, PDFs, screenshots — any visual reference is very helpful' },
           { id: 'existing_logo', label: 'Current logo (if any)', type: 'file', hint: 'PNG, SVG, AI, PDF — any format' },
           { id: 'extra_notes', label: 'Anything else you\'d like to share?', type: 'textarea', placeholder: 'Extra context, company history, inspirations, constraints...' },
@@ -668,9 +660,7 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'deadline', label: 'Do you have a deadline or important date?', type: 'text' },
           { id: 'approver', label: 'Who will give final approval?', type: 'text' },
-          { id: 'responsible_name', label: 'Project contact name', type: 'text', required: true },
-          { id: 'responsible_email', label: 'Main contact email', type: 'text', required: true },
-          { id: 'responsible_phone', label: 'WhatsApp / phone', type: 'text', required: true },
+          { id: 'filled_by', label: 'Who filled this briefing?', type: 'text', placeholder: 'Leave blank if it was you — only fill if it was someone else from your team' },
           { id: 'extra_notes', label: 'Anything else you\'d like to share?', type: 'textarea' },
         ]
       },
@@ -746,9 +736,7 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'deadline', label: 'When do you want to start publishing?', type: 'text' },
           { id: 'approver', label: 'Who will approve content before publishing?', type: 'text' },
-          { id: 'responsible_name', label: 'Project contact name', type: 'text', required: true },
-          { id: 'responsible_email', label: 'Main contact email', type: 'text', required: true },
-          { id: 'responsible_phone', label: 'WhatsApp / phone', type: 'text', required: true },
+          { id: 'filled_by', label: 'Who filled this briefing?', type: 'text', placeholder: 'Leave blank if it was you — only fill if it was someone else from your team' },
           { id: 'extra_notes', label: 'Anything else you\'d like to share?', type: 'textarea' },
         ]
       },
@@ -829,9 +817,7 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'deadline', label: 'Do you have a launch date or deadline?', type: 'text' },
           { id: 'approver', label: 'Who will give final approval?', type: 'text', required: true },
-          { id: 'responsible_name', label: 'Project contact name', type: 'text', required: true },
-          { id: 'responsible_email', label: 'Main contact email', type: 'text', required: true },
-          { id: 'responsible_phone', label: 'WhatsApp / phone', type: 'text', required: true },
+          { id: 'filled_by', label: 'Who filled this briefing?', type: 'text', placeholder: 'Leave blank if it was you — only fill if it was someone else from your team' },
           { id: 'attachments', label: 'Attachments (logo, brand identity, copy, sitemap, references)', type: 'file' },
           { id: 'extra_notes', label: 'Anything else you\'d like to share?', type: 'textarea' },
         ]
