@@ -158,6 +158,9 @@ export default function AdminPage() {
 
   const [responsesBriefing, setResponsesBriefing] = useState<Briefing | null>(null)
   const [responses, setResponses] = useState<Record<string, unknown> | null>(null)
+  const [responseDiff, setResponseDiff] = useState<Record<string, { old: unknown; new: unknown }> | null>(null)
+  const [responseVersions, setResponseVersions] = useState(0)
+  const [showDiffView, setShowDiffView] = useState(false)
   const [copied, setCopied] = useState(false)
   const [editBriefing, setEditBriefing] = useState<Briefing | null>(null)
   const [notesBriefing, setNotesBriefing] = useState<Briefing | null>(null)
@@ -758,6 +761,47 @@ export default function AdminPage() {
             <button onClick={copyAll} style={{ flex: 1, fontSize: 13, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? '✓ Copiado!' : '📋 Copiar tudo'}</button>
             <button onClick={exportPDF} style={{ flex: 1, fontSize: 13, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit' }}>📄 Exportar PDF</button>
           </div>
+          {responseVersions > 1 && responseDiff && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setShowDiffView(false)}
+                  style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 8, border: `1px solid ${!showDiffView ? 'var(--accent-border)' : 'var(--border)'}`, background: !showDiffView ? 'var(--accent-dim)' : 'transparent', color: !showDiffView ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: !showDiffView ? 700 : 400 }}>
+                  📋 Respostas atuais
+                </button>
+                <button onClick={() => setShowDiffView(true)}
+                  style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 8, border: `1px solid ${showDiffView ? 'var(--accent-border)' : 'var(--border)'}`, background: showDiffView ? 'var(--accent-dim)' : 'transparent', color: showDiffView ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: showDiffView ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  ✏️ Ver alterações <span style={{ background: 'var(--accent)', color: '#000', fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 999 }}>{Object.keys(responseDiff).length}</span>
+                </button>
+              </div>
+              {showDiffView && (
+                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {Object.keys(responseDiff).length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-3)', fontSize: 13 }}>Nenhuma alteração detectada</div>
+                  ) : Object.entries(responseDiff).map(([key, { old: oldVal, new: newVal }]) => {
+                    const labelMap = responsesBriefing?.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
+                    const label = labelMap[key] || key.replace(/_/g, ' ')
+                    const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
+                    const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
+                    return (
+                      <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--accent-border)', background: 'var(--bg-2)' }}>
+                        <div style={{ padding: '7px 14px', background: 'rgba(200,255,0,0.06)', borderBottom: '1px solid var(--accent-border)' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>✏️ {label}</span>
+                        </div>
+                        <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ fontSize: 12, color: 'var(--text-3)', textDecoration: 'line-through', lineHeight: 1.5 }}>
+                            <span style={{ fontSize: 10, color: 'var(--text-3)', marginRight: 6, fontWeight: 600 }}>ERA:</span>{oldStr || '—'}
+                          </div>
+                          <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, lineHeight: 1.5 }}>
+                            <span style={{ fontSize: 10, color: 'var(--accent)', marginRight: 6, fontWeight: 700 }}>AGORA:</span>{newStr}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
           {responses && <ResponsesContent
             responses={responses}
             language={responsesBriefing?.language}

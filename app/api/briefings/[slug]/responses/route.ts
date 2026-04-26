@@ -5,20 +5,43 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const { slug } = await params
 
   const { data: briefing } = await supabaseAdmin
-    .from('briefings')
-    .select('id')
-    .eq('slug', slug)
-    .single()
+    .from('briefings').select('id, update_count').eq('slug', slug).single()
 
   if (!briefing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { data: response } = await supabaseAdmin
+  // Return all versions ordered by date
+  const { data: responses } = await supabaseAdmin
     .from('responses')
-    .select('*')
+    .select('id, answers, created_at')
     .eq('briefing_id', briefing.id)
-    .order('submitted_at', { ascending: false })
-    .limit(1)
-    .single()
+    .order('created_at', { ascending: true })
 
-  return NextResponse.json({ answers: response?.answers || {} })
+  const all = responses || []
+  const latest = all[all.length - 1]
+  const original = all[0]
+
+  // Build diff between original and latest (if multiple versions)
+  let diff: Record<string, { old: unknown; new: unknown }> = {}
+  if (all.length > 1 && original && latest) {
+    const oldAnswers = original.answers as Record<string, unknown>
+    const newAnswers = latest.answers as Record<string, unknown>
+    for (const [key, newVal] of Object.entries(newAnswers)) {
+      const oldVal = oldAnswers[key]
+      const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
+      const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
+      if (oldStr !== newStr && newStr) {
+        diff[key] = { old: oldVal, new: newVal }
+      }
+    }
+  }
+
+  return NextResponse.json({
+    answers: latest?.answers || {},
+    originalAnswers: original?.answers || {},
+    diff,
+    versions: all.length,
+    updateCount: briefing.update_count || 0,
+    submittedAt: latest?.created_at,
+    originalSubmittedAt: original?.created_at,
+  })
 }

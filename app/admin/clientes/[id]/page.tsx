@@ -128,6 +128,9 @@ export default function ClientePerfilPage() {
   const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', role: '' })
   const [savingContact, setSavingContact] = useState(false)
   const [responses, setResponses] = useState<Record<string, unknown> | null>(null)
+  const [responseDiff2, setResponseDiff2] = useState<Record<string, { old: unknown; new: unknown }> | null>(null)
+  const [responseVersions2, setResponseVersions2] = useState(0)
+  const [showDiff2, setShowDiff2] = useState(false)
   const [loadingResponses, setLoadingResponses] = useState(false)
   const [copiedResponses, setCopiedResponses] = useState(false)
   const { toasts, toast, remove } = useToast()
@@ -243,8 +246,14 @@ export default function ClientePerfilPage() {
   async function viewResponses(slug: string) {
     setViewingResponses(slug)
     setLoadingResponses(true)
+    setShowDiff2(false)
     const res = await fetch(`/api/briefings/${slug}/responses`)
-    if (res.ok) { const d = await res.json(); setResponses(d.answers || {}) }
+    if (res.ok) {
+      const d = await res.json()
+      setResponses(d.answers || {})
+      setResponseDiff2(d.diff || null)
+      setResponseVersions2(d.versions || 1)
+    }
     setLoadingResponses(false)
   }
 
@@ -533,6 +542,38 @@ export default function ClientePerfilPage() {
                 {copiedResponses ? '✓ Copiado!' : '📋 Copiar tudo'}
               </button>
             </div>
+            {responseVersions2 > 1 && responseDiff2 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  <button onClick={() => setShowDiff2(false)} style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 8, border: `1px solid ${!showDiff2 ? 'var(--accent-border)' : 'var(--border)'}`, background: !showDiff2 ? 'var(--accent-dim)' : 'transparent', color: !showDiff2 ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: !showDiff2 ? 700 : 400 }}>📋 Respostas atuais</button>
+                  <button onClick={() => setShowDiff2(true)} style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 8, border: `1px solid ${showDiff2 ? 'var(--accent-border)' : 'var(--border)'}`, background: showDiff2 ? 'var(--accent-dim)' : 'transparent', color: showDiff2 ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: showDiff2 ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    ✏️ Alterações <span style={{ background: 'var(--accent)', color: '#000', fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 999 }}>{Object.keys(responseDiff2).length}</span>
+                  </button>
+                </div>
+                {showDiff2 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {Object.entries(responseDiff2).map(([key, { old: oldVal, new: newVal }]) => {
+                      const bLang = briefings.find(b => b.slug === viewingResponses)?.language
+                      const labelMap = bLang === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
+                      const label = labelMap[key] || key.replace(/_/g, ' ')
+                      const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
+                      const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
+                      return (
+                        <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--accent-border)', background: 'var(--bg-2)' }}>
+                          <div style={{ padding: '7px 14px', background: 'rgba(200,255,0,0.06)', borderBottom: '1px solid var(--accent-border)' }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>✏️ {label}</span>
+                          </div>
+                          <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ fontSize: 12, color: 'var(--text-3)', textDecoration: 'line-through', lineHeight: 1.5 }}><span style={{ fontSize: 10, fontWeight: 600, marginRight: 6 }}>ERA:</span>{oldStr || '—'}</div>
+                            <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, lineHeight: 1.5 }}><span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 700, marginRight: 6 }}>AGORA:</span>{newStr}</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
             {loadingResponses ? (
               <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>
             ) : responses ? <ResponsesContent2
