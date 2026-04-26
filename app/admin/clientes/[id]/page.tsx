@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useToast, ToastContainer } from '@/components/toast'
 import { useRouter, useParams } from 'next/navigation'
+import { FIELD_LABELS_PT } from '@/lib/briefing-types'
 
 interface Client {
   id: string; name: string; company: string; email: string; phone: string
