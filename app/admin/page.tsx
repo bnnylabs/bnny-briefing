@@ -51,7 +51,7 @@ function timeAgo(d: string) {
 
 function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, 'muted' | 'outline' | 'warning' | 'success'> = {
-    enviado: 'muted', visualizado: 'outline', em_andamento: 'warning', concluido: 'success'
+    enviado: 'outline', visualizado: 'muted', em_andamento: 'warning', concluido: 'success'
   }
   return (
     <Badge variant={variants[status] || 'muted'} className="text-[11px] font-semibold whitespace-nowrap">

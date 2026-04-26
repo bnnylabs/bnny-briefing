@@ -47,7 +47,7 @@ export function Sidebar({ items, actions, logo, footer }: SidebarProps) {
               <div className={cn(
                 'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all duration-150 cursor-pointer',
                 active
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-primary/15 text-primary font-semibold border border-primary/20'
                   : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
               )}>
                 <span className="w-4 h-4 flex items-center justify-center shrink-0 text-base leading-none">{item.icon}</span>

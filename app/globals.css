@@ -8,72 +8,71 @@
 
 @layer base {
   :root {
-    /* ── Nova dark + Lime theme ──────────────────────────────────
-       Converted from shadcn oklch → HSL for Tailwind v3
-       preset: b3vDVUZE8m (nova / neutral / lime / inter / geist-mono)
+    /* ── Nova LIGHT + Lime theme ─────────────────────────────────
+       preset: b3vDVUZE8m — style=nova, baseColor=neutral, theme=lime
+       LIGHT MODE
     ─────────────────────────────────────────────────────────── */
 
-    /* Radius — default */
     --radius: 0.5rem;
 
-    /* Background: oklch(0.145 0 0) → very dark neutral */
-    --background:         0 0% 9%;
-    --foreground:         0 0% 98%;
+    /* Background: branco limpo */
+    --background:         0 0% 100%;
+    --foreground:         0 0% 9%;
 
-    /* Card: oklch(0.185 0 0) → slightly lighter than bg */
-    --card:               0 0% 11%;
-    --card-foreground:    0 0% 98%;
+    /* Card: branco, mesma cor do bg — separado pela borda */
+    --card:               0 0% 100%;
+    --card-foreground:    0 0% 9%;
 
-    --popover:            0 0% 11%;
-    --popover-foreground: 0 0% 98%;
+    --popover:            0 0% 100%;
+    --popover-foreground: 0 0% 9%;
 
-    /* Primary: Lime — oklch(0.768 0.233 130.85) ≈ #a3e635 */
+    /* Primary: Lime — hsl(82 89% 56%) = #a3e635 */
     --primary:            82 89% 56%;
     --primary-foreground: 0 0% 9%;
 
-    /* Secondary: oklch(0.245 0 0) */
-    --secondary:          0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
+    /* Secondary: cinza claro */
+    --secondary:          0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
 
-    /* Muted */
-    --muted:              0 0% 15%;
-    --muted-foreground:   0 0% 63%;
+    /* Muted: cinza bem sutil */
+    --muted:              0 0% 96%;
+    --muted-foreground:   0 0% 45%;
 
     /* Accent */
-    --accent:             0 0% 15%;
-    --accent-foreground:  0 0% 98%;
+    --accent:             0 0% 96%;
+    --accent-foreground:  0 0% 9%;
 
     /* Destructive */
     --destructive:        0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Border: oklch(0.265 0 0) → visible dark separator */
-    --border:             0 0% 18%;
-    --input:              0 0% 18%;
-    --ring:               82 89% 56%;
+    /* Border: cinza bem sutil */
+    --border:             0 0% 90%;
+    --input:              0 0% 90%;
+    --ring:               82 89% 40%;
 
-    /* Sidebar — slightly darker than card */
-    --sidebar-background:  0 0% 7%;
-    --sidebar-foreground:  0 0% 85%;
-    --sidebar-primary:     82 89% 56%;
-    --sidebar-primary-foreground: 0 0% 9%;
-    --sidebar-accent:      0 0% 13%;
-    --sidebar-accent-foreground: 0 0% 85%;
-    --sidebar-border:      0 0% 14%;
-    --sidebar-ring:        82 89% 56%;
+    /* Sidebar — cinza claro levemente diferente */
+    --sidebar-background:  0 0% 98%;
+    --sidebar-foreground:  0 0% 20%;
+    --sidebar-primary:     82 89% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent:      0 0% 93%;
+    --sidebar-accent-foreground: 0 0% 20%;
+    --sidebar-border:      0 0% 88%;
+    --sidebar-ring:        82 89% 40%;
 
-    /* Legacy vars for backward compat */
-    --bg:           #171717;
-    --bg-2:         #1c1c1c;
-    --bg-3:         #262626;
-    --border-legacy:#2e2e2e;
-    --border-2:     #383838;
-    --text:         #fafafa;
-    --text-2:       #a1a1a1;
-    --text-3:       #737373;
-    --bnny-green:   #a3e635;
-    --accent-dim:   rgba(163, 230, 53, 0.12);
-    --accent-border:rgba(163, 230, 53, 0.3);
+    /* Legacy vars */
+    --bg:           #ffffff;
+    --bg-2:         #f9f9f9;
+    --bg-3:         #f4f4f4;
+    --border-legacy:#e5e5e5;
+    --border-2:     #d4d4d4;
+    --text:         #171717;
+    --text-2:       #737373;
+    --text-3:       #a3a3a3;
+    --bnny-green:   #65a30d;
+    --accent-dim:   rgba(101, 163, 13, 0.1);
+    --accent-border:rgba(101, 163, 13, 0.25);
     --red:          #ef4444;
     --yellow:       #eab308;
   }
@@ -82,18 +81,14 @@
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
   * { margin: 0; padding: 0; }
-
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -webkit-text-size-adjust: 100%;
-    font-feature-settings: "cv11", "ss01";
   }
-
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Geist Mono Variable', 'Geist Mono', 'JetBrains Mono', monospace;
-    font-feature-settings: "ss01";
+    font-family: 'Geist Mono Variable', 'Geist Mono', monospace;
     letter-spacing: -0.03em;
   }
 }
@@ -101,8 +96,8 @@
 /* Spinner */
 .spinner {
   width: 18px; height: 18px;
-  border: 2px solid rgba(163, 230, 53, 0.15);
-  border-top-color: #a3e635;
+  border: 2px solid rgba(101, 163, 13, 0.2);
+  border-top-color: #65a30d;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   display: inline-block;
@@ -112,10 +107,9 @@
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: hsl(0 0% 22%); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(0 0% 28%); }
+::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #a3a3a3; }
 
-/* Mobile breakpoints */
 @media (max-width: 640px) {
   .card-desktop-btns { display: none !important; }
   .card-extra-btns   { display: flex !important; }
