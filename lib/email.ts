@@ -50,12 +50,14 @@ export async function sendBriefingToClient({
   company,
   typeLabel,
   link,
+  language = 'pt-BR',
 }: {
   clientName: string
   clientEmail: string
   company: string
   typeLabel: string
   link: string
+  language?: string
 }) {
   try {
     const html = baseTemplate(`
@@ -133,12 +135,14 @@ export async function sendReminderToClient({
   company,
   typeLabel,
   link,
+  language = 'pt-BR',
 }: {
   clientName: string
   clientEmail: string
   company: string
   typeLabel: string
   link: string
+  language?: string
 }) {
   try {
     const html = baseTemplate(`
@@ -171,11 +175,13 @@ export async function sendClientConfirmation({
   clientEmail,
   company,
   typeLabel,
+  language = 'pt-BR',
 }: {
   clientName: string
   clientEmail: string
   company: string
   typeLabel: string
+  language?: string
 }) {
   try {
     const html = baseTemplate(`
