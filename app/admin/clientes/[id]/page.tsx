@@ -38,6 +38,71 @@ function fmt(d: string | null) {
   return new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
+interface FileEntry3 { url: string; name: string; type?: string; size?: number }
+function ResponsesContent2({ responses, language, companyName, renderFileValue, labelMapPT, labelMapEN }: {
+  responses: Record<string, unknown>; language?: string; companyName: string
+  renderFileValue: (v: unknown) => React.ReactNode
+  labelMapPT: Record<string, string>; labelMapEN: Record<string, string>
+}) {
+  const allFiles: FileEntry3[] = []
+  Object.entries(responses).forEach(([, value]) => {
+    if (Array.isArray(value)) {
+      (value as FileEntry3[]).forEach(f => { if (f && f.name && f.url?.startsWith('http')) allFiles.push(f) })
+    }
+  })
+  const imageFiles = allFiles.filter(f => f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || ''))
+  const otherFiles = allFiles.filter(f => !f.type?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || ''))
+  const labelMap = language === 'en-US' ? labelMapEN : labelMapPT
+
+  async function handleDownloadAll() {
+    const { downloadAsZip } = await import('@/lib/download-zip')
+    await downloadAsZip(allFiles, `${companyName} - arquivos.zip`)
+  }
+
+  return (
+    <>
+      {allFiles.length > 0 && (
+        <div style={{ marginBottom: 14, padding: '12px 16px', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 20 }}>📎</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+              {allFiles.length} {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
+              {imageFiles.length > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-3)', fontWeight: 400 }}>· {imageFiles.length} {imageFiles.length === 1 ? 'imagem' : 'imagens'}{otherFiles.length > 0 && `, ${otherFiles.length} ${otherFiles.length === 1 ? 'documento' : 'documentos'}`}</span>}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{allFiles.map(f => f.name).join(', ')}</div>
+          </div>
+          <button onClick={handleDownloadAll} style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, fontSize: 12, padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+            ⬇ Baixar ZIP
+          </button>
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {Object.entries(responses).filter(([, v]) => v).map(([key, value]) => {
+          const isFileField = /arquivo|logo|referencia|anexo|upload|files/i.test(key) || (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'url' in (value[0] as object))
+          const displayValue = isFileField ? '' : (Array.isArray(value) ? (value as string[]).join(', ') : String(value))
+          const isShort = !isFileField && displayValue.length < 60
+          return (
+            <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <div style={{ padding: '8px 14px', background: 'var(--bg-3)', borderBottom: (isShort && !isFileField) ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  {isFileField && '📎 '}{labelMap[key] || key.replace(/_/g, ' ')}
+                </span>
+                {isShort && !isFileField && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{displayValue}</span>}
+              </div>
+              {(!isShort || isFileField) && (
+                <div style={{ padding: '12px 14px', fontSize: 14, color: 'var(--text)', lineHeight: 1.7, background: 'var(--bg-2)' }}>
+                  {isFileField ? renderFileValue(value) : <span style={{ whiteSpace: 'pre-wrap' }}>{displayValue}</span>}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+
 export default function ClientePerfilPage() {
   const router = useRouter()
   const params = useParams()
