@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendCompletionToAdmin, sendWhatsApp } from '@/lib/email'
+import { sendClientConfirmation } from '@/lib/email'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -23,35 +24,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   await supabaseAdmin.from('briefings').update({ status: 'concluido', completed_at: new Date().toISOString() }).eq('id', briefing.id)
 
-  // Get admin email from settings
   const { data: settingsData } = await supabaseAdmin.from('settings').select('*')
   const settings: Record<string, string> = {}
   settingsData?.forEach((s: { key: string; value: string }) => { settings[s.key] = s.value })
 
   const adminEmail = settings.notification_email || process.env.NOTIFICATION_EMAIL || ''
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`
+  const clientName = answers.responsible_name || briefing.clients?.name
+  const clientEmail = answers.responsible_email || briefing.clients?.email
 
   // Email to admin
   if (adminEmail) {
     await sendCompletionToAdmin({
-      adminEmail,
-      clientName: briefing.clients?.name,
+      adminEmail, clientName, company: briefing.clients?.company,
+      typeLabel: briefing.type_label, slug, baseUrl,
+    })
+    try { await supabaseAdmin.from('notifications').insert({ briefing_id: briefing.id, type: 'email_admin', status: 'sent', details: { to: adminEmail } }) } catch(_e) {}
+  }
+
+  // Confirmation email to client
+  if (clientEmail) {
+    await sendClientConfirmation({
+      clientName, clientEmail,
       company: briefing.clients?.company,
       typeLabel: briefing.type_label,
-      slug,
-      baseUrl,
     })
-
-    try { await supabaseAdmin.from('notifications').insert({
-      briefing_id: briefing.id,
-      type: 'email_admin',
-      status: 'sent',
-      details: { to: adminEmail }
-    }) } catch(_e) {}
+    try { await supabaseAdmin.from('notifications').insert({ briefing_id: briefing.id, type: 'email_client_confirmation', status: 'sent', details: { to: clientEmail } }) } catch(_e) {}
   }
 
   // WhatsApp to admin
-  const msg = `✅ Briefing concluído!\nEmpresa: ${briefing.clients?.company}\nContato: ${briefing.clients?.name}\nTipo: ${briefing.type_label}\nVer respostas: ${baseUrl}/admin`
+  const msg = `✅ Briefing concluído!\nEmpresa: ${briefing.clients?.company}\nContato: ${clientName}\nTipo: ${briefing.type_label}\nVer: ${baseUrl}/admin`
   await sendWhatsApp(msg)
 
   return NextResponse.json({ ok: true })

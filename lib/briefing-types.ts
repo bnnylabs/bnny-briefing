@@ -60,6 +60,8 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
           { id: 'style_references', label: 'Marcas ou logos que admira (como referência, não cópia)', type: 'textarea' },
           { id: 'avoid', label: 'O que definitivamente NÃO quer na identidade?', type: 'textarea', placeholder: 'Estilos, cores, elementos que devem ser evitados' },
           { id: 'deliverables', label: 'Quais materiais precisam do novo visual?', type: 'multiselect', options: ['Logo', 'Cartão de visita', 'Papel timbrado', 'Apresentação', 'Redes sociais', 'Sinalização', 'Embalagem', 'Uniforme'] },
+          { id: 'visual_references_files', label: 'Anexe referências visuais (logos, imagens, prints)', type: 'file', hint: 'Imagens, PDFs ou qualquer material de referência' },
+          { id: 'existing_logo', label: 'Anexe o logo atual (se tiver)', type: 'file', hint: 'PNG, SVG, AI, PDF' },
         ]
       },
       {
@@ -104,6 +106,8 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
           { id: 'style_references', label: 'Logos que admira como referência', type: 'textarea' },
           { id: 'avoid', label: 'O que NÃO quer no logo', type: 'textarea' },
           { id: 'use_contexts', label: 'Onde o logo será usado?', type: 'multiselect', options: ['Site', 'Instagram', 'WhatsApp', 'Cartão', 'Uniforme', 'Embalagem', 'Outdoor', 'Produto físico'] },
+          { id: 'visual_references_files', label: 'Anexe referências visuais (logos que admira)', type: 'file', hint: 'Imagens, PDFs ou prints de referência' },
+          { id: 'existing_logo', label: 'Tem logo atual? Anexe aqui', type: 'file', hint: 'PNG, SVG, AI, PDF — qualquer formato' },
         ]
       },
       {
@@ -112,7 +116,6 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
           { id: 'responsible_name', label: 'Nome do responsável', type: 'text', required: true },
           { id: 'responsible_email', label: 'Email principal de contato', type: 'text', required: true },
           { id: 'responsible_phone', label: 'WhatsApp / celular', type: 'text', required: true },
-          { id: 'attachments', label: 'Anexos (referências visuais, logo atual se tiver)', type: 'file', hint: 'Aceita imagens e PDFs' },
           { id: 'extra_notes', label: 'Informações adicionais', type: 'textarea' },
         ]
       }
@@ -156,6 +159,7 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
           { id: 'color_palette', label: 'Cores da marca (se tiver)', type: 'text' },
           { id: 'visual_references', label: 'Perfis que admira como referência visual', type: 'textarea' },
           { id: 'avoid', label: 'O que não quer ver no conteúdo', type: 'textarea' },
+          { id: 'brand_files', label: 'Anexe manual de marca, logo ou referências visuais', type: 'file', hint: 'Imagens, PDFs, apresentações' },
         ]
       },
       {

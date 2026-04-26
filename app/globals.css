@@ -25,6 +25,7 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
 }
 
 .status-badge {
@@ -51,16 +52,24 @@ input, textarea, select {
   border-radius: 8px;
   padding: 10px 14px;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px; /* 16px prevents iOS zoom */
   width: 100%;
   transition: border-color 0.2s;
   outline: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 input:focus, textarea:focus, select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
 textarea { resize: vertical; min-height: 90px; }
+
+/* Mobile safe padding */
+.mobile-pad {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
@@ -77,4 +86,11 @@ textarea { resize: vertical; min-height: 90px; }
   animation: spin 0.7s linear infinite;
   display: inline-block;
   vertical-align: middle;
+}
+
+/* Mobile responsive fixes */
+@media (max-width: 640px) {
+  input, textarea, select {
+    font-size: 16px !important; /* prevent zoom on iOS */
+  }
 }

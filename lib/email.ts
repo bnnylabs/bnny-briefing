@@ -165,6 +165,42 @@ export async function sendReminderToClient({
   }
 }
 
+// Confirmation email to client after completing briefing
+export async function sendClientConfirmation({
+  clientName,
+  clientEmail,
+  company,
+  typeLabel,
+}: {
+  clientName: string
+  clientEmail: string
+  company: string
+  typeLabel: string
+}) {
+  try {
+    const html = baseTemplate(`
+      <h1>Briefing recebido com sucesso! ✅</h1>
+      <p>Olá, <strong>${clientName}</strong>!</p>
+      <p style="margin-top:12px">Recebemos o briefing de <strong>${typeLabel}</strong> da <strong>${company}</strong>. Muito obrigado pelo seu tempo!</p>
+      <div class="highlight">
+        Nossa equipe vai analisar suas respostas e em breve entrará em contato para dar andamento ao projeto.
+      </div>
+      <p style="margin-top:16px;font-size:14px;color:#888">Se precisar de qualquer coisa ou quiser adicionar alguma informação, basta responder este email.</p>
+    `)
+    const result = await resend.emails.send({
+      from: FROM,
+      to: clientEmail,
+      replyTo: process.env.NOTIFICATION_EMAIL || FROM,
+      subject: `Briefing recebido — ${company}`,
+      html,
+    })
+    return { ok: true, id: result.data?.id }
+  } catch (error) {
+    console.error('Client confirmation email failed:', error)
+    return { ok: false, error }
+  }
+}
+
 // WhatsApp via CallMeBot
 export async function sendWhatsApp(message: string) {
   const phone = process.env.CALLMEBOT_PHONE
