@@ -1,6 +1,11 @@
 export type BriefingType = 'identidade' | 'social' | 'site' | 'logo'
 export type BriefingLanguage = 'pt-BR' | 'en-US'
 
+export interface FieldCondition {
+  field: string        // id of the field to check
+  values: string[]     // show only if that field's value is in this list
+}
+
 export interface BriefingField {
   id: string
   label: string
@@ -9,6 +14,7 @@ export interface BriefingField {
   options?: string[]
   required?: boolean
   hint?: string
+  condition?: FieldCondition  // show only when condition is met
 }
 
 export interface BriefingTemplate {
@@ -133,8 +139,8 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         title: '02 — Contexto da criação',
         fields: [
           { id: 'rebrand_reason', label: 'O que motivou a criação ou renovação do logo?', type: 'textarea', required: true, placeholder: 'Ex: A empresa cresceu e o logo não representa mais quem somos. Queremos passar mais profissionalismo...' },
-          { id: 'current_logo_problems', label: 'Se renovação: o que não funciona no logo atual?', type: 'textarea', placeholder: 'Deixe em branco se for marca nova. Seja específico: cores, formato, tipografia, proporções...' },
-          { id: 'keep_elements', label: 'O que deve ser mantido (se houver)?', type: 'textarea', placeholder: 'Ex: manter as cores atuais, preservar algum elemento do ícone, manter a fonte...' },
+          { id: 'current_logo_problems', label: 'O que não funciona no logo atual?', type: 'textarea', placeholder: 'Seja específico: cores, formato, tipografia, proporções, legibilidade...', condition: { field: 'is_rebrand', values: ['Renovação / evolução do logo atual', 'Substituição completa do visual atual', 'Renewal / evolution of the current logo', 'Complete visual replacement'] } },
+          { id: 'keep_elements', label: 'O que deve ser mantido (se houver)?', type: 'textarea', placeholder: 'Ex: manter as cores atuais, preservar algum elemento do ícone, manter a fonte...', condition: { field: 'is_rebrand', values: ['Renovação / evolução do logo atual', 'Substituição completa do visual atual', 'Renewal / evolution of the current logo', 'Complete visual replacement'] } },
         ]
       },
       {
@@ -209,7 +215,7 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         title: '02 — Contexto do projeto',
         fields: [
           { id: 'rebrand_reason', label: 'O que motivou a criação ou renovação da identidade?', type: 'textarea', required: true, placeholder: 'Ex: A empresa cresceu, mudamos de posicionamento, vamos captar investimento, o visual está desatualizado...' },
-          { id: 'keep_elements', label: 'O que deve ser mantido da marca atual (se houver)?', type: 'textarea', placeholder: 'Ex: manter as cores, preservar o logo, manter o slogan...' },
+          { id: 'keep_elements', label: 'O que deve ser mantido da marca atual (se houver)?', type: 'textarea', placeholder: 'Ex: manter as cores, preservar o logo, manter o slogan...', condition: { field: 'is_rebrand', values: ['Renovação / rebrand da marca atual', 'Expansão da marca existente'] } },
           { id: 'identity_goal', label: 'Qual o principal objetivo desta identidade?', type: 'radio', options: ['Transmitir mais profissionalismo e credibilidade', 'Diferenciar da concorrência', 'Alcançar um novo público', 'Refletir uma nova fase da empresa', 'Preparar para crescimento / expansão'] },
         ]
       },
@@ -247,7 +253,7 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
           { id: 'color_preferences', label: 'Tem preferência ou restrição de cores?', type: 'textarea', placeholder: 'Ex: tons de verde e dourado, nada de vermelho, paleta escura, cores vibrantes...' },
           { id: 'has_logo', label: 'Já tem um logo?', type: 'radio', options: ['Sim, o logo será mantido', 'Sim, mas será renovado junto', 'Não, criar do zero'] },
           { id: 'visual_references_files', label: 'Anexe referências visuais (moodboard, logos, prints)', type: 'file', hint: 'Quanto mais referências, mais precisa fica a direção criativa' },
-          { id: 'existing_brand_files', label: 'Arquivos da marca atual (logo, materiais)', type: 'file', hint: 'PNG, SVG, AI, PDF — qualquer arquivo existente' },
+          { id: 'existing_brand_files', label: 'Arquivos da marca atual (logo, materiais)', type: 'file', hint: 'PNG, SVG, AI, PDF — qualquer arquivo existente', condition: { field: 'has_logo', values: ['Sim, o logo será mantido', 'Sim, mas será renovado junto'] } },
         ]
       },
       {
@@ -296,7 +302,7 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
           { id: 'networks', label: 'Redes sociais que já usa ou quer usar', type: 'multiselect', options: ['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'YouTube', 'X (Twitter)', 'Pinterest', 'WhatsApp Business', 'Threads'] },
           { id: 'current_profiles', label: 'Links dos perfis atuais', type: 'textarea', placeholder: 'Cole os links das redes que já existem — vamos analisar o que está funcionando' },
           { id: 'current_followers', label: 'Seguidores atuais (aproximado por rede)', type: 'text', placeholder: 'Ex: Instagram 2.3k, LinkedIn 800...' },
-          { id: 'current_performance', label: 'O que tem funcionado bem no conteúdo atual?', type: 'textarea', placeholder: 'Tipos de post, temas, formatos que geram mais engajamento... Deixe em branco se não tiver histórico' },
+          { id: 'current_performance', label: 'O que tem funcionado bem no conteúdo atual?', type: 'textarea', placeholder: 'Tipos de post, temas, formatos que geram mais engajamento...' },
           { id: 'competitors', label: 'Concorrentes que você acompanha nas redes', type: 'textarea', placeholder: 'Perfis de referência — tanto positivos quanto negativos' },
         ]
       },
@@ -376,8 +382,8 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         title: '02 — Contexto do projeto',
         fields: [
           { id: 'is_redesign', label: 'Este projeto é...', type: 'radio', required: true, options: ['Site novo (não temos site)', 'Redesign completo do site atual', 'Melhoria / atualização do site atual', 'Landing page específica (campanha / produto)'] },
-          { id: 'existing_site', label: 'Site atual (URL)', type: 'text', placeholder: 'https://... — deixe em branco se não tiver' },
-          { id: 'site_problems', label: 'O que não funciona no site atual?', type: 'textarea', placeholder: 'Só preencher se for redesign — seja específico: conversão baixa, visual desatualizado, lento, não responsivo...' },
+          { id: 'existing_site', label: 'Site atual (URL)', type: 'text', placeholder: 'https://...', condition: { field: 'is_redesign', values: ['Redesign completo do site atual', 'Melhoria / atualização do site atual', 'Complete redesign of current site', 'Improvement / update of current site'] } },
+          { id: 'site_problems', label: 'O que não funciona no site atual?', type: 'textarea', placeholder: 'Seja específico: conversão baixa, visual desatualizado, lento, não responsivo...', condition: { field: 'is_redesign', values: ['Redesign completo do site atual', 'Melhoria / atualização do site atual', 'Complete redesign of current site', 'Improvement / update of current site'] } },
           { id: 'rebrand_reason', label: 'O que motivou a criação ou renovação do site?', type: 'textarea', required: true, placeholder: 'Ex: vamos lançar um produto novo, precisamos gerar mais leads, site antigo não representa mais a empresa...' },
         ]
       },
@@ -408,7 +414,7 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
           { id: 'page_count', label: 'Número estimado de páginas', type: 'radio', options: ['1-3 páginas (landing page simples)', '4-8 páginas (site básico)', '9-15 páginas (site médio)', '15+ páginas (portal / plataforma)'] },
           { id: 'sitemap', label: 'Tem esboço de estrutura / sitemap?', type: 'textarea', placeholder: 'Se tiver ideia de como organizar as páginas, descreva aqui ou vai em Anexos' },
           { id: 'has_content', label: 'Situação dos textos e conteúdo', type: 'radio', options: ['Temos tudo pronto (textos, fotos, vídeos)', 'Temos parcialmente (precisam revisar / complementar)', 'Não temos — precisamos criar do zero'] },
-          { id: 'who_writes', label: 'Quem vai escrever os textos do site?', type: 'radio', required: true, options: ['Nós mesmos (cliente)', 'Vocês (Bnny Labs)', 'Dividir: cliente escreve, vocês refinam', 'Contratar redator específico'] },
+          { id: 'who_writes', label: 'Quem vai escrever os textos do site?', type: 'radio', required: true, options: ['Nós mesmos (cliente)', 'Vocês (Bnny Labs)', 'Dividir: cliente escreve, vocês refinam', 'Contratar redator específico'], condition: { field: 'has_content', values: ['Parcialmente (precisam revisar / complementar)', 'Não temos — precisamos criar do zero', 'Partially ready (need revision / supplement)', 'Not ready — need to create from scratch'] } },
         ]
       },
       {

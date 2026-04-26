@@ -2,13 +2,22 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { getTemplate, BriefingType, BriefingField } from '@/lib/briefing-types'
+import { getTemplate, BriefingType, BriefingField, FieldCondition } from '@/lib/briefing-types'
 
 interface BriefingData {
   id: string; slug: string; type: BriefingType; type_label: string; status: string
   prefilled_data: Record<string, unknown>
   language?: string
   clients: { name: string; company: string; website: string }
+}
+
+
+function fieldVisible(field: BriefingField, answers: Record<string, unknown>): boolean {
+  if (!field.condition) return true
+  const { field: depField, values } = field.condition as FieldCondition
+  const current = answers[depField]
+  if (Array.isArray(current)) return (current as string[]).some(v => values.includes(v))
+  return values.includes(String(current || ''))
 }
 
 function FieldInput({ field, value, prefilled, onChange }: {
@@ -217,7 +226,7 @@ export default function BriefingFormPage() {
             {sections[currentSection].title}
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {sections[currentSection].fields.map(field => {
+            {sections[currentSection].fields.filter(field => fieldVisible(field, answers)).map(field => {
               const isPrefilled = field.id in (briefing.prefilled_data || {}) && !!briefing.prefilled_data[field.id]
               const isAutoFilled = isPrefilled && answers[field.id] === briefing.prefilled_data[field.id]
               return (
