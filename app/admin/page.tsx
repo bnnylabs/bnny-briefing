@@ -10,12 +10,20 @@ interface Briefing {
   completed_at: string | null; expires_at: string | null; internal_notes: string | null
   clients: Client
 }
+interface ActivityLog {
+  id: string; action: string; details: Record<string, unknown>; created_at: string
+}
 
 const STATUS_LABELS: Record<string, string> = {
   enviado: 'Enviado', visualizado: 'Visualizado', em_andamento: 'Em andamento', concluido: 'Concluído',
 }
 const STATUS_ICONS: Record<string, string> = {
   enviado: '📨', visualizado: '👁', em_andamento: '⏳', concluido: '✅',
+}
+const ACTION_LABELS: Record<string, string> = {
+  delete_briefing: '🗑️ Briefing excluído',
+  bulk_delete_briefings: '🗑️ Exclusão em lote',
+  duplicate_briefing: '📋 Briefing duplicado',
 }
 
 function fmt(d: string | null) {
@@ -46,7 +54,7 @@ function Modal({ onClose, children, wide }: { onClose: () => void; children: Rea
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 50 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, maxWidth: wide ? 700 : 580, width: '100%', maxHeight: '88vh', overflowY: 'auto' }}>
+      <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, maxWidth: wide ? 720 : 580, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
         {children}
       </div>
     </div>
@@ -64,7 +72,8 @@ export default function AdminPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [view, setView] = useState<'list' | 'settings'>('list')
+  const [view, setView] = useState<'list' | 'settings' | 'log'>('list')
+
   const [responsesBriefing, setResponsesBriefing] = useState<Briefing | null>(null)
   const [responses, setResponses] = useState<Record<string, unknown> | null>(null)
   const [copied, setCopied] = useState(false)
@@ -72,9 +81,6 @@ export default function AdminPage() {
   const [notesBriefing, setNotesBriefing] = useState<Briefing | null>(null)
   const [notesText, setNotesText] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
-  const [settings, setSettings] = useState({ notification_email: '', notification_whatsapp: '', briefing_expiry_days: '30', reminder_days: '3' })
-  const [savingSettings, setSavingSettings] = useState(false)
-  const [settingsSaved, setSettingsSaved] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', company: '', email: '', phone: '' })
   const [savingEdit, setSavingEdit] = useState(false)
   const [sendingReminder, setSendingReminder] = useState<string | null>(null)
@@ -82,6 +88,27 @@ export default function AdminPage() {
   const [notifBriefing, setNotifBriefing] = useState<Briefing | null>(null)
   const [notifHistory, setNotifHistory] = useState<Array<{type: string; status: string; sent_at: string; details: Record<string, string>}>>([])
   const [sendingResend, setSendingResend] = useState<string | null>(null)
+
+  const [deleteBriefing, setDeleteBriefing] = useState<Briefing | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false)
+  const [batchDeleting, setBatchDeleting] = useState(false)
+
+  const [duplicating, setDuplicating] = useState<string | null>(null)
+  const [duplicatedSlug, setDuplicatedSlug] = useState<string | null>(null)
+  const [dupLink, setDupLink] = useState('')
+
+  const [clientHistoryClient, setClientHistoryClient] = useState<Client | null>(null)
+  const [clientHistoryBriefings, setClientHistoryBriefings] = useState<Briefing[]>([])
+
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
+  const [logsLoading, setLogsLoading] = useState(false)
+
+  const [settings, setSettings] = useState({ notification_email: '', notification_whatsapp: '', briefing_expiry_days: '30', reminder_days: '3' })
+  const [savingSettings, setSavingSettings] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
+
   const router = useRouter()
 
   const loadBriefings = useCallback(async () => {
@@ -94,6 +121,13 @@ export default function AdminPage() {
   const loadSettings = useCallback(async () => {
     const res = await fetch('/api/admin/settings')
     if (res.ok) { const data = await res.json(); setSettings(s => ({ ...s, ...data.settings })) }
+  }, [])
+
+  const loadActivityLog = useCallback(async () => {
+    setLogsLoading(true)
+    const res = await fetch('/api/admin/activity-log')
+    if (res.ok) { const data = await res.json(); setActivityLogs(data.logs || []) }
+    setLogsLoading(false)
   }, [])
 
   useEffect(() => {
@@ -173,10 +207,6 @@ export default function AdminPage() {
     setSendingReminder(null); setReminderSent(b.id); setTimeout(() => setReminderSent(null), 3000)
   }
 
-  async function resendLink(b: Briefing) {
-    await copyLink(b.slug)
-  }
-
   async function viewNotifications(b: Briefing) {
     setNotifBriefing(b)
     const res = await fetch(`/api/briefings/${b.slug}/notifications`)
@@ -186,16 +216,53 @@ export default function AdminPage() {
   async function resendEmail(b: Briefing) {
     setSendingResend(b.id)
     const res = await fetch('/api/admin/notify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: b.slug, type: 'resend' })
     })
     const data = await res.json()
     setSendingResend(null)
-    if (data.emailSent) {
-      setReminderSent(b.id + '_resend')
-      setTimeout(() => setReminderSent(null), 3000)
+    if (data.emailSent) { setReminderSent(b.id + '_resend'); setTimeout(() => setReminderSent(null), 3000) }
+  }
+
+  async function confirmDelete() {
+    if (!deleteBriefing) return
+    setDeleting(true)
+    await fetch(`/api/briefings/${deleteBriefing.slug}`, { method: 'DELETE' })
+    setDeleting(false); setDeleteBriefing(null); loadBriefings()
+  }
+
+  async function confirmBatchDelete() {
+    if (selectedIds.size === 0) return
+    setBatchDeleting(true)
+    const slugs = filtered.filter(b => selectedIds.has(b.id)).map(b => b.slug)
+    await fetch('/api/admin/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slugs }) })
+    setBatchDeleting(false); setBatchDeleteConfirm(false); setSelectedIds(new Set()); loadBriefings()
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === filtered.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(filtered.map(b => b.id)))
+  }
+
+  async function duplicateBriefing(b: Briefing) {
+    setDuplicating(b.id)
+    const res = await fetch(`/api/briefings/${b.slug}/duplicate`, { method: 'POST' })
+    if (res.ok) {
+      const data = await res.json()
+      setDuplicatedSlug(data.briefing?.slug)
+      setDupLink(data.link || '')
+      await loadBriefings()
     }
+    setDuplicating(null)
+  }
+
+  function viewClientHistory(client: Client) {
+    setClientHistoryClient(client)
+    setClientHistoryBriefings(briefings.filter(b => b.clients?.id === client.id))
   }
 
   const filtered = briefings.filter(b => {
@@ -231,17 +298,59 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58 }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .filter-row { flex-wrap: wrap !important; }
+          .date-row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+          .card-actions { flex-wrap: wrap !important; gap: 4px !important; }
+          .card-actions button { font-size: 11px !important; padding: 3px 6px !important; }
+          .header-btns button { padding: 5px 9px !important; font-size: 11px !important; }
+        }
+      `}</style>
+
+      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58 }}>
         <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.02em', cursor: 'pointer' }} onClick={() => setView('list')}>
           <span style={{ color: 'var(--accent)' }}>Bnny</span> Labs <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: 12, marginLeft: 6 }}>Briefings</span><span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 8 }}>v2</span>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setView(view === 'settings' ? 'list' : 'settings')} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: `1px solid ${view === 'settings' ? 'var(--accent-border)' : 'var(--border)'}`, background: view === 'settings' ? 'var(--accent-dim)' : 'transparent', color: view === 'settings' ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>⚙️ Config</button>
+        <div className="header-btns" style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => { setView('log'); loadActivityLog() }} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: `1px solid ${view === 'log' ? 'var(--accent-border)' : 'var(--border)'}`, background: view === 'log' ? 'var(--accent-dim)' : 'transparent', color: view === 'log' ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>📋 Log</button>
+          <button onClick={() => setView(view === 'settings' ? 'list' : 'settings')} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 8, border: `1px solid ${view === 'settings' ? 'var(--accent-border)' : 'var(--border)'}`, background: view === 'settings' ? 'var(--accent-dim)' : 'transparent', color: view === 'settings' ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>⚙️ Config</button>
           <button onClick={() => router.push('/admin/novo')} style={{ background: 'var(--accent)', color: '#000', fontWeight: 600, padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>+ Novo</button>
         </div>
       </header>
 
-      <div style={{ padding: '20px', maxWidth: 860, margin: '0 auto' }}>
+      <div style={{ padding: '16px', maxWidth: 860, margin: '0 auto' }}>
+
+        {/* ACTIVITY LOG */}
+        {view === 'log' && (
+          <div className="animate-in">
+            <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 20, letterSpacing: '-0.02em' }}>📋 Log de Atividades</h2>
+            {logsLoading ? (
+              <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>
+            ) : activityLogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-3)', fontSize: 14 }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+                Nenhuma atividade registrada ainda
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {activityLogs.map(log => (
+                  <div key={log.id} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{ACTION_LABELS[log.action] || log.action}</div>
+                        {log.details?.company && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>{String(log.details.company)} · {String(log.details.type_label || '')}</div>}
+                        {log.details?.count && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>{String(log.details.count)} briefings excluídos</div>}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{fmt(log.created_at)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* SETTINGS */}
         {view === 'settings' && (
@@ -272,6 +381,7 @@ export default function AdminPage() {
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }}>Lembrete automático após X dias sem resposta</label>
                     <input type="number" value={settings.reminder_days} onChange={e => setSettings(s => ({ ...s, reminder_days: e.target.value }))} />
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>Um cron job envia lembretes automáticos para briefings pendentes após esse prazo</div>
                   </div>
                 </div>
               </div>
@@ -285,8 +395,8 @@ export default function AdminPage() {
         {/* LIST */}
         {view === 'list' && (
           <>
-            {/* Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
+            {/* Stats — 2 cols on mobile, 5 on desktop */}
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
               {(['all', 'enviado', 'visualizado', 'em_andamento', 'concluido'] as const).map(key => (
                 <button key={key} onClick={() => setStatusFilter(key)} style={{ background: statusFilter === key ? 'var(--bg-3)' : 'var(--bg-2)', border: `1px solid ${statusFilter === key ? 'var(--accent-border)' : 'var(--border)'}`, borderRadius: 10, padding: '10px 12px', cursor: 'pointer', textAlign: 'left' }}>
                   <div style={{ fontSize: 19, fontWeight: 700, color: statusFilter === key ? 'var(--accent)' : 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{counts[key]}</div>
@@ -295,22 +405,42 @@ export default function AdminPage() {
               ))}
             </div>
 
-            {/* Filters */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍  Buscar por cliente, empresa ou tipo..."
-                style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 16px', color: 'var(--text)', fontSize: 14, outline: 'none', width: '100%' }} />
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Período:</span>
+            {/* Batch delete bar */}
+            {selectedIds.size > 0 && (
+              <div style={{ background: 'rgba(255,60,60,0.08)', border: '1px solid rgba(255,60,60,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, color: 'var(--text-2)' }}><strong style={{ color: 'var(--text)' }}>{selectedIds.size}</strong> selecionado{selectedIds.size > 1 ? 's' : ''}</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => setSelectedIds(new Set())} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer' }}>Cancelar</button>
+                  <button onClick={() => setBatchDeleteConfirm(true)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 7, border: 'none', background: '#ff3c3c', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>🗑️ Excluir {selectedIds.size}</button>
+                </div>
+              </div>
+            )}
+
+            {/* Filters — search + date in same row */}
+            <div className="filter-row" style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍  Buscar cliente, empresa ou tipo..."
+                style={{ flex: '1 1 180px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '9px 14px', color: 'var(--text)', fontSize: 14, outline: 'none', minWidth: 0 }} />
+              <div className="date-row" style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                 <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                  style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', color: 'var(--text)', fontSize: 13, outline: 'none', colorScheme: 'dark' }} />
-                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>até</span>
+                  style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text)', fontSize: 12, outline: 'none', colorScheme: 'dark' }} />
+                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>→</span>
                 <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                  style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', color: 'var(--text)', fontSize: 13, outline: 'none', colorScheme: 'dark' }} />
+                  style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text)', fontSize: 12, outline: 'none', colorScheme: 'dark' }} />
                 {(dateFrom || dateTo) && (
-                  <button onClick={() => { setDateFrom(''); setDateTo('') }} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-3)', cursor: 'pointer', fontSize: 12, padding: '6px 12px' }}>Limpar ×</button>
+                  <button onClick={() => { setDateFrom(''); setDateTo('') }} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-3)', cursor: 'pointer', fontSize: 13, padding: '6px 8px', lineHeight: 1 }}>×</button>
                 )}
               </div>
             </div>
+
+            {/* Select all */}
+            {filtered.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingLeft: 2 }}>
+                <button onClick={toggleSelectAll} style={{ fontSize: 11, color: 'var(--text-3)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  {selectedIds.size === filtered.length ? '☑ Desmarcar todos' : '☐ Selecionar todos'}
+                </button>
+                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>({filtered.length})</span>
+              </div>
+            )}
 
             {/* List */}
             {loading ? <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" /></div>
@@ -323,64 +453,57 @@ export default function AdminPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filtered.map(b => (
-                  <div key={b.id} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', transition: 'border-color 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-2)')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-                    
-                    {/* Row 1: name + actions */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                      <div style={{ fontWeight: 600, fontSize: 15 }}>{b.clients?.company}</div>
-                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                        {/* Edit */}
-                        <button onClick={() => openEdit(b)} title="Editar cliente"
-                          style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer' }}>✏️</button>
-                        {/* Notes */}
-                        <button onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }} title="Anotações internas"
-                          style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: `1px solid ${b.internal_notes ? 'var(--accent-border)' : 'var(--border)'}`, background: b.internal_notes ? 'var(--accent-dim)' : 'transparent', color: b.internal_notes ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer' }}>📝</button>
-                        {/* Notification history */}
-                        <button onClick={() => viewNotifications(b)} title="Histórico de envios"
-                          style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer' }}>📬</button>
-                        {/* Resend email - non-concluded */}
-                        {b.status !== 'concluido' && b.clients?.email && (
-                          <button onClick={() => resendEmail(b)} disabled={sendingResend === b.id}
-                            title={`Reenviar email para ${b.clients.email}`}
-                            style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: `1px solid ${reminderSent === b.id + '_resend' ? 'var(--accent-border)' : 'var(--border)'}`, background: reminderSent === b.id + '_resend' ? 'var(--accent-dim)' : 'transparent', color: reminderSent === b.id + '_resend' ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            {sendingResend === b.id ? '...' : reminderSent === b.id + '_resend' ? '✓ Reenviado' : '📧 Reenviar'}
-                          </button>
-                        )}
-                        {/* Reminder - only for non-concluded */}
-                        {b.status !== 'concluido' && (
-                          <button onClick={() => sendReminder(b)} disabled={sendingReminder === b.id}
-                            title="Enviar lembrete"
-                            style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: `1px solid ${reminderSent === b.id ? 'var(--accent-border)' : 'var(--border)'}`, background: reminderSent === b.id ? 'var(--accent-dim)' : 'transparent', color: reminderSent === b.id ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            {sendingReminder === b.id ? '...' : reminderSent === b.id ? '✓' : '🔔'}
-                          </button>
-                        )}
-                        {/* Copy link */}
-                        <button onClick={() => resendLink(b)}
-                          style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          {copiedId === b.slug ? '✓ Copiado' : '🔗 Link'}
-                        </button>
-                        {/* Responses */}
-                        {b.status === 'concluido' && (
-                          <button onClick={() => viewResponses(b)}
-                            style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            Ver respostas
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                  <div key={b.id} style={{ background: selectedIds.has(b.id) ? 'var(--bg-3)' : 'var(--bg-2)', border: `1px solid ${selectedIds.has(b.id) ? 'var(--accent-border)' : 'var(--border)'}`, borderRadius: 12, padding: '14px 16px', transition: 'border-color 0.15s' }}
+                    onMouseEnter={e => { if (!selectedIds.has(b.id)) e.currentTarget.style.borderColor = 'var(--border-2)' }}
+                    onMouseLeave={e => { if (!selectedIds.has(b.id)) e.currentTarget.style.borderColor = 'var(--border)' }}>
 
-                    {/* Row 2: meta */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <StatusBadge status={b.status} />
-                      <span style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-3)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{b.type_label}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{b.clients?.name}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· {timeAgo(b.created_at)}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>({fmt(b.created_at)})</span>
-                      {b.completed_at && <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· concluído {fmt(b.completed_at)}</span>}
-                      {b.expires_at && new Date(b.expires_at) > new Date() && <span style={{ fontSize: 11, color: '#ffd700', whiteSpace: 'nowrap' }}>· expira {fmt(b.expires_at)}</span>}
-                      {b.expires_at && new Date(b.expires_at) < new Date() && <span style={{ fontSize: 11, color: '#ff4545', whiteSpace: 'nowrap' }}>· expirado</span>}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      <input type="checkbox" checked={selectedIds.has(b.id)} onChange={() => toggleSelect(b.id)}
+                        style={{ marginTop: 4, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {/* Row 1: company + actions */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                          <button onClick={() => viewClientHistory(b.clients)} style={{ fontWeight: 600, fontSize: 15, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', padding: 0, textAlign: 'left' }} title="Ver histórico deste cliente">
+                            {b.clients?.company}
+                          </button>
+                          <div className="card-actions" style={{ display: 'flex', gap: 5, flexWrap: 'wrap', flexShrink: 0 }}>
+                            <button onClick={() => openEdit(b)} title="Editar cliente" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer' }}>✏️</button>
+                            <button onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }} title="Anotações internas" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: `1px solid ${b.internal_notes ? 'var(--accent-border)' : 'var(--border)'}`, background: b.internal_notes ? 'var(--accent-dim)' : 'transparent', color: b.internal_notes ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer' }}>📝</button>
+                            <button onClick={() => viewNotifications(b)} title="Histórico de envios" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer' }}>📬</button>
+                            <button onClick={() => duplicateBriefing(b)} disabled={duplicating === b.id} title="Duplicar briefing" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', opacity: duplicating === b.id ? 0.5 : 1 }}>
+                              {duplicating === b.id ? '⏳' : '⿻'}
+                            </button>
+                            {b.status !== 'concluido' && b.clients?.email && (
+                              <button onClick={() => resendEmail(b)} disabled={sendingResend === b.id} title={`Reenviar email para ${b.clients.email}`} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: `1px solid ${reminderSent === b.id + '_resend' ? 'var(--accent-border)' : 'var(--border)'}`, background: reminderSent === b.id + '_resend' ? 'var(--accent-dim)' : 'transparent', color: reminderSent === b.id + '_resend' ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                {sendingResend === b.id ? '...' : reminderSent === b.id + '_resend' ? '✓ Reenviado' : '📧 Reenviar'}
+                              </button>
+                            )}
+                            {b.status !== 'concluido' && (
+                              <button onClick={() => sendReminder(b)} disabled={sendingReminder === b.id} title="Enviar lembrete" style={{ fontSize: 12, padding: '4px 9px', borderRadius: 6, border: `1px solid ${reminderSent === b.id ? 'var(--accent-border)' : 'var(--border)'}`, background: reminderSent === b.id ? 'var(--accent-dim)' : 'transparent', color: reminderSent === b.id ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                {sendingReminder === b.id ? '...' : reminderSent === b.id ? '✓' : '🔔'}
+                              </button>
+                            )}
+                            <button onClick={() => copyLink(b.slug)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              {copiedId === b.slug ? '✓ Copiado' : '🔗 Link'}
+                            </button>
+                            {b.status === 'concluido' && (
+                              <button onClick={() => viewResponses(b)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Ver respostas</button>
+                            )}
+                            <button onClick={() => setDeleteBriefing(b)} title="Excluir" style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,60,60,0.25)', background: 'transparent', color: '#ff6060', cursor: 'pointer' }}>🗑️</button>
+                          </div>
+                        </div>
+                        {/* Row 2: meta */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <StatusBadge status={b.status} />
+                          <span style={{ fontSize: 11, color: 'var(--text-2)', background: 'var(--bg-3)', padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{b.type_label}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{b.clients?.name}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· {timeAgo(b.created_at)}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>({fmt(b.created_at)})</span>
+                          {b.completed_at && <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· concluído {fmt(b.completed_at)}</span>}
+                          {b.expires_at && new Date(b.expires_at) > new Date() && <span style={{ fontSize: 11, color: '#ffd700', whiteSpace: 'nowrap' }}>· expira {fmt(b.expires_at)}</span>}
+                          {b.expires_at && new Date(b.expires_at) < new Date() && <span style={{ fontSize: 11, color: '#ff4545', whiteSpace: 'nowrap' }}>· expirado</span>}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -390,31 +513,149 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* RESPONSES MODAL */}
+      {/* RESPONSES MODAL — redesigned */}
       {responsesBriefing && (
-        <Modal onClose={() => { setResponsesBriefing(null); setResponses(null) }}>
+        <Modal onClose={() => { setResponsesBriefing(null); setResponses(null) }} wide>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 18 }}>{responsesBriefing.clients?.company}</div>
-              <div style={{ color: 'var(--text-2)', fontSize: 13, marginTop: 3 }}>{responsesBriefing.type_label} · {responsesBriefing.clients?.name}</div>
-              {responsesBriefing.clients?.email && <div style={{ color: 'var(--text-3)', fontSize: 12, marginTop: 2 }}>{responsesBriefing.clients.email} · {responsesBriefing.clients.phone}</div>}
+              <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em' }}>{responsesBriefing.clients?.company}</div>
+              <div style={{ color: 'var(--text-2)', fontSize: 13, marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, fontSize: 10, padding: '2px 8px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{responsesBriefing.type_label}</span>
+                <span>{responsesBriefing.clients?.name}</span>
+                {responsesBriefing.clients?.email && <span style={{ color: 'var(--text-3)' }}>· {responsesBriefing.clients.email}</span>}
+              </div>
+              {responsesBriefing.completed_at && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>Concluído em {fmt(responsesBriefing.completed_at)}</div>}
             </div>
-            <button onClick={() => { setResponsesBriefing(null); setResponses(null) }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 22 }}>×</button>
+            <button onClick={() => { setResponsesBriefing(null); setResponses(null) }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 22, flexShrink: 0 }}>×</button>
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            <button onClick={copyAll} style={{ flex: 1, fontSize: 13, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? '✓ Copiado!' : '📋 Copiar tudo'}</button>
-            <button onClick={exportPDF} style={{ flex: 1, fontSize: 13, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit' }}>📄 Exportar PDF</button>
+            <button onClick={copyAll} style={{ flex: 1, fontSize: 13, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? '✓ Copiado!' : '📋 Copiar tudo'}</button>
+            <button onClick={exportPDF} style={{ flex: 1, fontSize: 13, padding: '9px 14px', borderRadius: 8, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit' }}>📄 Exportar PDF</button>
           </div>
           {responses ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {Object.entries(responses).filter(([,v]) => v).map(([key, value]) => (
-                <div key={key}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{key.replace(/_/g, ' ')}</div>
-                  <div style={{ fontSize: 14, color: 'var(--text)', background: 'var(--bg-3)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', lineHeight: 1.6 }}>{Array.isArray(value) ? (value as string[]).join(', ') : String(value)}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {Object.entries(responses).filter(([, v]) => v).map(([key, value]) => {
+                const displayValue = Array.isArray(value) ? (value as string[]).join(', ') : String(value)
+                const isFile = /arquivo|logo|referencia|anexo|upload/i.test(key)
+                const isShort = displayValue.length < 60
+                return (
+                  <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                    <div style={{ padding: '8px 14px', background: 'var(--bg-3)', borderBottom: isShort ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        {isFile && '📎 '}{key.replace(/_/g, ' ')}
+                      </span>
+                      {isShort && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{displayValue}</span>}
+                    </div>
+                    {!isShort && (
+                      <div style={{ padding: '12px 14px', fontSize: 14, color: 'var(--text)', lineHeight: 1.7, background: 'var(--bg-2)', whiteSpace: 'pre-wrap' }}>
+                        {isFile ? (
+                          <a href={displayValue} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                            📎 {displayValue}
+                          </a>
+                        ) : displayValue}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>}
+        </Modal>
+      )}
+
+      {/* DELETE CONFIRM */}
+      {deleteBriefing && (
+        <Modal onClose={() => setDeleteBriefing(null)}>
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <div style={{ fontSize: 40, marginBottom: 14 }}>🗑️</div>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>Excluir briefing?</div>
+            <div style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 6 }}><strong style={{ color: 'var(--text)' }}>{deleteBriefing.clients?.company}</strong> — {deleteBriefing.type_label}</div>
+            <div style={{ color: 'var(--text-3)', fontSize: 12, marginBottom: 24 }}>Esta ação não pode ser desfeita. Todas as respostas e notificações serão excluídas.</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setDeleteBriefing(null)} style={{ flex: 1, padding: '11px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Cancelar</button>
+              <button onClick={confirmDelete} disabled={deleting} style={{ flex: 1, padding: '11px', borderRadius: 9, border: 'none', background: '#ff3c3c', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>
+                {deleting ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* BATCH DELETE CONFIRM */}
+      {batchDeleteConfirm && (
+        <Modal onClose={() => setBatchDeleteConfirm(false)}>
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <div style={{ fontSize: 40, marginBottom: 14 }}>🗑️</div>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>Excluir {selectedIds.size} briefings?</div>
+            <div style={{ color: 'var(--text-3)', fontSize: 13, marginBottom: 24 }}>Esta ação não pode ser desfeita.</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setBatchDeleteConfirm(false)} style={{ flex: 1, padding: '11px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Cancelar</button>
+              <button onClick={confirmBatchDelete} disabled={batchDeleting} style={{ flex: 1, padding: '11px', borderRadius: 9, border: 'none', background: '#ff3c3c', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>
+                {batchDeleting ? 'Excluindo...' : `Excluir ${selectedIds.size}`}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* DUPLICATE RESULT */}
+      {duplicatedSlug && (
+        <Modal onClose={() => { setDuplicatedSlug(null); setDupLink('') }}>
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <div style={{ fontSize: 40, marginBottom: 14 }}>⿻</div>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>Briefing duplicado!</div>
+            <div style={{ color: 'var(--text-2)', fontSize: 13, marginBottom: 20 }}>Novo briefing criado com status <strong>Enviado</strong>.</div>
+            <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 18, textAlign: 'left' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4 }}>Novo link</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--accent)', wordBreak: 'break-all' }}>{dupLink}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={async () => { await navigator.clipboard.writeText(dupLink); setDuplicatedSlug(null); setDupLink('') }} style={{ flex: 1, background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '11px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>📋 Copiar link</button>
+              <button onClick={() => { setDuplicatedSlug(null); setDupLink('') }} style={{ flex: 1, padding: '11px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Fechar</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* CLIENT HISTORY */}
+      {clientHistoryClient && (
+        <Modal onClose={() => setClientHistoryClient(null)} wide>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 19 }}>👤 {clientHistoryClient.company}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>{clientHistoryClient.name} · {clientHistoryClient.email || '—'}</div>
+            </div>
+            <button onClick={() => setClientHistoryClient(null)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 22 }}>×</button>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {clientHistoryBriefings.length} briefing{clientHistoryBriefings.length !== 1 ? 's' : ''} no histórico
+          </div>
+          {clientHistoryBriefings.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)', fontSize: 14 }}>Nenhum briefing encontrado</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {clientHistoryBriefings.map(b => (
+                <div key={b.id} style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{b.type_label}</div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <StatusBadge status={b.status} />
+                        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Criado {fmt(b.created_at)}</span>
+                        {b.completed_at && <span style={{ fontSize: 11, color: 'var(--text-3)' }}>· Concluído {fmt(b.completed_at)}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => copyLink(b.slug)} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer' }}>🔗 Link</button>
+                      {b.status === 'concluido' && (
+                        <button onClick={() => { setClientHistoryClient(null); viewResponses(b) }} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer' }}>Ver respostas</button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-          ) : <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>}
+          )}
         </Modal>
       )}
 
@@ -436,7 +677,7 @@ export default function AdminPage() {
               </div>
             ))}
             <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--text-3)' }}>
-              💡 Após salvar, use o botão 🔗 Link para copiar e reenviar o briefing ao novo email.
+              💡 Após salvar, use 🔗 Link para copiar e reenviar o briefing.
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
               <button onClick={() => setEditBriefing(null)} style={{ flex: 1, padding: '11px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Cancelar</button>
@@ -446,7 +687,7 @@ export default function AdminPage() {
         </Modal>
       )}
 
-      {/* NOTIFICATION HISTORY MODAL */}
+      {/* NOTIFICATION HISTORY */}
       {notifBriefing && (
         <Modal onClose={() => { setNotifBriefing(null); setNotifHistory([]) }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -458,11 +699,11 @@ export default function AdminPage() {
           </div>
           {notifBriefing.clients?.email && (
             <div style={{ padding: '10px 14px', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, marginBottom: 16 }}>
-              📧 Email do cliente: <strong style={{ color: 'var(--text)' }}>{notifBriefing.clients.email}</strong>
+              📧 Email: <strong style={{ color: 'var(--text)' }}>{notifBriefing.clients.email}</strong>
             </div>
           )}
           {notifHistory.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)', fontSize: 14 }}>Nenhum envio registrado ainda</div>
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)', fontSize: 14 }}>Nenhum envio registrado</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {notifHistory.map((n, i) => {

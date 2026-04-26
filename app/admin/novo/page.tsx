@@ -116,8 +116,9 @@ export default function NovoBriefingPage() {
               <div>{inputLabel('Site do cliente')}<input value={clientForm.website} onChange={e => setClientForm(p => ({ ...p, website: e.target.value }))} placeholder="https://empresa.com.br" /></div>
               <div>{inputLabel('Informações extras (opcional)')}<textarea value={clientForm.extraText} onChange={e => setClientForm(p => ({ ...p, extraText: e.target.value }))} placeholder="Cole aqui qualquer informação adicional sobre o cliente..." style={{ minHeight: 90 }} /></div>
               {clientForm.email && (
-                <div style={{ padding: '10px 14px', background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 8, fontSize: 13, color: 'var(--text-2)' }}>
-                  ✉️ O briefing será enviado automaticamente para <strong style={{ color: 'var(--text)' }}>{clientForm.email}</strong>
+                <div style={{ padding: '12px 16px', background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 10, fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 20, lineHeight: 1 }}>📨</span>
+                  <span>O briefing será enviado automaticamente para <strong style={{ color: 'var(--text)' }}>{clientForm.email}</strong></span>
                 </div>
               )}
               <button type="submit" disabled={loading || !clientForm.company}
