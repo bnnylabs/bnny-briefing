@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useToast, ToastContainer } from '@/components/toast'
 import { useRouter, useParams } from 'next/navigation'
 
 interface Client {
@@ -53,6 +54,8 @@ export default function ClientePerfilPage() {
   const [aiProfile, setAiProfile] = useState<Record<string, string>>({})
   const [editingAi, setEditingAi] = useState(false)
   const [savingAi, setSavingAi] = useState(false)
+  const [aiExpanded, setAiExpanded] = useState(false)
+  const { toasts, toast, remove } = useToast()
   const [analyzeUrl, setAnalyzeUrl] = useState('')
   const [extraText, setExtraText] = useState('')
 
@@ -121,7 +124,8 @@ export default function ClientePerfilPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58 }}>
+      <ToastContainer toasts={toasts} remove={remove} />
+      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58, position: 'sticky', top: 0, background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(8px)', zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={() => router.push('/admin/clientes')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18, padding: 0 }}>←</button>
           <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -131,7 +135,7 @@ export default function ClientePerfilPage() {
         <button onClick={newBriefing} style={{ background: 'var(--accent)', color: '#000', fontWeight: 600, padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>+ Novo briefing</button>
       </header>
 
-      <div style={{ padding: 16, maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ padding: 16, maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }} className="page-in">
 
         {/* Client data card */}
         <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 20px' }}>
@@ -191,18 +195,31 @@ export default function ClientePerfilPage() {
 
         {/* AI Profile card */}
         <div style={{ background: 'var(--bg-2)', border: `1px solid ${hasAiProfile ? 'var(--accent-border)' : 'var(--border)'}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasAiProfile && !aiExpanded ? 0 : 16, cursor: hasAiProfile ? 'pointer' : 'default' }}
+            onClick={() => hasAiProfile && setAiExpanded(e => !e)}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>🤖 Perfil de IA</div>
+              <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                🤖 Perfil de IA
+                {hasAiProfile && (
+                  <span style={{ fontSize: 11, color: 'var(--accent)', background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', padding: '1px 8px', borderRadius: 20, fontWeight: 600 }}>Salvo</span>
+                )}
+              </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>
-                {hasAiProfile ? 'Perfil gerado — disponível para todos os briefings' : 'Sem perfil ainda — analise o site ou preencha manualmente'}
+                {hasAiProfile ? (aiExpanded ? 'Clique para recolher' : 'Clique para expandir e editar') : 'Sem perfil ainda — analise o site ou preencha manualmente'}
               </div>
             </div>
-            {hasAiProfile && !editingAi && (
-              <button onClick={() => setEditingAi(true)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer' }}>✏️ Editar</button>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {hasAiProfile && !editingAi && (
+                <button onClick={e => { e.stopPropagation(); setEditingAi(true); setAiExpanded(true) }} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer' }}>✏️ Editar</button>
+              )}
+              {hasAiProfile && (
+                <span style={{ color: 'var(--text-3)', fontSize: 18, transform: aiExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s', display: 'inline-block' }}>⌄</span>
+              )}
+            </div>
           </div>
 
+          {/* Collapsible content */}
+          <div className={`collapsible-content ${!hasAiProfile || aiExpanded ? 'open' : 'closed'}`}>
           {/* Analyze section */}
           <div style={{ background: 'var(--bg-3)', borderRadius: 10, padding: '14px 16px', marginBottom: hasAiProfile ? 16 : 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 10 }}>
@@ -252,6 +269,7 @@ export default function ClientePerfilPage() {
               )}
             </div>
           )}
+          </div>{/* end collapsible */}
         </div>
 
         {/* Briefings history */}

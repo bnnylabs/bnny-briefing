@@ -25,3 +25,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!isAuthed(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
+
+  // Cascade delete briefings
+  const { data: briefings } = await supabaseAdmin.from('briefings').select('id').eq('client_id', id)
+  const bids = (briefings || []).map(b => b.id)
+  if (bids.length > 0) {
+    await supabaseAdmin.from('notifications').delete().in('briefing_id', bids)
+    await supabaseAdmin.from('responses').delete().in('briefing_id', bids)
+    await supabaseAdmin.from('briefings').delete().in('id', bids)
+  }
+
+  const { error } = await supabaseAdmin.from('clients').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
