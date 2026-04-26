@@ -340,10 +340,9 @@ export default function AdminPage() {
 
       <div style={{ padding: '16px', maxWidth: 860, margin: '0 auto' }}>
 
-        <div className="page-in">
-        {/* ACTIVITY LOG */
+        {/* ACTIVITY LOG */}
         {view === 'log' && (
-          <div className="animate-in">
+          <div className="page-in">
             <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 20, letterSpacing: '-0.02em' }}>📋 Log de Atividades</h2>
             {logsLoading ? (
               <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>
@@ -373,7 +372,7 @@ export default function AdminPage() {
 
         {/* SETTINGS */}
         {view === 'settings' && (
-          <div className="animate-in">
+          <div className="page-in">
             <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 22, letterSpacing: '-0.02em' }}>Configurações</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 500 }}>
               <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 22px' }}>
@@ -579,7 +578,6 @@ export default function AdminPage() {
             )}
           </>
         )}
-      </div>
 
       {/* RESPONSES MODAL — redesigned */}
       {responsesBriefing && (
