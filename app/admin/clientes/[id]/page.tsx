@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useToast, ToastContainer } from '@/components/toast'
 import { useRouter, useParams } from 'next/navigation'
-import { FIELD_LABELS_PT } from '@/lib/briefing-types'
+import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 
 interface Client {
   id: string; name: string; company: string; email: string; phone: string
   website: string | null; analysis: Record<string, unknown> | null; created_at: string
 }
 interface Briefing {
-  id: string; slug: string; type: string; type_label: string; status: string
+  id: string; slug: string; type: string; type_label: string; status: string; language?: string
   created_at: string; completed_at: string | null; internal_notes: string | null
 }
 
@@ -130,7 +130,8 @@ export default function ClientePerfilPage() {
     if (!responses) return
     const lines = [`BRIEFING — ${briefingTitle}`, `Empresa: ${client?.company}`, '']
     Object.entries(responses).filter(([,v]) => v).forEach(([k, v]) => {
-      const label = FIELD_LABELS_PT[k] || k.replace(/_/g, ' ').toUpperCase()
+      const bLang = briefings.find(b => b.slug === viewingResponses)?.language
+      const label = (bLang === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT)[k] || k.replace(/_/g, ' ').toUpperCase()
       lines.push(label.toUpperCase())
       lines.push(Array.isArray(v) ? (v as string[]).join(', ') : String(v))
       lines.push('')
@@ -373,7 +374,8 @@ export default function ClientePerfilPage() {
             ) : responses ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {Object.entries(responses).filter(([,v]) => v).map(([key, value]) => {
-                  const label = FIELD_LABELS_PT[key] || key.replace(/_/g, ' ')
+                  const labelMap = briefings.find(b => b.slug === viewingResponses)?.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
+                  const label = labelMap[key] || key.replace(/_/g, ' ')
                   const displayValue = Array.isArray(value) ? (value as string[]).join(', ') : String(value)
                   const isShort = displayValue.length < 60
                   const isFile = /arquivo|logo|referencia|anexo|upload|files/i.test(key)

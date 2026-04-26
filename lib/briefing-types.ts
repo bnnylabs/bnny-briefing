@@ -115,6 +115,94 @@ export const FIELD_LABELS_PT: Record<string, string> = {
   is_redesign: 'Novo site ou redesign?',
 }
 
+
+// ─── English Label map for admin panel responses ─────────────────────────────
+export const FIELD_LABELS_EN: Record<string, string> = {
+  company_name: 'Company / brand name',
+  slogan: 'Slogan or tagline',
+  segment: 'Industry / field',
+  pitch: 'Pitch — one sentence',
+  time_market: 'Time in market',
+  is_rebrand: 'New logo or renewal?',
+  rebrand_reason: 'Motivation for creation / renewal',
+  current_logo_problems: 'What doesn't work in the current',
+  keep_elements: 'What should be kept',
+  competitors: 'Direct competitors',
+  style_references: 'Visual references — admires',
+  avoid_references: 'References — what NOT to do',
+  target_audience: 'Target audience',
+  decision_maker: 'Who makes the purchase decision',
+  audience_perception: 'How should it be perceived',
+  brand_personality: 'Brand personality',
+  logo_style: 'Logo style',
+  color_preferences: 'Color direction',
+  color_palette: 'Brand colors',
+  brand_feeling: 'Feeling it should evoke',
+  brand_tone: 'Tone of voice',
+  positioning: 'Market positioning',
+  price_positioning: 'Price positioning',
+  use_contexts: 'Where it will be used',
+  versions_needed: 'Required versions',
+  file_formats: 'Delivery formats',
+  deadline: 'Deadline / important date',
+  budget: 'Investment range',
+  approver: 'Who gives final approval',
+  revision_expectation: 'Expected revision rounds',
+  responsible_name: 'Contact name',
+  responsible_email: 'Contact email',
+  responsible_phone: 'WhatsApp / phone',
+  visual_references_files: 'Visual references (files)',
+  existing_logo: 'Current logo',
+  existing_brand_files: 'Current brand files',
+  extra_notes: 'Additional notes',
+  attachments: 'Attachments',
+  description: 'About the company',
+  differentials: 'Competitive differentials',
+  unique_value_proposition: 'Unique value proposition',
+  key_features: 'Key features / services',
+  geographic_focus: 'Geographic focus',
+  identity_goal: 'Identity goal',
+  brand_story: 'Brand story',
+  deliverables: 'Required materials',
+  has_logo: 'Has current logo?',
+  manual_needed: 'Brand guide needed?',
+  applications: 'Priority applications',
+  networks: 'Active social networks',
+  current_followers: 'Current followers',
+  current_performance: 'What works today',
+  main_goal: 'Main goal',
+  post_frequency: 'Post frequency',
+  content_budget: 'Budget for ads',
+  content_tone: 'Content tone of voice',
+  content_types: 'Content types',
+  content_pillars: 'Content pillars',
+  who_produces: 'Who produces content',
+  has_brand: 'Has visual identity?',
+  visual_references: 'Visual references',
+  current_profiles: 'Current profile links',
+  avoid: 'What NOT to include',
+  brand_files: 'Brand files',
+  site_type: 'Type of website',
+  site_goal: 'Website goal',
+  desired_actions: 'Desired visitor actions',
+  cta_priority: 'CTA priority',
+  icp: 'Ideal customer (ICP)',
+  buyer_objections: 'Purchase objections',
+  pages: 'Required pages',
+  page_count: 'Estimated page count',
+  sitemap: 'Sitemap / structure',
+  has_content: 'Has copy ready?',
+  who_writes: 'Who writes the copy?',
+  existing_site: 'Current site (URL)',
+  site_problems: 'What doesn't work on current site',
+  platform: 'Platform / CMS',
+  integrations: 'Required integrations',
+  seo_needed: 'SEO priority?',
+  multilingual: 'Site languages',
+  domain: 'Domain',
+  is_redesign: 'New site or redesign?',
+}
+
 // ─── PORTUGUESE TEMPLATES ────────────────────────────────────────────────────
 
 export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
@@ -155,7 +243,6 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         title: '04 — Público-alvo',
         fields: [
           { id: 'target_audience', label: 'Quem é o cliente ideal?', type: 'textarea', required: true, hint: 'Perfil, faixa etária, comportamento, o que valoriza, dores...' },
-          { id: 'decision_maker', label: 'Quem toma a decisão de compra?', type: 'text', placeholder: 'Ex: CTO + founder, mulheres 25-40 anos, pequenos empresários...' },
           { id: 'audience_perception', label: 'Como o logo deve ser percebido pelo seu público?', type: 'textarea', placeholder: 'Ex: deve transmitir confiança e autoridade, não pode parecer amador, precisa comunicar tecnologia...' },
         ]
       },
@@ -220,7 +307,6 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'competitors', label: 'Quais são os principais concorrentes diretos?', type: 'textarea', required: true, placeholder: 'Liste com sites/logos se possível' },
           { id: 'positioning', label: 'Como você quer se posicionar frente aos concorrentes?', type: 'textarea', required: true, placeholder: 'Ex: ser percebido como mais premium, mais acessível, mais especialista, mais humano...' },
-          { id: 'price_positioning', label: 'Posicionamento de preço', type: 'radio', options: ['Premium / Alto padrão', 'Intermediário / Custo-benefício', 'Acessível / Popular'] },
           { id: 'style_references', label: 'Marcas e identidades que admira (de qualquer setor)', type: 'textarea', required: true, placeholder: 'Seja específico — o que admira em cada uma? Cores, tipografia, clareza?' },
           { id: 'avoid_references', label: 'O que definitivamente NÃO quer na identidade?', type: 'textarea', placeholder: 'Estilos, cores, elementos, referências que devem ser evitados' },
         ]
@@ -229,8 +315,6 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         title: '04 — Público e posicionamento',
         fields: [
           { id: 'target_audience', label: 'Quem é o público-alvo?', type: 'textarea', required: true, hint: 'Perfil, faixa etária, comportamento, dores, o que valoriza, poder aquisitivo' },
-          { id: 'decision_maker', label: 'Quem toma a decisão de compra?', type: 'text', placeholder: 'Pode ser diferente do público final — ex: empresa B2B onde o CEO decide' },
-          { id: 'buyer_objections', label: 'Quais são as maiores objeções ou dúvidas do cliente antes de comprar?', type: 'textarea', placeholder: 'Ex: acham caro, não confiam na qualidade, não entendem o produto...' },
           { id: 'unique_value_proposition', label: 'Proposta de valor — por que você e não o concorrente?', type: 'textarea', required: true, placeholder: 'O que você resolve que ninguém mais resolve, ou resolve melhor' },
         ]
       },
@@ -304,15 +388,12 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'main_goal', label: 'Principal objetivo com as redes sociais', type: 'radio', required: true, options: ['Aumentar seguidores e alcance de marca', 'Gerar leads e captar clientes', 'Vender diretamente (social commerce)', 'Fortalecer a autoridade no setor', 'Engajar e fidelizar clientes existentes', 'Educar o público sobre o produto/serviço'] },
           { id: 'post_frequency', label: 'Frequência de posts esperada', type: 'radio', options: ['1-2x por semana', '3-4x por semana', '5-7x por semana (diário)', 'A definir estrategicamente'] },
-          { id: 'content_budget', label: 'Tem budget para impulsionamento / tráfego pago?', type: 'radio', options: ['Sim, já fazemos / vamos fazer', 'Talvez, dependendo dos resultados', 'Não por enquanto — foco em orgânico'] },
         ]
       },
       {
         title: '04 — Público-alvo',
         fields: [
           { id: 'target_audience', label: 'Quem você quer alcançar?', type: 'textarea', required: true, hint: 'Perfil, faixa etária, comportamento, dores, o que consome online, plataformas que usa' },
-          { id: 'decision_maker', label: 'Quem toma a decisão de compra?', type: 'text', placeholder: 'Ex: próprio consumidor, CTO da empresa, mãe de família...' },
-          { id: 'buyer_objections', label: 'Quais são as maiores dúvidas ou objeções do cliente antes de comprar?', type: 'textarea', placeholder: 'O que impede as pessoas de comprar ou contratar? O que elas precisam ouvir antes de decidir?' },
         ]
       },
       {
@@ -384,10 +465,8 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'competitors', label: 'Concorrentes diretos (com sites)', type: 'textarea', required: true, placeholder: 'URLs dos concorrentes — vamos analisar o que está funcionando no mercado' },
           { id: 'icp', label: 'Cliente ideal (ICP) — quem entra no site e deve converter', type: 'textarea', required: true, hint: 'Perfil, cargo, empresa, dores, comportamento online, o que está procurando' },
-          { id: 'decision_maker', label: 'Quem toma a decisão de compra?', type: 'text', placeholder: 'Ex: CTO + founder, diretor de marketing, o próprio consumidor...' },
           { id: 'buyer_objections', label: 'Quais são as maiores objeções que seu time de vendas ouve?', type: 'textarea', required: true, placeholder: 'Ex: "é caro", "não entendo como funciona", "não sei se confio", "como vocês se diferenciam da concorrência"...' },
           { id: 'positioning', label: 'Como você quer ser percebido ao chegar no site?', type: 'textarea', required: true, placeholder: 'Ex: "a Lurie é uma plataforma all-in-one de infraestrutura financeira. Resolvemos tudo."' },
-          { id: 'price_positioning', label: 'Posicionamento de preço', type: 'radio', options: ['Premium / Alto padrão', 'Intermediário / Custo-benefício', 'Acessível / Popular'] },
         ]
       },
       {
@@ -403,8 +482,6 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         title: '05 — Arquitetura e conteúdo',
         fields: [
           { id: 'pages', label: 'Páginas necessárias', type: 'multiselect', options: ['Home (principal)', 'Sobre / Quem somos', 'Serviços / Produtos', 'Como funciona / Processo', 'Pricing / Planos', 'Portfolio / Cases', 'Blog / Conteúdo', 'FAQ / Perguntas frequentes', 'Contato', 'Área do cliente / Login', 'Parceiros / Integrações', 'Carreiras / Trabalhe conosco'] },
-          { id: 'page_count', label: 'Número estimado de páginas', type: 'radio', options: ['1-3 páginas (landing page simples)', '4-8 páginas (site básico)', '9-15 páginas (site médio)', '15+ páginas (portal / plataforma)'] },
-          { id: 'sitemap', label: 'Tem esboço de estrutura / sitemap?', type: 'textarea', placeholder: 'Se tiver ideia de como organizar as páginas, descreva aqui ou vai em Anexos' },
           { id: 'has_content', label: 'Situação dos textos e conteúdo', type: 'radio', options: ['Temos tudo pronto (textos, fotos, vídeos)', 'Temos parcialmente (precisam revisar / complementar)', 'Não temos — precisamos criar do zero'] },
           { id: 'who_writes', label: 'Quem vai escrever os textos do site?', type: 'radio', required: true, options: ['Nós mesmos (cliente)', 'Vocês (Bnny Labs)', 'Dividir: cliente escreve, vocês refinam', 'Contratar redator específico'], condition: { field: 'has_content', values: ['Parcialmente (precisam revisar / complementar)', 'Não temos — precisamos criar do zero', 'Partially ready (need revision / supplement)', 'Not ready — need to create from scratch'] } },
         ]
@@ -483,7 +560,6 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         title: '04 — Target audience',
         fields: [
           { id: 'target_audience', label: 'Who is your ideal customer?', type: 'textarea', required: true, hint: 'Profile, age, behavior, values, pain points...' },
-          { id: 'decision_maker', label: 'Who makes the purchase decision?', type: 'text', placeholder: 'Ex: CTO + founder, women 25-40, small business owners...' },
           { id: 'audience_perception', label: 'How should the logo be perceived by your audience?', type: 'textarea', placeholder: 'Ex: must convey trust and authority, cannot look amateur, needs to communicate technology...' },
         ]
       },
@@ -552,7 +628,6 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'competitors', label: 'Main direct competitors', type: 'textarea', required: true },
           { id: 'positioning', label: 'How do you want to be positioned vs. competitors?', type: 'textarea', required: true },
-          { id: 'price_positioning', label: 'Price positioning', type: 'radio', options: ['Premium / High-end', 'Mid-market / Value', 'Accessible / Mass market'] },
           { id: 'style_references', label: 'Brands and identities you admire (any industry)', type: 'textarea', required: true },
           { id: 'avoid_references', label: 'What you definitely DON\'T want', type: 'textarea' },
         ]
@@ -561,8 +636,6 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         title: '04 — Audience and positioning',
         fields: [
           { id: 'target_audience', label: 'Who is your target audience?', type: 'textarea', required: true },
-          { id: 'decision_maker', label: 'Who makes the purchase decision?', type: 'text' },
-          { id: 'buyer_objections', label: 'What are the biggest objections before buying?', type: 'textarea' },
           { id: 'unique_value_proposition', label: 'Value proposition — why you and not the competitor?', type: 'textarea', required: true },
         ]
       },
@@ -639,15 +712,12 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'main_goal', label: 'Main goal on social media', type: 'radio', required: true, options: ['Grow followers and brand reach', 'Generate leads and acquire customers', 'Sell directly (social commerce)', 'Build industry authority', 'Engage and retain existing customers', 'Educate the audience about the product/service'] },
           { id: 'post_frequency', label: 'Expected posting frequency', type: 'radio', options: ['1-2x per week', '3-4x per week', '5-7x per week (daily)', 'To be defined strategically'] },
-          { id: 'content_budget', label: 'Do you have budget for boosting / paid ads?', type: 'radio', options: ['Yes, we already do / plan to', 'Maybe, depending on results', 'No for now — focus on organic'] },
         ]
       },
       {
         title: '04 — Target audience',
         fields: [
           { id: 'target_audience', label: 'Who do you want to reach?', type: 'textarea', required: true },
-          { id: 'decision_maker', label: 'Who makes the purchase decision?', type: 'text' },
-          { id: 'buyer_objections', label: 'What are the biggest objections before buying?', type: 'textarea' },
         ]
       },
       {
@@ -720,10 +790,8 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         fields: [
           { id: 'competitors', label: 'Direct competitors (with websites)', type: 'textarea', required: true },
           { id: 'icp', label: 'Ideal customer (ICP) — who visits and should convert', type: 'textarea', required: true },
-          { id: 'decision_maker', label: 'Who makes the purchase decision?', type: 'text' },
           { id: 'buyer_objections', label: 'Biggest objections your sales team hears', type: 'textarea', required: true },
           { id: 'positioning', label: 'How do you want to be perceived on arrival?', type: 'textarea', required: true },
-          { id: 'price_positioning', label: 'Price positioning', type: 'radio', options: ['Premium / High-end', 'Mid-market / Value', 'Accessible / Mass market'] },
         ]
       },
       {
@@ -739,7 +807,6 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         title: '05 — Architecture and content',
         fields: [
           { id: 'pages', label: 'Required pages', type: 'multiselect', options: ['Home (main)', 'About us', 'Services / Products', 'How it works / Process', 'Pricing / Plans', 'Portfolio / Cases', 'Blog / Content', 'FAQ', 'Contact', 'Client area / Login', 'Partners / Integrations', 'Careers'] },
-          { id: 'page_count', label: 'Estimated number of pages', type: 'radio', options: ['1-3 pages (simple landing page)', '4-8 pages (basic site)', '9-15 pages (medium site)', '15+ pages (portal / platform)'] },
           { id: 'has_content', label: 'Content (texts, photos, videos) status', type: 'radio', options: ['All ready', 'Partially ready (need revision / supplement)', 'Not ready — need to create from scratch'] },
           { id: 'who_writes', label: 'Who will write the website copy?', type: 'radio', required: true, options: ['Us (client)', 'You (Bnny Labs)', 'Split: we write, you refine', 'Hire a dedicated copywriter'] },
         ]

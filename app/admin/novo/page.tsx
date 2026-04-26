@@ -140,7 +140,7 @@ function NovoBriefingContent() {
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ website: clientForm.website, text: clientForm.extraText, company: clientForm.company }),
+        body: JSON.stringify({ website: clientForm.website, text: clientForm.extraText, company: clientForm.company, language }),
       })
       const data = await res.json()
       setAnalysis(data.analysis || {})
