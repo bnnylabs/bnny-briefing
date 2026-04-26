@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendReminderToClient, sendWhatsApp } from '@/lib/email'
 
 function isAuthed(req: NextRequest) {
   const cookie = req.cookies.get('bnny_auth')
   return cookie?.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
+}
+
+function getBaseUrl(req: NextRequest) {
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL
+  const host = req.headers.get('host') || 'localhost:3000'
+  const proto = host.includes('localhost') ? 'http' : 'https'
+  return `${proto}://${host}`
 }
 
 export async function POST(req: NextRequest) {
@@ -15,17 +23,41 @@ export async function POST(req: NextRequest) {
 
   if (!briefing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Log the notification
-  await supabaseAdmin.from('notifications').insert({
+  const baseUrl = getBaseUrl(req)
+  const link = `${baseUrl}/${slug}`
+  let emailSent = false
+
+  if (type === 'reminder' && briefing.clients?.email) {
+    const result = await sendReminderToClient({
+      clientName: briefing.clients.name,
+      clientEmail: briefing.clients.email,
+      company: briefing.clients.company,
+      typeLabel: briefing.type_label,
+      link,
+    })
+    emailSent = result.ok
+
+    await sendWhatsApp(`🔔 Lembrete enviado para ${briefing.clients.company} (${briefing.clients.email})`)
+  }
+
+  if (type === 'resend' && briefing.clients?.email) {
+    const { sendBriefingToClient } = await import('@/lib/email')
+    const result = await sendBriefingToClient({
+      clientName: briefing.clients.name,
+      clientEmail: briefing.clients.email,
+      company: briefing.clients.company,
+      typeLabel: briefing.type_label,
+      link,
+    })
+    emailSent = result.ok
+  }
+
+  try { await supabaseAdmin.from('notifications').insert({
     briefing_id: briefing.id,
     type,
-    status: 'sent',
-    details: { client: briefing.clients?.company, sent_by: 'admin' }
-  })
+    status: emailSent ? 'sent' : 'failed',
+    details: { to: briefing.clients?.email, link, manual: true }
+  }) } catch(_e) {}
 
-  // Here you would send the actual email/whatsapp
-  // For now we just log it - email integration comes in next phase
-  console.log(`Lembrete enviado para: ${briefing.clients?.company} (${briefing.clients?.email})`)
-
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, emailSent })
 }

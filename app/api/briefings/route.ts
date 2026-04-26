@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateSlug } from '@/lib/briefing-types'
+import { sendBriefingToClient, sendWhatsApp } from '@/lib/email'
 
 function isAuthed(req: NextRequest) {
   const cookie = req.cookies.get('bnny_auth')
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!isAuthed(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await req.json()
-  const { client, briefingType, briefingTypeLabel, prefilledData, expiryDays, internalNotes } = body
+  const { client, briefingType, briefingTypeLabel, prefilledData, expiryDays, internalNotes, sendEmail } = body
 
   let clientId: string
   if (client.id) {
@@ -44,6 +45,8 @@ export async function POST(req: NextRequest) {
 
   const slug = generateSlug(client.company)
   const expiresAt = expiryDays ? new Date(Date.now() + expiryDays * 86400000).toISOString() : null
+  const baseUrl = getBaseUrl(req)
+  const link = `${baseUrl}/${slug}`
 
   const { data: briefing, error: briefingError } = await supabaseAdmin
     .from('briefings').insert({
@@ -54,6 +57,29 @@ export async function POST(req: NextRequest) {
 
   if (briefingError) return NextResponse.json({ error: briefingError.message }, { status: 500 })
 
-  const baseUrl = getBaseUrl(req)
-  return NextResponse.json({ briefing, link: `${baseUrl}/${slug}` })
+  // Send email to client if requested and email exists
+  let emailSent = false
+  if (sendEmail !== false && client.email) {
+    const emailResult = await sendBriefingToClient({
+      clientName: client.name,
+      clientEmail: client.email,
+      company: client.company,
+      typeLabel: briefingTypeLabel,
+      link,
+    })
+    emailSent = emailResult.ok
+
+    // Log notification
+    try { await supabaseAdmin.from('notifications').insert({
+      briefing_id: briefing.id,
+      type: 'email_client',
+      status: emailResult.ok ? 'sent' : 'failed',
+      details: { to: client.email, link }
+    }) } catch(_e) {}
+
+    // WhatsApp to admin
+    await sendWhatsApp(`📨 Novo briefing enviado!\nEmpresa: ${client.company}\nTipo: ${briefingTypeLabel}\nLink: ${link}`)
+  }
+
+  return NextResponse.json({ briefing, link, emailSent })
 }
