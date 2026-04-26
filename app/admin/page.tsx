@@ -232,7 +232,7 @@ export default function AdminPage() {
       body: JSON.stringify({ editing_locked: !currentLocked }),
     })
     setBriefings(prev => prev.map(b => b.slug === slug ? { ...b, editing_locked: !currentLocked } : b))
-    showToast(!currentLocked ? '🔒 Edição bloqueada' : '🔓 Edição liberada', 'success')
+    toast(!currentLocked ? '🔒 Edição bloqueada' : '🔓 Edição liberada', 'success', 2000)
   }
 
   async function copyLink(slug: string) {
