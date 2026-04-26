@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useToast, ToastContainer } from '@/components/toast'
 
 interface Client { id: string; name: string; company: string; email: string; phone: string }
 interface Briefing {
@@ -52,9 +53,9 @@ function StatusBadge({ status }: { status: string }) {
 
 function Modal({ onClose, children, wide }: { onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 50 }}
+    <div className="modal-bg" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 50 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, maxWidth: wide ? 720 : 580, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="modal-box" style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, maxWidth: wide ? 720 : 580, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
         {children}
       </div>
     </div>
@@ -73,6 +74,7 @@ export default function AdminPage() {
   const [dateTo, setDateTo] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'settings' | 'log'>('list')
+  const { toasts, toast, remove: removeToast } = useToast()
 
   const [responsesBriefing, setResponsesBriefing] = useState<Briefing | null>(null)
   const [responses, setResponses] = useState<Record<string, unknown> | null>(null)
@@ -147,6 +149,7 @@ export default function AdminPage() {
   async function copyLink(slug: string) {
     await navigator.clipboard.writeText(`${window.location.origin}/${slug}`)
     setCopiedId(slug); setTimeout(() => setCopiedId(null), 2000)
+    toast('Link copiado!', 'success', 2000)
   }
 
   async function viewResponses(b: Briefing) {
@@ -165,6 +168,7 @@ export default function AdminPage() {
     if (!responsesBriefing || !responses) return
     await navigator.clipboard.writeText(buildText(responsesBriefing, responses))
     setCopied(true); setTimeout(() => setCopied(false), 2000)
+    toast('Respostas copiadas!', 'success', 2000)
   }
 
   function exportPDF() {
@@ -192,6 +196,7 @@ export default function AdminPage() {
     setSavingEdit(true)
     await fetch(`/api/admin/clients/${editBriefing.clients?.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editForm) })
     setSavingEdit(false); setEditBriefing(null); loadBriefings()
+    toast('Cliente atualizado', 'success')
   }
 
   async function saveNotes() {
@@ -199,6 +204,7 @@ export default function AdminPage() {
     setSavingNotes(true)
     await fetch(`/api/briefings/${notesBriefing.slug}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ internal_notes: notesText }) })
     setSavingNotes(false); setNotesBriefing(null); loadBriefings()
+    toast('Anotação salva', 'success')
   }
 
   async function sendReminder(b: Briefing) {
@@ -229,6 +235,7 @@ export default function AdminPage() {
     setDeleting(true)
     await fetch(`/api/briefings/${deleteBriefing.slug}`, { method: 'DELETE' })
     setDeleting(false); setDeleteBriefing(null); loadBriefings()
+    toast('Briefing excluído', 'success')
   }
 
   async function confirmBatchDelete() {
@@ -237,6 +244,7 @@ export default function AdminPage() {
     const slugs = filtered.filter(b => selectedIds.has(b.id)).map(b => b.slug)
     await fetch('/api/admin/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slugs }) })
     setBatchDeleting(false); setBatchDeleteConfirm(false); setSelectedIds(new Set()); loadBriefings()
+    toast(`${slugs.length} briefing${slugs.length > 1 ? 's' : ''} excluído${slugs.length > 1 ? 's' : ''}`, 'success')
   }
 
   function toggleSelect(id: string) {
@@ -256,6 +264,7 @@ export default function AdminPage() {
       setDuplicatedSlug(data.briefing?.slug)
       setDupLink(data.link || '')
       await loadBriefings()
+      toast('Briefing duplicado!', 'success')
     }
     setDuplicating(null)
   }
@@ -298,6 +307,7 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+      <ToastContainer toasts={toasts} remove={removeToast} />
       <style>{`
         .card-row1 { display: flex; align-items: center; gap: 10px; }
         .card-name { font-weight: 700; font-size: 15px; background: none; border: none; cursor: pointer; color: var(--text); padding: 0; text-align: left; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -316,7 +326,7 @@ export default function AdminPage() {
         }
       `}</style>
 
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58 }}>
+      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58, position: 'sticky', top: 0, background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(10px)', zIndex: 20 }}>
         <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.02em', cursor: 'pointer' }} onClick={() => setView('list')}>
           <span style={{ color: 'var(--accent)' }}>Bnny</span> Labs <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: 12, marginLeft: 6 }}>Briefings</span><span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 8 }}>v2</span>
         </div>
@@ -330,7 +340,8 @@ export default function AdminPage() {
 
       <div style={{ padding: '16px', maxWidth: 860, margin: '0 auto' }}>
 
-        {/* ACTIVITY LOG */}
+        <div className="page-in">
+        {/* ACTIVITY LOG */
         {view === 'log' && (
           <div className="animate-in">
             <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 20, letterSpacing: '-0.02em' }}>📋 Log de Atividades</h2>
@@ -453,12 +464,39 @@ export default function AdminPage() {
             )}
 
             {/* List */}
-            {loading ? <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" /></div>
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className="skeleton" style={{ width: 15, height: 15, borderRadius: 3, flexShrink: 0 }} />
+                      <div className="skeleton" style={{ flex: 1, height: 15, maxWidth: 200 }} />
+                      <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                        <div className="skeleton" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                        <div className="skeleton" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                        <div className="skeleton" style={{ width: 28, height: 28, borderRadius: 6 }} />
+                        <div className="skeleton" style={{ width: 60, height: 28, borderRadius: 6 }} />
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 10, display: 'flex', gap: 6, marginLeft: 25 }}>
+                      <div className="skeleton" style={{ width: 80, height: 22, borderRadius: 20 }} />
+                      <div className="skeleton" style={{ width: 100, height: 22, borderRadius: 6 }} />
+                      <div className="skeleton" style={{ width: 70, height: 22, borderRadius: 4 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
             : filtered.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-3)' }}>
-                <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
-                <div style={{ fontSize: 14 }}>{search || dateFrom || dateTo ? 'Nenhum resultado' : 'Nenhum briefing ainda'}</div>
-                {!search && !dateFrom && !dateTo && <button onClick={() => router.push('/admin/novo')} style={{ marginTop: 16, background: 'var(--accent)', color: '#000', fontWeight: 600, padding: '10px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13 }}>Criar primeiro briefing</button>}
+              <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>
+                  {search || dateFrom || dateTo ? 'Nenhum resultado para este filtro' : 'Nenhum briefing ainda'}
+                </div>
+                <div style={{ fontSize: 13, marginBottom: 20 }}>
+                  {search || dateFrom || dateTo ? 'Tente ajustar os filtros' : 'Crie o primeiro briefing para começar'}
+                </div>
+                {!search && !dateFrom && !dateTo && <button onClick={() => router.push('/admin/novo')} style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '10px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13 }}>Criar primeiro briefing</button>}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -545,7 +583,7 @@ export default function AdminPage() {
 
       {/* RESPONSES MODAL — redesigned */}
       {responsesBriefing && (
-        <Modal onClose={() => { setResponsesBriefing(null); setResponses(null) }} wide>
+        <Modal onClose={() => { setResponsesBriefing(null); setResponses(null) }} wide className="modal-box">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em' }}>{responsesBriefing.clients?.company}</div>
