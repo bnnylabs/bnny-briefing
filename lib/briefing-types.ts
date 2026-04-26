@@ -169,25 +169,21 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         ]
       },
       {
-        title: '06 — Aplicações e entregáveis',
+        title: '06 — Aplicações',
         fields: [
-          { id: 'use_contexts', label: 'Onde o logo será usado?', type: 'multiselect', options: ['Site / plataforma digital', 'Instagram', 'LinkedIn', 'WhatsApp / perfil', 'Cartão de visita', 'Papel timbrado', 'Uniforme / bordado', 'Embalagem', 'Outdoor / banner', 'Produto físico', 'Fachada / sinalização', 'Apresentações (pitch, ppt)'] },
-          { id: 'versions_needed', label: 'Versões necessárias', type: 'multiselect', options: ['Horizontal', 'Vertical', 'Símbolo / ícone isolado', 'Versão para fundo escuro', 'Versão para fundo claro / branco', 'Versão monocromática', 'Versão reduzida (favicon, app icon)'] },
-          { id: 'file_formats', label: 'Formatos de entrega esperados', type: 'multiselect', options: ['PNG (fundo transparente)', 'SVG (vetorial editável)', 'PDF', 'AI (Adobe Illustrator)', 'EPS', 'Arquivo para bordado (DST)', 'Arquivo para corte (CDR, DXF)'] },
+          { id: 'use_contexts', label: 'Onde o logo vai ser usado principalmente?', type: 'multiselect', options: ['Site / plataforma digital', 'Instagram e redes sociais', 'WhatsApp (foto de perfil)', 'Cartão de visita', 'Papel timbrado / documentos', 'Uniforme / bordado em roupa', 'Embalagem / produto físico', 'Outdoor / banner / placa', 'Fachada de loja ou escritório', 'Apresentações e pitch deck'] },
         ]
       },
       {
-        title: '07 — Prazo, budget e aprovação',
+        title: '07 — Prazo e aprovação',
         fields: [
           { id: 'deadline', label: 'Tem prazo ou data importante?', type: 'text', placeholder: 'Ex: 15 de agosto, lançamento em setembro, sem prazo definido...' },
-          { id: 'budget', label: 'Faixa de investimento', type: 'radio', options: ['Até R$ 2.000', 'R$ 2.000 – R$ 5.000', 'R$ 5.000 – R$ 10.000', 'Acima de R$ 10.000', 'Prefiro discutir pessoalmente'] },
-          { id: 'approver', label: 'Quem vai aprovar o resultado final?', type: 'text', placeholder: 'Nome e cargo de quem tem a palavra final' },
-          { id: 'revision_expectation', label: 'Quantas rodadas de revisão você espera?', type: 'radio', options: ['1 rodada (aprovação rápida)', '2-3 rodadas (processo padrão)', 'Processo colaborativo (definir juntos)'] },
+          { id: 'approver', label: 'Quem dá a palavra final na aprovação?', type: 'text', placeholder: 'Nome e cargo de quem decide — ex: CEO, sócio, diretora de marketing' },
           { id: 'responsible_name', label: 'Nome do responsável pelo projeto', type: 'text', required: true },
           { id: 'responsible_email', label: 'Email principal de contato', type: 'text', required: true },
           { id: 'responsible_phone', label: 'WhatsApp / celular', type: 'text', required: true },
           { id: 'visual_references_files', label: 'Anexe referências visuais (logos que admira, prints, moodboard)', type: 'file', hint: 'Imagens, PDFs, prints — qualquer referência visual ajuda muito' },
-          { id: 'existing_logo', label: 'Logo atual (se tiver)', type: 'file', hint: 'PNG, SVG, AI, PDF — qualquer formato' },
+          { id: 'existing_logo', label: 'Logo atual (se tiver)', type: 'file', hint: 'Qualquer arquivo que tiver — PNG, foto, PDF' },
           { id: 'extra_notes', label: 'Algo mais que queira nos contar?', type: 'textarea', placeholder: 'Contexto extra, história da empresa, inspirações, restrições...' },
         ]
       },
@@ -259,18 +255,15 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
       {
         title: '07 — Materiais e aplicações',
         fields: [
-          { id: 'deliverables', label: 'Quais materiais precisam da nova identidade?', type: 'multiselect', options: ['Logo (todas as versões)', 'Cartão de visita', 'Papel timbrado / envelope', 'Assinatura de email', 'Apresentação / pitch deck', 'Pasta de propostas', 'Redes sociais (templates)', 'Sinalização / fachada', 'Embalagem / rótulo', 'Uniforme / bordado', 'Crachá', 'Brindes / merch'] },
-          { id: 'manual_needed', label: 'É necessário entregar um manual de identidade visual (brand guide)?', type: 'radio', options: ['Sim, completo (para uso interno e fornecedores)', 'Sim, básico (regras principais)', 'Não por enquanto'] },
-          { id: 'applications', label: 'Quais aplicações são prioritárias?', type: 'textarea', placeholder: 'Ex: o cartão de visita é urgente, as redes sociais são prioridade...' },
+          { id: 'deliverables', label: 'Quais materiais precisam da nova identidade?', type: 'multiselect', options: ['Logo (todas as variações)', 'Cartão de visita', 'Papel timbrado / envelope', 'Assinatura de email', 'Apresentação / pitch deck', 'Pasta de propostas', 'Redes sociais (templates de posts)', 'Sinalização / fachada', 'Embalagem / rótulo', 'Uniforme / bordado', 'Crachá', 'Brindes / merch'] },
+          { id: 'applications', label: 'Quais aplicações são mais urgentes ou prioritárias?', type: 'textarea', placeholder: 'Ex: o cartão de visita precisa sair rápido, as redes sociais são o foco inicial...' },
         ]
       },
       {
-        title: '08 — Prazo, budget e aprovação',
+        title: '08 — Prazo e aprovação',
         fields: [
           { id: 'deadline', label: 'Tem prazo ou data importante?', type: 'text', placeholder: 'Ex: lançamento em outubro, reunião com investidores em novembro...' },
-          { id: 'budget', label: 'Faixa de investimento', type: 'radio', options: ['Até R$ 3.000', 'R$ 3.000 – R$ 8.000', 'R$ 8.000 – R$ 20.000', 'Acima de R$ 20.000', 'Prefiro discutir pessoalmente'] },
-          { id: 'approver', label: 'Quem vai aprovar o resultado final?', type: 'text', placeholder: 'Nome e cargo de quem tem a palavra final' },
-          { id: 'revision_expectation', label: 'Quantas rodadas de revisão você espera?', type: 'radio', options: ['1 rodada (aprovação rápida)', '2-3 rodadas (processo padrão)', 'Processo colaborativo (definir juntos)'] },
+          { id: 'approver', label: 'Quem dá a palavra final na aprovação?', type: 'text', placeholder: 'Nome e cargo de quem decide' },
           { id: 'responsible_name', label: 'Nome do responsável pelo projeto', type: 'text', required: true },
           { id: 'responsible_email', label: 'Email principal de contato', type: 'text', required: true },
           { id: 'responsible_phone', label: 'WhatsApp / celular', type: 'text', required: true },
@@ -348,15 +341,14 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         ]
       },
       {
-        title: '08 — Prazo, budget e aprovação',
+        title: '08 — Prazo e aprovação',
         fields: [
-          { id: 'deadline', label: 'Quando quer começar a publicar?', type: 'text', placeholder: 'Ex: início de outubro, o mais rápido possível, início do próximo trimestre...' },
-          { id: 'budget', label: 'Investimento mensal em gestão de redes', type: 'radio', options: ['Até R$ 1.500/mês', 'R$ 1.500 – R$ 3.000/mês', 'R$ 3.000 – R$ 6.000/mês', 'Acima de R$ 6.000/mês', 'Prefiro discutir pessoalmente'] },
-          { id: 'approver', label: 'Quem vai aprovar os conteúdos antes de publicar?', type: 'text', placeholder: 'Nome e cargo de quem tem a palavra final' },
+          { id: 'deadline', label: 'Quando quer começar a publicar?', type: 'text', placeholder: 'Ex: início de outubro, o mais rápido possível...' },
+          { id: 'approver', label: 'Quem aprova os conteúdos antes de publicar?', type: 'text', placeholder: 'Nome de quem dá o OK final para ir ao ar' },
           { id: 'responsible_name', label: 'Nome do responsável pelo projeto', type: 'text', required: true },
           { id: 'responsible_email', label: 'Email principal de contato', type: 'text', required: true },
           { id: 'responsible_phone', label: 'WhatsApp / celular', type: 'text', required: true },
-          { id: 'extra_notes', label: 'Algo mais que queira nos contar?', type: 'textarea', placeholder: 'Contexto extra, campanhas planejadas, datas comemorativas importantes, restrições...' },
+          { id: 'extra_notes', label: 'Algo mais que queira nos contar?', type: 'textarea', placeholder: 'Campanhas planejadas, datas comemorativas, restrições, contexto extra...' },
         ]
       },
     ]
@@ -418,13 +410,12 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         ]
       },
       {
-        title: '06 — Técnico e plataforma',
+        title: '06 — Técnico',
         fields: [
-          { id: 'platform', label: 'Plataforma / CMS de preferência', type: 'radio', options: ['Framer', 'Webflow', 'WordPress', 'Shopify (e-commerce)', 'Next.js (customizado)', 'Sem preferência — vocês recomendam', 'Outro (especificar nas observações)'] },
-          { id: 'domain', label: 'Situação do domínio', type: 'radio', options: ['Já temos domínio registrado', 'Precisamos registrar um novo', 'Ainda não decidimos o domínio'] },
+          { id: 'domain', label: 'Situação do domínio (endereço do site)', type: 'radio', options: ['Já temos domínio registrado (ex: minhaempresa.com.br)', 'Precisamos registrar um novo domínio', 'Ainda não decidimos o domínio'] },
           { id: 'multilingual', label: 'O site precisa de mais de um idioma?', type: 'multiselect', options: ['Português (PT-BR)', 'Inglês (EN)', 'Espanhol (ES)', 'Outro'] },
-          { id: 'integrations', label: 'Integrações necessárias', type: 'multiselect', options: ['CRM (HubSpot, RD Station, Salesforce...)', 'WhatsApp (botão / chat)', 'Chat online (Intercom, Zendesk...)', 'Analytics (Google Analytics, Hotjar)', 'E-mail marketing (Mailchimp, ActiveCampaign...)', 'Sistema de pagamento (Stripe, Pagar.me...)', 'API própria / sistema interno', 'Redes sociais', 'Calendário / agendamento (Calendly...)'] },
-          { id: 'seo_needed', label: 'SEO é prioridade?', type: 'radio', options: ['Sim — queremos ranquear no Google', 'Básico — apenas boas práticas', 'Não é prioridade agora'] },
+          { id: 'integrations', label: 'Precisa conectar com algum sistema ou ferramenta?', type: 'multiselect', options: ['CRM (gestão de clientes)', 'WhatsApp (botão ou chat)', 'Chat ao vivo', 'E-mail marketing (newsletter)', 'Sistema de pagamento', 'Sistema interno da empresa', 'Agendamento online (tipo Calendly)', 'Não sei ainda'] },
+          { id: 'seo_needed', label: 'Aparecer no Google (SEO) é prioridade?', type: 'radio', options: ['Sim — queremos ranquear nos resultados do Google', 'Mais ou menos — queremos o básico bem feito', 'Não é prioridade agora'] },
         ]
       },
       {
@@ -437,17 +428,15 @@ export const BRIEFING_TEMPLATES: Record<BriefingType, BriefingTemplate> = {
         ]
       },
       {
-        title: '08 — Prazo, budget e aprovação',
+        title: '08 — Prazo e aprovação',
         fields: [
           { id: 'deadline', label: 'Tem prazo ou data de lançamento?', type: 'text', placeholder: 'Ex: outubro, antes do evento X, início do Q1, o mais rápido possível...' },
-          { id: 'budget', label: 'Faixa de investimento no projeto', type: 'radio', options: ['Até R$ 5.000', 'R$ 5.000 – R$ 15.000', 'R$ 15.000 – R$ 30.000', 'R$ 30.000 – R$ 60.000', 'Acima de R$ 60.000', 'Prefiro discutir pessoalmente'] },
-          { id: 'approver', label: 'Quem vai aprovar o resultado final?', type: 'text', required: true, placeholder: 'Nome e cargo de quem tem a palavra final — ex: Rafael Peixer (Founder)' },
-          { id: 'revision_expectation', label: 'Quantas rodadas de revisão você espera?', type: 'radio', options: ['1 rodada (aprovação rápida)', '2-3 rodadas (processo padrão)', 'Processo colaborativo (definir juntos)'] },
+          { id: 'approver', label: 'Quem dá a palavra final na aprovação?', type: 'text', required: true, placeholder: 'Nome de quem decide — ex: Rafael Peixer (Founder)' },
           { id: 'responsible_name', label: 'Nome do responsável pelo projeto', type: 'text', required: true },
           { id: 'responsible_email', label: 'Email principal de contato', type: 'text', required: true },
           { id: 'responsible_phone', label: 'WhatsApp / celular', type: 'text', required: true },
           { id: 'attachments', label: 'Anexos (logo, identidade visual, textos, sitemap, referências)', type: 'file', hint: 'Aceita imagens, PDFs, documentos Word, apresentações' },
-          { id: 'extra_notes', label: 'Algo mais que queira nos contar?', type: 'textarea', placeholder: 'Contexto extra, funcionalidades específicas, restrições técnicas, histórico do projeto...' },
+          { id: 'extra_notes', label: 'Algo mais que queira nos contar?', type: 'textarea', placeholder: 'Contexto extra, funcionalidades específicas, restrições, histórico do projeto...' },
         ]
       },
     ]
@@ -756,13 +745,12 @@ export const BRIEFING_TEMPLATES_EN: Record<BriefingType, BriefingTemplate> = {
         ]
       },
       {
-        title: '06 — Technical and platform',
+        title: '06 — Technical',
         fields: [
-          { id: 'platform', label: 'Preferred platform / CMS', type: 'radio', options: ['Framer', 'Webflow', 'WordPress', 'Shopify (e-commerce)', 'Next.js (custom)', 'No preference — you recommend', 'Other (specify in notes)'] },
-          { id: 'domain', label: 'Domain status', type: 'radio', options: ['Already have registered domain', 'Need to register a new one', 'Not decided yet'] },
+          { id: 'domain', label: 'Domain (website address) status', type: 'radio', options: ['Already have a registered domain (e.g. mycompany.com)', 'Need to register a new domain', 'Not decided yet'] },
           { id: 'multilingual', label: 'Does the site need multiple languages?', type: 'multiselect', options: ['Portuguese (PT-BR)', 'English (EN)', 'Spanish (ES)', 'Other'] },
-          { id: 'integrations', label: 'Required integrations', type: 'multiselect', options: ['CRM (HubSpot, Salesforce...)', 'WhatsApp (button / chat)', 'Live chat (Intercom, Zendesk...)', 'Analytics (Google Analytics, Hotjar)', 'Email marketing (Mailchimp, ActiveCampaign...)', 'Payment system (Stripe, PayPal...)', 'Own API / internal system', 'Social networks', 'Calendar / scheduling (Calendly...)'] },
-          { id: 'seo_needed', label: 'Is SEO a priority?', type: 'radio', options: ['Yes — we want to rank on Google', 'Basic — just best practices', 'Not a priority right now'] },
+          { id: 'integrations', label: 'Does it need to connect with any system or tool?', type: 'multiselect', options: ['CRM (customer management)', 'WhatsApp (button or chat)', 'Live chat', 'Email marketing (newsletter)', 'Payment system', 'Internal company system', 'Online scheduling (like Calendly)', 'Not sure yet'] },
+          { id: 'seo_needed', label: 'Is ranking on Google (SEO) a priority?', type: 'radio', options: ['Yes — we want to rank in Google results', 'Somewhat — we want the basics done right', 'Not a priority right now'] },
         ]
       },
       {
