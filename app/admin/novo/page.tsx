@@ -152,7 +152,7 @@ function NovoBriefingContent() {
   async function handleCreate() {
     if (!selectedType) return
     setLoading(true)
-    const template = BRIEFING_TEMPLATES[selectedType]
+    const template = getTemplate(selectedType, language)
     const ai = analysis || clientForm.analysis || {}
     const prefilled = buildPrefilled(ai as Record<string, unknown>, clientForm)
 
