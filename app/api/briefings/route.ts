@@ -27,29 +27,32 @@ export async function GET(req: NextRequest) {
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 
-async function translateAnalysisToEN(analysis: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const textFields = ['description', 'key_features', 'differentials', 'unique_value_proposition',
-    'target_audience', 'brand_personality', 'geographic_focus', 'tone_of_voice', 'colors_hint',
-    'extra_notes', 'segment']
+async function translatePrefilledToEN(prefilled: Record<string, unknown>): Promise<Record<string, unknown>> {
+  // Translate text string values that look like PT content (>20 chars, not multiselect options)
   const toTranslate: Record<string, string> = {}
-  for (const f of textFields) {
-    if (analysis[f] && typeof analysis[f] === 'string') toTranslate[f] = analysis[f] as string
+  for (const [key, value] of Object.entries(prefilled)) {
+    if (typeof value === 'string' && value.length > 20 && !value.includes('|')) {
+      toTranslate[key] = value
+    }
   }
-  if (Object.keys(toTranslate).length === 0) return analysis
+  if (Object.keys(toTranslate).length === 0) return prefilled
   try {
     const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: `Translate these values from Portuguese to English. Return ONLY valid JSON with the same keys, no extra text:
-${JSON.stringify(toTranslate)}` }]
+      max_tokens: 3000,
+      messages: [{ role: 'user', content: `Translate these text values from Portuguese to natural English. Keep the same JSON keys. Return ONLY valid JSON, no extra text or explanation:
+${JSON.stringify(toTranslate, null, 2)}` }]
     })
     const content = msg.content[0]
-    if (content.type !== 'text') return analysis
+    if (content.type !== 'text') return prefilled
     const match = content.text.match(/\{[\s\S]*\}/)
-    if (!match) return analysis
+    if (!match) return prefilled
     const translated = JSON.parse(match[0])
-    return { ...analysis, ...translated }
-  } catch { return analysis }
+    return { ...prefilled, ...translated }
+  } catch (e) {
+    console.error('Translation failed:', e)
+    return prefilled
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -80,9 +83,15 @@ export async function POST(req: NextRequest) {
   // Try inserting with language field (requires SQL migration)
   // Falls back without language if column doesn't exist yet
   let briefing, briefingError
+  // Translate prefilled data to English when briefing language is EN
+  let finalPrefilledData = prefilledData || {}
+  if (language === 'en-US' && Object.keys(finalPrefilledData).length > 0) {
+    finalPrefilledData = await translatePrefilledToEN(finalPrefilledData)
+  }
+
   const briefingPayload = {
     client_id: clientId, slug, type: briefingType, type_label: briefingTypeLabel,
-    status: 'enviado', prefilled_data: prefilledData || {},
+    status: 'enviado', prefilled_data: finalPrefilledData,
     internal_notes: internalNotes || null, expires_at: expiresAt,
   }
   const resultWithLang = await supabaseAdmin
