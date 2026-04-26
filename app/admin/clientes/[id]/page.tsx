@@ -1,25 +1,104 @@
 'use client'
-import { Button } from '@/components/ui/button'
 
 import { useState, useEffect, useCallback, ReactNode } from 'react'
-import { useToast, ToastContainer } from '@/components/toast'
 import { useRouter, useParams } from 'next/navigation'
-import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
+import {
+  ArrowLeft,
+  Bot,
+  CheckCircle2,
+  ChevronDown,
+  Clipboard,
+  ClipboardCheck,
+  ClipboardList,
+  Clock,
+  Download,
+  ExternalLink,
+  Eye,
+  FileText,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Lock,
+  Paperclip,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Save,
+  Send,
+  Sparkles,
+  Unlock,
+  X,
+} from 'lucide-react'
 
-interface Contact { name: string; email: string; phone?: string; role?: string; is_primary?: boolean }
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+
+import { useToast, ToastContainer } from '@/components/toast'
+import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
+import { cn } from '@/lib/utils'
+
+interface Contact {
+  name: string
+  email: string
+  phone?: string
+  role?: string
+  is_primary?: boolean
+}
 interface Client {
-  id: string; name: string; company: string; email: string; phone: string
-  website: string | null; analysis: Record<string, unknown> | null; created_at: string
+  id: string
+  name: string
+  company: string
+  email: string
+  phone: string
+  website: string | null
+  analysis: Record<string, unknown> | null
+  created_at: string
   contacts?: Contact[]
 }
 interface Briefing {
-  id: string; slug: string; type: string; type_label: string; status: string; language?: string
-  created_at: string; completed_at: string | null; internal_notes: string | null
-  editing_locked?: boolean; editing_expires_at?: string | null; update_count?: number
+  id: string
+  slug: string
+  type: string
+  type_label: string
+  status: string
+  language?: string
+  created_at: string
+  completed_at: string | null
+  internal_notes: string | null
+  editing_locked?: boolean
+  editing_expires_at?: string | null
+  update_count?: number
 }
 
-const STATUS_LABELS: Record<string, string> = { enviado: 'Enviado', visualizado: 'Visualizado', em_andamento: 'Em andamento', concluido: 'Concluído' }
-const STATUS_ICONS: Record<string, string> = { enviado: '📨', visualizado: '👁', em_andamento: '⏳', concluido: '✅' }
+const STATUS_LABELS: Record<string, string> = {
+  enviado: 'Enviado',
+  visualizado: 'Visualizado',
+  em_andamento: 'Em andamento',
+  concluido: 'Concluído',
+}
+
+function StatusIcon({ status }: { status: string }) {
+  const className = 'h-3 w-3'
+  switch (status) {
+    case 'enviado':
+      return <Send className={className} />
+    case 'visualizado':
+      return <Eye className={className} />
+    case 'em_andamento':
+      return <Clock className={className} />
+    case 'concluido':
+      return <CheckCircle2 className={className} />
+    default:
+      return null
+  }
+}
 
 const AI_FIELDS = [
   { key: 'company_name', label: 'Nome da empresa' },
@@ -39,23 +118,55 @@ const AI_FIELDS = [
 
 function fmt(d: string | null) {
   if (!d) return '—'
-  return new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+  return new Date(d).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
-interface FileEntry3 { url: string; name: string; type?: string; size?: number }
-function ResponsesContent2({ responses, language, companyName, renderFileValue, labelMapPT, labelMapEN }: {
-  responses: Record<string, unknown>; language?: string; companyName: string
+interface FileEntry3 {
+  url: string
+  name: string
+  type?: string
+  size?: number
+}
+
+function ResponsesContent2({
+  responses,
+  language,
+  companyName,
+  renderFileValue,
+  labelMapPT,
+  labelMapEN,
+}: {
+  responses: Record<string, unknown>
+  language?: string
+  companyName: string
   renderFileValue: (v: unknown) => React.ReactNode
-  labelMapPT: Record<string, string>; labelMapEN: Record<string, string>
+  labelMapPT: Record<string, string>
+  labelMapEN: Record<string, string>
 }) {
   const allFiles: FileEntry3[] = []
   Object.entries(responses).forEach(([, value]) => {
     if (Array.isArray(value)) {
-      (value as FileEntry3[]).forEach(f => { if (f && f.name && f.url?.startsWith('http')) allFiles.push(f) })
+      ;(value as FileEntry3[]).forEach((f) => {
+        if (f && f.name && f.url?.startsWith('http')) allFiles.push(f)
+      })
     }
   })
-  const imageFiles = allFiles.filter(f => f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || ''))
-  const otherFiles = allFiles.filter(f => !f.type?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || ''))
+  const imageFiles = allFiles.filter(
+    (f) =>
+      f.type?.startsWith('image/') ||
+      /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || ''),
+  )
+  const otherFiles = allFiles.filter(
+    (f) =>
+      !f.type?.startsWith('image/') &&
+      !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || ''),
+  )
   const labelMap = language === 'en-US' ? labelMapEN : labelMapPT
 
   async function handleDownloadAll() {
@@ -66,46 +177,87 @@ function ResponsesContent2({ responses, language, companyName, renderFileValue, 
   return (
     <>
       {allFiles.length > 0 && (
-        <div style={{ marginBottom: 14, padding: '12px 16px', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 20 }}>📎</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-              {allFiles.length} {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
-              {imageFiles.length > 0 && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-3)', fontWeight: 400 }}>· {imageFiles.length} {imageFiles.length === 1 ? 'imagem' : 'imagens'}{otherFiles.length > 0 && `, ${otherFiles.length} ${otherFiles.length === 1 ? 'documento' : 'documentos'}`}</span>}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{allFiles.map(f => f.name).join(', ')}</div>
-          </div>
-          <button onClick={handleDownloadAll} style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, fontSize: 12, padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
-            ⬇ Baixar ZIP
-          </button>
-        </div>
-      )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {Object.entries(responses).filter(([, v]) => v).map(([key, value]) => {
-          const isFileField = /arquivo|logo|referencia|anexo|upload|files/i.test(key) || (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'url' in (value[0] as object))
-          const displayValue = isFileField ? '' : (Array.isArray(value) ? (value as string[]).join(', ') : String(value))
-          const isShort = !isFileField && displayValue.length < 60
-          return (
-            <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
-              <div style={{ padding: '8px 14px', background: 'var(--bg-3)', borderBottom: (isShort && !isFileField) ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                  {isFileField && '📎 '}{labelMap[key] || key.replace(/_/g, ' ')}
+        <Card className="mb-3 flex items-center gap-3 bg-muted/50 p-3">
+          <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold">
+              {allFiles.length}{' '}
+              {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
+              {imageFiles.length > 0 && (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  · {imageFiles.length}{' '}
+                  {imageFiles.length === 1 ? 'imagem' : 'imagens'}
+                  {otherFiles.length > 0 &&
+                    `, ${otherFiles.length} ${otherFiles.length === 1 ? 'documento' : 'documentos'}`}
                 </span>
-                {isShort && !isFileField && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{displayValue}</span>}
-              </div>
-              {(!isShort || isFileField) && (
-                <div style={{ padding: '12px 14px', fontSize: 14, color: 'var(--text)', lineHeight: 1.7, background: 'var(--bg-2)' }}>
-                  {isFileField ? renderFileValue(value) : <span style={{ whiteSpace: 'pre-wrap' }}>{displayValue}</span>}
-                </div>
               )}
             </div>
-          )
-        })}
+            <div className="mt-0.5 truncate text-xs text-muted-foreground">
+              {allFiles.map((f) => f.name).join(', ')}
+            </div>
+          </div>
+          <Button size="sm" onClick={handleDownloadAll} className="shrink-0">
+            <Download className="mr-1.5 h-3.5 w-3.5" />
+            Baixar ZIP
+          </Button>
+        </Card>
+      )}
+      <div className="flex flex-col gap-2">
+        {Object.entries(responses)
+          .filter(([, v]) => v)
+          .map(([key, value]) => {
+            const isFileField =
+              /arquivo|logo|referencia|anexo|upload|files/i.test(key) ||
+              (Array.isArray(value) &&
+                value.length > 0 &&
+                typeof value[0] === 'object' &&
+                value[0] !== null &&
+                'url' in (value[0] as object))
+            const displayValue = isFileField
+              ? ''
+              : Array.isArray(value)
+                ? (value as string[]).join(', ')
+                : String(value)
+            const isShort = !isFileField && displayValue.length < 60
+            return (
+              <div
+                key={key}
+                className="overflow-hidden rounded-lg border border-border"
+              >
+                <div
+                  className={cn(
+                    'flex items-center justify-between gap-2 bg-muted/40 px-3.5 py-2',
+                    !(isShort && !isFileField) && 'border-b border-border',
+                  )}
+                >
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    {isFileField && <Paperclip className="h-3 w-3" />}
+                    {labelMap[key] || key.replace(/_/g, ' ')}
+                  </span>
+                  {isShort && !isFileField && (
+                    <span className="text-sm font-semibold text-foreground">
+                      {displayValue}
+                    </span>
+                  )}
+                </div>
+                {(!isShort || isFileField) && (
+                  <div className="bg-card px-3.5 py-3 text-sm leading-relaxed text-foreground">
+                    {isFileField ? (
+                      renderFileValue(value)
+                    ) : (
+                      <span className="whitespace-pre-wrap">
+                        {displayValue}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
       </div>
     </>
   )
 }
-
 
 export default function ClientePerfilPage() {
   const router = useRouter()
@@ -116,7 +268,13 @@ export default function ClientePerfilPage() {
   const [briefings, setBriefings] = useState<Briefing[]>([])
   const [loading, setLoading] = useState(true)
   const [editMode, setEditMode] = useState(false)
-  const [editForm, setEditForm] = useState({ name: '', company: '', email: '', phone: '', website: '' })
+  const [editForm, setEditForm] = useState({
+    name: '',
+    company: '',
+    email: '',
+    phone: '',
+    website: '',
+  })
   const [savingEdit, setSavingEdit] = useState(false)
 
   // AI Analysis
@@ -125,11 +283,13 @@ export default function ClientePerfilPage() {
   const [editingAi, setEditingAi] = useState(false)
   const [savingAi, setSavingAi] = useState(false)
   const [viewingResponses, setViewingResponses] = useState<string | null>(null)
-  const [showAddContact, setShowAddContact] = useState(false)
-  const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', role: '' })
-  const [savingContact, setSavingContact] = useState(false)
-  const [responses, setResponses] = useState<Record<string, unknown> | null>(null)
-  const [responseDiff2, setResponseDiff2] = useState<Record<string, { old: unknown; new: unknown }> | null>(null)
+  const [responses, setResponses] = useState<Record<string, unknown> | null>(
+    null,
+  )
+  const [responseDiff2, setResponseDiff2] = useState<Record<
+    string,
+    { old: unknown; new: unknown }
+  > | null>(null)
   const [responseVersions2, setResponseVersions2] = useState(0)
   const [showDiff2, setShowDiff2] = useState(false)
   const [loadingResponses, setLoadingResponses] = useState(false)
@@ -149,22 +309,32 @@ export default function ClientePerfilPage() {
       if (d.client.analysis) setAiProfile(d.client.analysis)
       if (d.client.website) setAnalyzeUrl(d.client.website)
       setEditForm({
-        name: d.client.name || '', company: d.client.company || '',
-        email: d.client.email || '', phone: d.client.phone || '',
-        website: d.client.website || ''
+        name: d.client.name || '',
+        company: d.client.company || '',
+        email: d.client.email || '',
+        phone: d.client.phone || '',
+        website: d.client.website || '',
       })
-    } else if (res.status === 401) router.push('/admin')
+    } else if (res.status === 401) {
+      router.push('/admin')
+    }
     setLoading(false)
   }, [id, router])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
   async function saveEdit() {
     setSavingEdit(true)
     await fetch(`/api/admin/clients/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editForm)
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
     })
-    setSavingEdit(false); setEditMode(false); load()
+    setSavingEdit(false)
+    setEditMode(false)
+    load()
   }
 
   async function analyzeWithAI() {
@@ -172,76 +342,148 @@ export default function ClientePerfilPage() {
     setAnalyzing(true)
     try {
       const res = await fetch('/api/analyze', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ website: analyzeUrl || client?.website, text: extraText, company: client?.company })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          website: analyzeUrl || client?.website,
+          text: extraText,
+          company: client?.company,
+        }),
       })
       const data = await res.json()
       if (data.analysis) {
         setAiProfile(data.analysis)
         setEditingAi(true)
       }
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error(e)
+    }
     setAnalyzing(false)
   }
 
   async function saveAiProfile() {
     setSavingAi(true)
     await fetch(`/api/admin/clients/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ analysis: aiProfile, website: analyzeUrl || client?.website })
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        analysis: aiProfile,
+        website: analyzeUrl || client?.website,
+      }),
     })
-    setSavingAi(false); setEditingAi(false); load()
+    setSavingAi(false)
+    setEditingAi(false)
+    load()
   }
-
 
   function renderFileValue(value: unknown): ReactNode {
     if (!value) return null
 
-    const renderCard = (f: { url: string; name: string; size?: number; type?: string }, i: number) => {
-      const isImage = f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
+    const renderCard = (
+      f: { url: string; name: string; size?: number; type?: string },
+      i: number,
+    ) => {
+      const isImage =
+        f.type?.startsWith('image/') ||
+        /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
       const hasUrl = f.url && f.url.startsWith('http')
       const sizeLabel = f.size ? `${(f.size / 1024).toFixed(0)}kb` : ''
-      if (isImage && hasUrl) return (
-        <div key={i}>
-          <a href={f.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
-            <img src={f.url} alt={f.name} style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'contain', background: '#111', cursor: 'pointer' }} />
-          </a>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{f.name}{sizeLabel ? ` · ${sizeLabel}` : ''}</div>
-        </div>
-      )
-      if (hasUrl) return (
-        <a key={i} href={f.url} target="_blank" rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-3)', borderRadius: 8, textDecoration: 'none', color: 'var(--text)', border: '1px solid var(--border)' }}>
-          <span style={{ fontSize: 20 }}>{f.type?.includes('pdf') ? '📄' : '📎'}</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
-            {sizeLabel && <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{sizeLabel}</div>}
+      if (isImage && hasUrl)
+        return (
+          <div key={i}>
+            <a
+              href={f.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={f.url}
+                alt={f.name}
+                className="max-h-52 w-full max-w-full cursor-pointer rounded-lg bg-muted object-contain"
+              />
+            </a>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {f.name}
+              {sizeLabel ? ` · ${sizeLabel}` : ''}
+            </div>
           </div>
-          <span style={{ fontSize: 11, color: 'var(--accent)', flexShrink: 0 }}>↗ Abrir</span>
-        </a>
-      )
+        )
+      if (hasUrl)
+        return (
+          <a
+            key={i}
+            href={f.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-foreground no-underline transition-colors hover:bg-muted"
+          >
+            {f.type?.includes('pdf') ? (
+              <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+            ) : (
+              <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold">{f.name}</div>
+              {sizeLabel && (
+                <div className="text-xs text-muted-foreground">
+                  {sizeLabel}
+                </div>
+              )}
+            </div>
+            <span className="flex shrink-0 items-center gap-1 text-xs text-primary">
+              <ExternalLink className="h-3 w-3" /> Abrir
+            </span>
+          </a>
+        )
       return (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--border)', opacity: 0.6 }}>
-          <span style={{ fontSize: 20 }}>{isImage ? '🖼️' : '📎'}</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{sizeLabel} · upload não concluído</div>
+        <div
+          key={i}
+          className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 opacity-60"
+        >
+          {isImage ? (
+            <ImageIcon className="h-5 w-5 shrink-0" />
+          ) : (
+            <Paperclip className="h-5 w-5 shrink-0" />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm">{f.name}</div>
+            <div className="text-xs text-muted-foreground">
+              {sizeLabel} · upload não concluído
+            </div>
           </div>
         </div>
       )
     }
 
-    if (Array.isArray(value)) return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {(value as { url: string; name: string; size?: number; type?: string }[]).map((f, i) => renderCard(f, i))}
-      </div>
-    )
+    if (Array.isArray(value))
+      return (
+        <div className="flex flex-col gap-2.5">
+          {(
+            value as { url: string; name: string; size?: number; type?: string }[]
+          ).map((f, i) => renderCard(f, i))}
+        </div>
+      )
 
     const str = String(value)
     const isUrl = str.startsWith('http')
-    return isUrl
-      ? <a href={str} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline', wordBreak: 'break-all' }}>📎 {str.split('/').pop()}</a>
-      : <span style={{ color: 'var(--text-3)', fontSize: 13 }}>📎 {str}</span>
+    return isUrl ? (
+      <a
+        href={str}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="break-all text-primary underline inline-flex items-center gap-1"
+      >
+        <Paperclip className="h-3.5 w-3.5" />
+        {str.split('/').pop()}
+      </a>
+    ) : (
+      <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
+        <Paperclip className="h-3.5 w-3.5" />
+        {str}
+      </span>
+    )
   }
 
   async function viewResponses(slug: string) {
@@ -260,14 +502,24 @@ export default function ClientePerfilPage() {
 
   async function copyResponses(briefingTitle: string) {
     if (!responses) return
-    const lines = [`BRIEFING — ${briefingTitle}`, `Empresa: ${client?.company}`, '']
-    Object.entries(responses).filter(([,v]) => v).forEach(([k, v]) => {
-      const bLang = briefings.find(b => b.slug === viewingResponses)?.language
-      const label = (bLang === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT)[k] || k.replace(/_/g, ' ').toUpperCase()
-      lines.push(label.toUpperCase())
-      lines.push(Array.isArray(v) ? (v as string[]).join(', ') : String(v))
-      lines.push('')
-    })
+    const lines = [
+      `BRIEFING — ${briefingTitle}`,
+      `Empresa: ${client?.company}`,
+      '',
+    ]
+    Object.entries(responses)
+      .filter(([, v]) => v)
+      .forEach(([k, v]) => {
+        const bLang = briefings.find(
+          (b) => b.slug === viewingResponses,
+        )?.language
+        const label =
+          (bLang === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT)[k] ||
+          k.replace(/_/g, ' ').toUpperCase()
+        lines.push(label.toUpperCase())
+        lines.push(Array.isArray(v) ? (v as string[]).join(', ') : String(v))
+        lines.push('')
+      })
     await navigator.clipboard.writeText(lines.join('\n'))
     setCopiedResponses(true)
     toast('Respostas copiadas!', 'success', 2000)
@@ -276,244 +528,466 @@ export default function ClientePerfilPage() {
 
   async function toggleLock(briefingSlug: string, currentLocked: boolean) {
     await fetch(`/api/briefings/${briefingSlug}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ editing_locked: !currentLocked }),
     })
-    setBriefings(prev => prev.map(b => b.slug === briefingSlug ? { ...b, editing_locked: !currentLocked } : b))
-    toast(!currentLocked ? 'Edição bloqueada' : 'Edição liberada', 'success')
-  }
-
-  async function addContact() {
-    if (!newContact.name || !newContact.email || !client) return
-    setSavingContact(true)
-    const contacts = [...(client.contacts || []), { ...newContact, is_primary: (client.contacts || []).length === 0 }]
-    await fetch(`/api/admin/clients/${client.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contacts }),
-    })
-    setClient(prev => prev ? { ...prev, contacts } : prev)
-    setNewContact({ name: '', email: '', phone: '', role: '' })
-    setShowAddContact(false)
-    setSavingContact(false)
-    toast('Contato adicionado!', 'success')
-  }
-
-  async function removeContact(idx: number) {
-    if (!client) return
-    const contacts = (client.contacts || []).filter((_, i) => i !== idx)
-    await fetch(`/api/admin/clients/${client.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contacts }),
-    })
-    setClient(prev => prev ? { ...prev, contacts } : prev)
-    toast('Contato removido', 'info')
+    setBriefings((prev) =>
+      prev.map((b) =>
+        b.slug === briefingSlug
+          ? { ...b, editing_locked: !currentLocked }
+          : b,
+      ),
+    )
+    toast(
+      !currentLocked ? 'Edição bloqueada' : 'Edição liberada',
+      'success',
+    )
   }
 
   function newBriefing() {
     router.push(`/admin/novo?client_id=${id}`)
   }
 
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><div className="spinner" /></div>
-  if (!client) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>Cliente não encontrado</div>
+  if (loading)
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="spinner" />
+      </div>
+    )
+  if (!client)
+    return (
+      <div className="p-10 text-center text-muted-foreground">
+        Cliente não encontrado
+      </div>
+    )
 
   const hasAiProfile = Object.keys(aiProfile).length > 0
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div className="min-h-screen bg-background">
       <ToastContainer toasts={toasts} remove={remove} />
-      <ToastContainer toasts={toasts} remove={remove} />
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58, position: 'sticky', top: 0, background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(8px)', zIndex: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => router.push('/admin/clientes')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18, padding: '4px 6px', borderRadius: 6 }}>←</button>
-          <span style={{ color: 'var(--border-2)', fontSize: 14 }}>/</span>
-          <button onClick={() => router.push('/admin')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 12, padding: '4px 6px', borderRadius: 6, fontFamily: 'inherit' }}>Painel</button>
-          <span style={{ color: 'var(--border-2)', fontSize: 14 }}>/</span>
-          <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <span style={{ color: 'var(--accent)' }}>{client.company}</span>
-          </div>
-        </div>
-        <button onClick={newBriefing} style={{ background: 'var(--accent)', color: '#000', fontWeight: 600, padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>+ Novo briefing</button>
-      </header>
 
-      <div style={{ padding: 16, maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }} className="page-in">
+      <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+        {/* Page header */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push('/admin/clientes')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="truncate font-mono text-xl font-bold tracking-tight">
+              {client.company}
+            </h1>
+          </div>
+          <Button onClick={newBriefing} className="shrink-0">
+            <Plus className="mr-1.5 h-4 w-4" />
+            Novo briefing
+          </Button>
+        </div>
 
         {/* Client data card */}
-        <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+        <Card className="p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 font-mono text-lg font-bold text-primary">
                 {client.company?.[0]?.toUpperCase() || '?'}
               </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 17 }}>{client.company}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>cliente desde {fmt(client.created_at).split(',')[0]}</div>
+                <div className="text-base font-bold">{client.company}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  cliente desde {fmt(client.created_at).split(',')[0]}
+                </div>
               </div>
             </div>
-            <button onClick={() => setEditMode(!editMode)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 7, border: `1px solid ${editMode ? 'var(--accent-border)' : 'var(--border)'}`, background: editMode ? 'var(--accent-dim)' : 'transparent', color: editMode ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer' }}>
-              {editMode ? '× Cancelar' : '✏️ Editar'}
-            </button>
+            <Button
+              variant={editMode ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setEditMode(!editMode)}
+            >
+              {editMode ? (
+                <>
+                  <X className="mr-1 h-3.5 w-3.5" />
+                  Cancelar
+                </>
+              ) : (
+                <>
+                  <Pencil className="mr-1 h-3.5 w-3.5" />
+                  Editar
+                </>
+              )}
+            </Button>
           </div>
 
           {editMode ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="flex flex-col gap-3">
               {[
                 { label: 'Empresa', key: 'company' },
                 { label: 'Nome do contato', key: 'name' },
                 { label: 'Email', key: 'email' },
                 { label: 'WhatsApp', key: 'phone' },
                 { label: 'Site', key: 'website' },
-              ].map(f => (
-                <div key={f.key}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }}>{f.label}</label>
-                  <input value={editForm[f.key as keyof typeof editForm]} onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
+              ].map((f) => (
+                <div key={f.key} className="space-y-1.5">
+                  <Label
+                    htmlFor={`edit-${f.key}`}
+                    className="text-xs uppercase tracking-wider text-muted-foreground"
+                  >
+                    {f.label}
+                  </Label>
+                  <Input
+                    id={`edit-${f.key}`}
+                    value={editForm[f.key as keyof typeof editForm]}
+                    onChange={(e) =>
+                      setEditForm((p) => ({ ...p, [f.key]: e.target.value }))
+                    }
+                  />
                 </div>
               ))}
-              <button onClick={saveEdit} disabled={savingEdit} style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>
-                {savingEdit ? 'Salvando...' : 'Salvar alterações'}
-              </button>
+              <Button onClick={saveEdit} disabled={savingEdit} className="mt-1">
+                {savingEdit ? (
+                  'Salvando...'
+                ) : (
+                  <>
+                    <Save className="mr-1.5 h-4 w-4" />
+                    Salvar alterações
+                  </>
+                )}
+              </Button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
               {[
                 { label: 'Contato', value: client.name },
                 { label: 'Email', value: client.email || '—' },
                 { label: 'WhatsApp', value: client.phone || '—' },
-                { label: 'Site', value: client.website || '—', link: client.website || undefined },
-              ].map(f => (
+                {
+                  label: 'Site',
+                  value: client.website || '—',
+                  link: client.website || undefined,
+                },
+              ].map((f) => (
                 <div key={f.label}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{f.label}</div>
+                  <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    {f.label}
+                  </div>
                   {f.link ? (
-                    <a href={f.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--accent)', textDecoration: 'none', wordBreak: 'break-all' }}>{f.value}</a>
+                    <a
+                      href={f.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="break-all text-sm text-primary no-underline hover:underline"
+                    >
+                      {f.value}
+                    </a>
                   ) : (
-                    <div style={{ fontSize: 13, color: 'var(--text)', wordBreak: 'break-all' }}>{f.value}</div>
+                    <div className="break-all text-sm text-foreground">
+                      {f.value}
+                    </div>
                   )}
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </Card>
 
         {/* AI Profile card */}
-        <div style={{ background: 'var(--bg-2)', border: `1px solid ${hasAiProfile ? 'var(--accent-border)' : 'var(--border)'}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasAiProfile && !aiExpanded ? 0 : 16, cursor: hasAiProfile ? 'pointer' : 'default' }}
-            onClick={() => hasAiProfile && setAiExpanded(e => !e)}>
+        <Card className={cn('p-5', hasAiProfile && 'border-primary/30')}>
+          <div
+            className={cn(
+              'flex items-center justify-between gap-3',
+              hasAiProfile && !aiExpanded ? 'mb-0' : 'mb-4',
+              hasAiProfile && 'cursor-pointer',
+            )}
+            onClick={() => hasAiProfile && setAiExpanded((e) => !e)}
+          >
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-                🤖 Perfil de IA
+              <div className="flex items-center gap-2 text-[15px] font-bold">
+                <Bot className="h-4 w-4 text-primary" />
+                Perfil de IA
                 {hasAiProfile && (
-                  <span style={{ fontSize: 11, color: 'var(--accent)', background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', padding: '1px 8px', borderRadius: 20, fontWeight: 600 }}>Salvo</span>
+                  <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                    Salvo
+                  </span>
                 )}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>
-                {hasAiProfile ? (aiExpanded ? 'Clique para recolher' : 'Clique para expandir e editar') : 'Sem perfil ainda — analise o site ou preencha manualmente'}
+              <div className="mt-1 text-xs text-muted-foreground">
+                {hasAiProfile
+                  ? aiExpanded
+                    ? 'Clique para recolher'
+                    : 'Clique para expandir e editar'
+                  : 'Sem perfil ainda — analise o site ou preencha manualmente'}
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="flex items-center gap-2">
               {hasAiProfile && !editingAi && (
-                <button onClick={e => { e.stopPropagation(); setEditingAi(true); setAiExpanded(true) }} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer' }}>✏️ Editar</button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingAi(true)
+                    setAiExpanded(true)
+                  }}
+                >
+                  <Pencil className="mr-1 h-3.5 w-3.5" />
+                  Editar
+                </Button>
               )}
               {hasAiProfile && (
-                <span style={{ color: 'var(--text-3)', fontSize: 18, transform: aiExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s', display: 'inline-block' }}>⌄</span>
+                <ChevronDown
+                  className={cn(
+                    'h-5 w-5 text-muted-foreground transition-transform',
+                    aiExpanded && 'rotate-180',
+                  )}
+                />
               )}
             </div>
           </div>
 
           {/* Collapsible content */}
-          <div className={`collapsible-content ${!hasAiProfile || aiExpanded ? 'open' : 'closed'}`}>
-          {/* Analyze section */}
-          <div style={{ background: 'var(--bg-3)', borderRadius: 10, padding: '14px 16px', marginBottom: hasAiProfile ? 16 : 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 10 }}>
-              {hasAiProfile ? '🔄 Re-analisar com IA' : '✨ Analisar com IA'}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <input value={analyzeUrl} onChange={e => setAnalyzeUrl(e.target.value)}
-                placeholder="URL do site (opcional)"
-                style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }} />
-              <textarea value={extraText} onChange={e => setExtraText(e.target.value)}
-                placeholder="Informações extras sobre o cliente (opcional) — descreva o negócio, nicho, produtos, público..."
-                style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', minHeight: 72, resize: 'vertical', fontFamily: 'inherit' }} />
-              <button onClick={analyzeWithAI} disabled={analyzing} style={{ background: analyzing ? 'var(--bg-3)' : 'var(--accent)', color: analyzing ? 'var(--text-3)' : '#000', fontWeight: 700, padding: '9px', borderRadius: 8, border: 'none', cursor: analyzing ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
-                {analyzing ? '⏳ Analisando com IA...' : hasAiProfile ? '🔄 Re-analisar' : '✨ Gerar perfil com IA'}
-              </button>
-            </div>
-            {!analyzeUrl && !client.website && (
-              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 8 }}>Sem site? Use o campo de informações extras para descrever o negócio.</div>
-            )}
-          </div>
-
-          {/* AI fields — view or edit */}
-          {hasAiProfile && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {AI_FIELDS.map(f => {
-                const val = aiProfile[f.key]
-                if (!val && !editingAi) return null
-                return (
-                  <div key={f.key} style={{ borderRadius: 9, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                    <div style={{ padding: '6px 12px', background: 'var(--bg-3)', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>{f.label}</div>
-                    {editingAi ? (
-                      <textarea value={aiProfile[f.key] || ''} onChange={e => setAiProfile(p => ({ ...p, [f.key]: e.target.value }))}
-                        style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-2)', border: 'none', color: 'var(--text)', fontSize: 13, lineHeight: 1.6, outline: 'none', resize: 'vertical', minHeight: 60, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+          {(!hasAiProfile || aiExpanded) && (
+            <div>
+              {/* Analyze section */}
+              <div
+                className={cn(
+                  'rounded-lg bg-muted/40 p-4',
+                  hasAiProfile && 'mb-4',
+                )}
+              >
+                <div className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  {hasAiProfile ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Re-analisar com IA
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Analisar com IA
+                    </>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    value={analyzeUrl}
+                    onChange={(e) => setAnalyzeUrl(e.target.value)}
+                    placeholder="URL do site (opcional)"
+                  />
+                  <textarea
+                    value={extraText}
+                    onChange={(e) => setExtraText(e.target.value)}
+                    placeholder="Informações extras sobre o cliente (opcional) — descreva o negócio, nicho, produtos, público..."
+                    className="min-h-[72px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  />
+                  <Button onClick={analyzeWithAI} disabled={analyzing}>
+                    {analyzing ? (
+                      <>
+                        <Clock className="mr-1.5 h-4 w-4 animate-spin" />
+                        Analisando com IA...
+                      </>
+                    ) : hasAiProfile ? (
+                      <>
+                        <RefreshCw className="mr-1.5 h-4 w-4" />
+                        Re-analisar
+                      </>
                     ) : (
-                      <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--text)', lineHeight: 1.6, background: 'var(--bg-2)' }}>{String(val)}</div>
+                      <>
+                        <Sparkles className="mr-1.5 h-4 w-4" />
+                        Gerar perfil com IA
+                      </>
                     )}
+                  </Button>
+                </div>
+                {!analyzeUrl && !client.website && (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Sem site? Use o campo de informações extras para descrever
+                    o negócio.
                   </div>
-                )
-              })}
-              {editingAi && (
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <button onClick={() => { setEditingAi(false); if (client.analysis) setAiProfile(client.analysis as Record<string, string>) }} style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>Cancelar</button>
-                  <button onClick={saveAiProfile} disabled={savingAi} style={{ flex: 2, padding: '10px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#000', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
-                    {savingAi ? 'Salvando...' : '💾 Salvar perfil'}
-                  </button>
+                )}
+              </div>
+
+              {/* AI fields — view or edit */}
+              {hasAiProfile && (
+                <div className="flex flex-col gap-2">
+                  {AI_FIELDS.map((f) => {
+                    const val = aiProfile[f.key]
+                    if (!val && !editingAi) return null
+                    return (
+                      <div
+                        key={f.key}
+                        className="overflow-hidden rounded-lg border border-border"
+                      >
+                        <div className="bg-muted/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          {f.label}
+                        </div>
+                        {editingAi ? (
+                          <textarea
+                            value={aiProfile[f.key] || ''}
+                            onChange={(e) =>
+                              setAiProfile((p) => ({
+                                ...p,
+                                [f.key]: e.target.value,
+                              }))
+                            }
+                            className="block min-h-[60px] w-full resize-y border-0 bg-card px-3 py-2.5 text-sm leading-relaxed text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          />
+                        ) : (
+                          <div className="bg-card px-3 py-2.5 text-sm leading-relaxed text-foreground">
+                            {String(val)}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {editingAi && (
+                    <div className="mt-1 flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setEditingAi(false)
+                          if (client.analysis)
+                            setAiProfile(
+                              client.analysis as Record<string, string>,
+                            )
+                        }}
+                        className="flex-1"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={saveAiProfile}
+                        disabled={savingAi}
+                        className="flex-[2]"
+                      >
+                        {savingAi ? (
+                          'Salvando...'
+                        ) : (
+                          <>
+                            <Save className="mr-1.5 h-4 w-4" />
+                            Salvar perfil
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
-          </div>{/* end collapsible */}
-        </div>
+        </Card>
 
         {/* Briefings history */}
-        <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Card className="p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>📋 Briefings</div>
-              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>{briefings.length} no histórico</div>
+              <div className="flex items-center gap-1.5 text-[15px] font-bold">
+                <ClipboardList className="h-4 w-4" />
+                Briefings
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {briefings.length} no histórico
+              </div>
             </div>
-            <button onClick={newBriefing} style={{ fontSize: 12, padding: '6px 14px', borderRadius: 7, border: 'none', background: 'var(--accent)', color: '#000', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Novo briefing</button>
+            <Button size="sm" onClick={newBriefing}>
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              Novo briefing
+            </Button>
           </div>
 
           {briefings.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-3)', fontSize: 14 }}>
+            <div className="py-6 text-center text-sm text-muted-foreground">
               Nenhum briefing ainda —{' '}
-              <button onClick={newBriefing} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 14, padding: 0, fontFamily: 'inherit' }}>criar o primeiro</button>
+              <button
+                onClick={newBriefing}
+                className="font-mono text-primary hover:underline"
+              >
+                criar o primeiro
+              </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {briefings.map(b => (
-                <div key={b.id} style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 5 }}>{b.type_label}</div>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span className={`status-badge status-${b.status}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', fontSize: 11 }}>
-                          {STATUS_ICONS[b.status]} {STATUS_LABELS[b.status]}
+            <div className="flex flex-col gap-2">
+              {briefings.map((b) => (
+                <div
+                  key={b.id}
+                  className="rounded-lg border border-border bg-muted/30 px-3.5 py-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1.5 text-sm font-semibold">
+                        {b.type_label}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                            b.status === 'concluido' &&
+                              'border-primary/30 bg-primary/10 text-primary',
+                            b.status === 'em_andamento' &&
+                              'border-yellow-500/30 bg-yellow-500/10 text-yellow-700',
+                            b.status === 'visualizado' &&
+                              'border-blue-500/30 bg-blue-500/10 text-blue-700',
+                            b.status === 'enviado' &&
+                              'border-border bg-muted text-muted-foreground',
+                          )}
+                        >
+                          <StatusIcon status={b.status} />
+                          {STATUS_LABELS[b.status]}
                         </span>
-                        <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{fmt(b.created_at)}</span>
-                        {b.completed_at && <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>· concluído {fmt(b.completed_at)}</span>}
+                        <span className="whitespace-nowrap text-xs text-muted-foreground">
+                          {fmt(b.created_at)}
+                        </span>
+                        {b.completed_at && (
+                          <span className="whitespace-nowrap text-xs text-muted-foreground">
+                            · concluído {fmt(b.completed_at)}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/${b.slug}`)}
-                        style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>🔗 Link</button>
+                    <div className="flex gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          navigator.clipboard.writeText(
+                            `${window.location.origin}/${b.slug}`,
+                          )
+                        }
+                      >
+                        <LinkIcon className="mr-1 h-3.5 w-3.5" />
+                        Link
+                      </Button>
                       {b.status === 'concluido' && (
                         <>
-                          <button onClick={() => viewResponses(b.slug)}
-                            style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 600 }}>Ver respostas</button>
-                          <button onClick={() => toggleLock(b.slug, !!b.editing_locked)}
-                            title={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
-                            style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            {b.editing_locked ? '🔓' : '🔒'}
-                          </button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => viewResponses(b.slug)}
+                            className="border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+                          >
+                            Ver respostas
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              toggleLock(b.slug, !!b.editing_locked)
+                            }
+                            title={
+                              b.editing_locked
+                                ? 'Liberar edição'
+                                : 'Bloquear edição'
+                            }
+                          >
+                            {b.editing_locked ? (
+                              <Unlock className="h-4 w-4" />
+                            ) : (
+                              <Lock className="h-4 w-4" />
+                            )}
+                          </Button>
                         </>
                       )}
                     </div>
@@ -522,72 +996,153 @@ export default function ClientePerfilPage() {
               ))}
             </div>
           )}
-        </div>
-
+        </Card>
       </div>
+
       {/* RESPONSES MODAL */}
-      {viewingResponses && (
-        <div className="modal-bg" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 50 }}
-          onClick={e => { if (e.target === e.currentTarget) { setViewingResponses(null); setResponses(null) } }}>
-          <div className="modal-box" style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, maxWidth: 680, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 18 }}>{client?.company}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>Respostas do briefing</div>
+      <Dialog
+        open={!!viewingResponses}
+        onOpenChange={(open) => {
+          if (!open) {
+            setViewingResponses(null)
+            setResponses(null)
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{client?.company}</DialogTitle>
+            <div className="text-xs text-muted-foreground">
+              Respostas do briefing
+            </div>
+          </DialogHeader>
+
+          <div className="mb-4 mt-2 flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() =>
+                viewingResponses && copyResponses(viewingResponses)
+              }
+              className="flex-1"
+            >
+              {copiedResponses ? (
+                <>
+                  <ClipboardCheck className="mr-1.5 h-4 w-4" />
+                  Copiado!
+                </>
+              ) : (
+                <>
+                  <Clipboard className="mr-1.5 h-4 w-4" />
+                  Copiar tudo
+                </>
+              )}
+            </Button>
+          </div>
+
+          {responseVersions2 > 1 && responseDiff2 && (
+            <div className="mb-4">
+              <div className="mb-2 flex gap-2">
+                <Button
+                  variant={!showDiff2 ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={() => setShowDiff2(false)}
+                  className={cn(
+                    'flex-1',
+                    !showDiff2 &&
+                      'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
+                  )}
+                >
+                  Respostas atuais
+                </Button>
+                <Button
+                  variant={showDiff2 ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={() => setShowDiff2(true)}
+                  className={cn(
+                    'flex-1',
+                    showDiff2 &&
+                      'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
+                  )}
+                >
+                  <Pencil className="mr-1.5 h-3 w-3" />
+                  Alterações
+                  <span className="ml-1.5 rounded-full bg-primary px-1.5 py-px text-[10px] font-bold text-primary-foreground">
+                    {Object.keys(responseDiff2).length}
+                  </span>
+                </Button>
               </div>
-              <button onClick={() => { setViewingResponses(null); setResponses(null) }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 22 }}>×</button>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              <button onClick={() => copyResponses(viewingResponses)}
-                style={{ flex: 1, fontSize: 13, padding: '9px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                {copiedResponses ? '✓ Copiado!' : '📋 Copiar tudo'}
-              </button>
-            </div>
-            {responseVersions2 > 1 && responseDiff2 && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  <button onClick={() => setShowDiff2(false)} style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 8, border: `1px solid ${!showDiff2 ? 'var(--accent-border)' : 'var(--border)'}`, background: !showDiff2 ? 'var(--accent-dim)' : 'transparent', color: !showDiff2 ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: !showDiff2 ? 700 : 400 }}>📋 Respostas atuais</button>
-                  <button onClick={() => setShowDiff2(true)} style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 8, border: `1px solid ${showDiff2 ? 'var(--accent-border)' : 'var(--border)'}`, background: showDiff2 ? 'var(--accent-dim)' : 'transparent', color: showDiff2 ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: showDiff2 ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    ✏️ Alterações <span style={{ background: 'var(--accent)', color: '#000', fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 999 }}>{Object.keys(responseDiff2).length}</span>
-                  </button>
-                </div>
-                {showDiff2 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {Object.entries(responseDiff2).map(([key, { old: oldVal, new: newVal }]) => {
-                      const bLang = briefings.find(b => b.slug === viewingResponses)?.language
-                      const labelMap = bLang === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
+              {showDiff2 && (
+                <div className="flex flex-col gap-2">
+                  {Object.entries(responseDiff2).map(
+                    ([key, { old: oldVal, new: newVal }]) => {
+                      const bLang = briefings.find(
+                        (b) => b.slug === viewingResponses,
+                      )?.language
+                      const labelMap =
+                        bLang === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
                       const label = labelMap[key] || key.replace(/_/g, ' ')
-                      const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
-                      const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
+                      const oldStr = Array.isArray(oldVal)
+                        ? (oldVal as string[]).join(', ')
+                        : String(oldVal || '')
+                      const newStr = Array.isArray(newVal)
+                        ? (newVal as string[]).join(', ')
+                        : String(newVal || '')
                       return (
-                        <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--accent-border)', background: 'var(--bg-2)' }}>
-                          <div style={{ padding: '7px 14px', background: 'rgba(200,255,0,0.06)', borderBottom: '1px solid var(--accent-border)' }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>✏️ {label}</span>
+                        <div
+                          key={key}
+                          className="overflow-hidden rounded-lg border border-primary/30 bg-card"
+                        >
+                          <div className="border-b border-primary/30 bg-primary/5 px-3.5 py-1.5">
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                              <Pencil className="h-3 w-3" />
+                              {label}
+                            </span>
                           </div>
-                          <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ fontSize: 12, color: 'var(--text-3)', textDecoration: 'line-through', lineHeight: 1.5 }}><span style={{ fontSize: 10, fontWeight: 600, marginRight: 6 }}>ERA:</span>{oldStr || '—'}</div>
-                            <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, lineHeight: 1.5 }}><span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 700, marginRight: 6 }}>AGORA:</span>{newStr}</div>
+                          <div className="flex flex-col gap-2 px-3.5 py-2.5">
+                            <div className="text-xs leading-relaxed text-muted-foreground line-through">
+                              <span className="mr-1.5 text-[10px] font-semibold">
+                                ERA:
+                              </span>
+                              {oldStr || '—'}
+                            </div>
+                            <div className="text-sm font-semibold leading-relaxed text-foreground">
+                              <span className="mr-1.5 text-[10px] font-bold text-primary">
+                                AGORA:
+                              </span>
+                              {newStr}
+                            </div>
                           </div>
                         </div>
                       )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-            {loadingResponses ? (
-              <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>
-            ) : responses ? <ResponsesContent2
-                responses={responses}
-                language={briefings.find(b => b.slug === viewingResponses)?.language}
-                companyName={client?.company || 'briefing'}
-                renderFileValue={renderFileValue}
-                labelMapPT={FIELD_LABELS_PT}
-                labelMapEN={FIELD_LABELS_EN}
-              /> : <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>Sem respostas ainda</div>}
-          </div>
-        </div>
-      )}
+                    },
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {loadingResponses ? (
+            <div className="py-10 text-center">
+              <div className="spinner" />
+            </div>
+          ) : responses ? (
+            <ResponsesContent2
+              responses={responses}
+              language={
+                briefings.find((b) => b.slug === viewingResponses)?.language
+              }
+              companyName={client?.company || 'briefing'}
+              renderFileValue={renderFileValue}
+              labelMapPT={FIELD_LABELS_PT}
+              labelMapEN={FIELD_LABELS_EN}
+            />
+          ) : (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              Sem respostas ainda
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

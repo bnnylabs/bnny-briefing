@@ -1,74 +1,167 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { BRIEFING_TEMPLATES, BriefingLanguage, getTemplate, BriefingType } from '@/lib/briefing-types'
-import { Suspense } from 'react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bot,
+  ChevronRight,
+  Clipboard,
+  ClipboardCheck,
+  Eye,
+  Globe,
+  Mail,
+  PartyPopper,
+  Plus,
+  Search,
+  Send,
+  Sparkles,
+} from 'lucide-react'
+
+import {
+  BRIEFING_TEMPLATES,
+  BriefingLanguage,
+  getTemplate,
+  BriefingType,
+} from '@/lib/briefing-types'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 interface ClientData {
-  id?: string; name: string; company: string; website: string
-  email: string; phone: string; extraText: string
+  id?: string
+  name: string
+  company: string
+  website: string
+  email: string
+  phone: string
+  extraText: string
   analysis?: Record<string, unknown> | null
 }
 
 interface ExistingClient {
-  id: string; name: string; company: string; email: string
-  phone: string; website: string | null; analysis: Record<string, unknown> | null
+  id: string
+  name: string
+  company: string
+  email: string
+  phone: string
+  website: string | null
+  analysis: Record<string, unknown> | null
 }
 
 type Step = 'select' | 'client' | 'type' | 'preview'
 
-function buildPrefilled(ai: Record<string, unknown>, clientForm: ClientData): Record<string, unknown> {
+function buildPrefilled(
+  ai: Record<string, unknown>,
+  clientForm: ClientData,
+): Record<string, unknown> {
   const prefilled: Record<string, unknown> = {}
 
   const directMap: Record<string, string[]> = {
-    company_name:             ['company_name'],
-    segment:                  ['segment'],
-    description:              ['description'],
-    differentials:            ['differentials'],
-    target_audience:          ['target_audience'],
-    key_features:             ['key_features'],
+    company_name: ['company_name'],
+    segment: ['segment'],
+    description: ['description'],
+    differentials: ['differentials'],
+    target_audience: ['target_audience'],
+    key_features: ['key_features'],
     unique_value_proposition: ['unique_value_proposition', 'positioning'],
-    geographic_focus:         ['geographic_focus'],
-    extra_notes:              ['extra_notes'],
-    colors_hint:              ['color_preferences', 'color_palette'],
+    geographic_focus: ['geographic_focus'],
+    extra_notes: ['extra_notes'],
+    colors_hint: ['color_preferences', 'color_palette'],
   }
   for (const [aiKey, fieldIds] of Object.entries(directMap)) {
-    if (ai[aiKey]) { for (const fid of fieldIds) prefilled[fid] = ai[aiKey] }
+    if (ai[aiKey]) {
+      for (const fid of fieldIds) prefilled[fid] = ai[aiKey]
+    }
   }
 
   if (ai.price_positioning) {
     const p = String(ai.price_positioning).toLowerCase()
-    if (p.includes('premium') || p.includes('alto')) prefilled.price_positioning = 'Premium / Alto padrão'
-    else if (p.includes('intermediário') || p.includes('intermediario') || p.includes('custo')) prefilled.price_positioning = 'Intermediário'
-    else if (p.includes('acess') || p.includes('popular')) prefilled.price_positioning = 'Acessível / Popular'
+    if (p.includes('premium') || p.includes('alto'))
+      prefilled.price_positioning = 'Premium / Alto padrão'
+    else if (
+      p.includes('intermediário') ||
+      p.includes('intermediario') ||
+      p.includes('custo')
+    )
+      prefilled.price_positioning = 'Intermediário'
+    else if (p.includes('acess') || p.includes('popular'))
+      prefilled.price_positioning = 'Acessível / Popular'
     else prefilled.price_positioning = ai.price_positioning
   }
 
   if (ai.brand_personality) {
     const optionsMap: Record<string, string> = {
-      moderna: 'Moderna', classica: 'Clássica', clássica: 'Clássica', ousada: 'Ousada',
-      elegante: 'Elegante', divertida: 'Divertida', séria: 'Séria', seria: 'Séria',
-      minimalista: 'Minimalista', sofisticada: 'Sofisticada', acessível: 'Acessível',
-      acessivel: 'Acessível', tecnológica: 'Tecnológica', tecnologica: 'Tecnológica',
-      humana: 'Humana', sustentável: 'Sustentável', sustentavel: 'Sustentável',
-      inovadora: 'Moderna', criativa: 'Ousada', profissional: 'Séria', jovem: 'Divertida',
+      moderna: 'Moderna',
+      classica: 'Clássica',
+      clássica: 'Clássica',
+      ousada: 'Ousada',
+      elegante: 'Elegante',
+      divertida: 'Divertida',
+      séria: 'Séria',
+      seria: 'Séria',
+      minimalista: 'Minimalista',
+      sofisticada: 'Sofisticada',
+      acessível: 'Acessível',
+      acessivel: 'Acessível',
+      tecnológica: 'Tecnológica',
+      tecnologica: 'Tecnológica',
+      humana: 'Humana',
+      sustentável: 'Sustentável',
+      sustentavel: 'Sustentável',
+      inovadora: 'Moderna',
+      criativa: 'Ousada',
+      profissional: 'Séria',
+      jovem: 'Divertida',
       luxo: 'Sofisticada',
     }
     const raw = String(ai.brand_personality)
-    const words = raw.split(/[,\s]+/).map((w: string) => w.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
-    const matched = [...new Set(words.map((w: string) => optionsMap[w]).filter(Boolean))]
+    const words = raw
+      .split(/[,\s]+/)
+      .map((w: string) =>
+        w
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, ''),
+      )
+    const matched = [
+      ...new Set(words.map((w: string) => optionsMap[w]).filter(Boolean)),
+    ]
     if (matched.length > 0) prefilled.brand_personality = matched
   }
 
   if (ai.tone_of_voice) {
     const t = String(ai.tone_of_voice).toLowerCase()
     let tone = ''
-    if (t.includes('formal') || t.includes('institucional')) tone = 'Formal e institucional'
-    else if (t.includes('próximo') || t.includes('proximo') || t.includes('profissional')) tone = 'Profissional mas próximo'
-    else if (t.includes('descontraído') || t.includes('descontraido') || t.includes('jovem')) tone = 'Descontraído e jovem'
-    else if (t.includes('técnico') || t.includes('tecnico') || t.includes('especialista')) tone = 'Técnico e especialista'
-    if (tone) { prefilled.brand_tone = tone; prefilled.content_tone = tone }
+    if (t.includes('formal') || t.includes('institucional'))
+      tone = 'Formal e institucional'
+    else if (
+      t.includes('próximo') ||
+      t.includes('proximo') ||
+      t.includes('profissional')
+    )
+      tone = 'Profissional mas próximo'
+    else if (
+      t.includes('descontraído') ||
+      t.includes('descontraido') ||
+      t.includes('jovem')
+    )
+      tone = 'Descontraído e jovem'
+    else if (
+      t.includes('técnico') ||
+      t.includes('tecnico') ||
+      t.includes('especialista')
+    )
+      tone = 'Técnico e especialista'
+    if (tone) {
+      prefilled.brand_tone = tone
+      prefilled.content_tone = tone
+    }
   }
 
   // Contact info now comes from client record — not pre-filled in form
@@ -88,7 +181,14 @@ function NovoBriefingContent() {
   const [loadingClients, setLoadingClients] = useState(false)
   const [showNewClientForm, setShowNewClientForm] = useState(false)
 
-  const [clientForm, setClientForm] = useState<ClientData>({ name: '', company: '', website: '', email: '', phone: '', extraText: '' })
+  const [clientForm, setClientForm] = useState<ClientData>({
+    name: '',
+    company: '',
+    website: '',
+    email: '',
+    phone: '',
+    extraText: '',
+  })
   const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null)
   const [selectedType, setSelectedType] = useState<BriefingType | null>(null)
   const [language, setLanguage] = useState<BriefingLanguage>('pt-BR')
@@ -101,7 +201,10 @@ function NovoBriefingContent() {
   const loadClients = useCallback(async () => {
     setLoadingClients(true)
     const res = await fetch('/api/admin/clients')
-    if (res.ok) { const d = await res.json(); setExistingClients(d.clients || []) }
+    if (res.ok) {
+      const d = await res.json()
+      setExistingClients(d.clients || [])
+    }
     setLoadingClients(false)
   }, [])
 
@@ -113,7 +216,16 @@ function NovoBriefingContent() {
     if (res.ok) {
       const d = await res.json()
       const c = d.client
-      setClientForm({ id: c.id, name: c.name, company: c.company, website: c.website || '', email: c.email || '', phone: c.phone || '', extraText: '', analysis: c.analysis || null })
+      setClientForm({
+        id: c.id,
+        name: c.name,
+        company: c.company,
+        website: c.website || '',
+        email: c.email || '',
+        phone: c.phone || '',
+        extraText: '',
+        analysis: c.analysis || null,
+      })
       if (c.analysis) setAnalysis(c.analysis)
       setStep('type')
     }
@@ -126,7 +238,16 @@ function NovoBriefingContent() {
   }, [clientId, loadClient, loadClients])
 
   function selectExistingClient(c: ExistingClient) {
-    setClientForm({ id: c.id, name: c.name, company: c.company, website: c.website || '', email: c.email || '', phone: c.phone || '', extraText: '', analysis: c.analysis })
+    setClientForm({
+      id: c.id,
+      name: c.name,
+      company: c.company,
+      website: c.website || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      extraText: '',
+      analysis: c.analysis,
+    })
     if (c.analysis) setAnalysis(c.analysis)
     setStep('type')
   }
@@ -137,12 +258,20 @@ function NovoBriefingContent() {
     setLoading(true)
     try {
       const res = await fetch('/api/analyze', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ website: clientForm.website, text: clientForm.extraText, company: clientForm.company, language }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          website: clientForm.website,
+          text: clientForm.extraText,
+          company: clientForm.company,
+          language,
+        }),
       })
       const data = await res.json()
       setAnalysis(data.analysis || {})
-    } catch { setAnalysis({}) }
+    } catch {
+      setAnalysis({})
+    }
     setLoading(false)
     setStep('type')
   }
@@ -156,7 +285,8 @@ function NovoBriefingContent() {
 
     try {
       const res = await fetch('/api/briefings', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client: { ...clientForm, analysis: ai },
           briefingType: selectedType,
@@ -176,278 +306,622 @@ function NovoBriefingContent() {
       setGeneratedLink(data.link || '')
       setEmailSent(data.emailSent)
       setStep('preview')
-    } catch (e) { console.error(e); alert('Erro inesperado ao criar briefing') }
+    } catch (e) {
+      console.error(e)
+      alert('Erro inesperado ao criar briefing')
+    }
     setLoading(false)
   }
 
   async function copyLink() {
     await navigator.clipboard.writeText(generatedLink)
-    setCopied(true); setTimeout(() => setCopied(false), 2000)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
-  const filteredClients = existingClients.filter(c =>
-    !clientSearch || [c.company, c.name, c.email].some(v => v?.toLowerCase().includes(clientSearch.toLowerCase()))
-  )
-
-  const inputLabel = (label: string) => (
-    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>{label}</label>
+  const filteredClients = existingClients.filter(
+    (c) =>
+      !clientSearch ||
+      [c.company, c.name, c.email].some((v) =>
+        v?.toLowerCase().includes(clientSearch.toLowerCase()),
+      ),
   )
 
   const stepLabels = clientId
-    ? [{ key: 'type', label: '1. Tipo' }, { key: 'preview', label: '2. Link' }]
+    ? [
+        { key: 'type', label: '1. Tipo' },
+        { key: 'preview', label: '2. Link' },
+      ]
     : showNewClientForm
-    ? [{ key: 'select', label: '1. Cliente' }, { key: 'client', label: '2. Dados' }, { key: 'type', label: '3. Tipo' }, { key: 'preview', label: '4. Link' }]
-    : [{ key: 'select', label: '1. Cliente' }, { key: 'type', label: '2. Tipo' }, { key: 'preview', label: '3. Link' }]
+      ? [
+          { key: 'select', label: '1. Cliente' },
+          { key: 'client', label: '2. Dados' },
+          { key: 'type', label: '3. Tipo' },
+          { key: 'preview', label: '4. Link' },
+        ]
+      : [
+          { key: 'select', label: '1. Cliente' },
+          { key: 'type', label: '2. Tipo' },
+          { key: 'preview', label: '3. Link' },
+        ]
 
-  if (loading && step === 'type' && clientId) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><div className="spinner" /></div>
-  )
+  function handleBack() {
+    if (step === 'client') {
+      setStep('select')
+      setShowNewClientForm(false)
+    } else if (step === 'type' && !clientId) {
+      showNewClientForm ? setStep('client') : setStep('select')
+    } else if (step === 'preview') {
+      setStep('type')
+    } else {
+      clientId
+        ? router.push(`/admin/clientes/${clientId}`)
+        : router.push('/admin')
+    }
+  }
+
+  if (loading && step === 'type' && clientId)
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="spinner" />
+      </div>
+    )
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 24px', display: 'flex', alignItems: 'center', gap: 14, height: 58, position: 'sticky', top: 0, background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(10px)', zIndex: 10 }}>
-        <button onClick={() => {
-          if (step === 'client') { setStep('select'); setShowNewClientForm(false) }
-          else if (step === 'type' && !clientId) { showNewClientForm ? setStep('client') : setStep('select') }
-          else if (step === 'preview') setStep('type')
-          else clientId ? router.push(`/admin/clientes/${clientId}`) : router.push('/admin')
-        }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 18 }}>←</button>
-        <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>
-          <span style={{ color: 'var(--accent)' }}>Bnny</span> Labs{' '}
-          <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>
-            {clientId && clientForm.company ? `/ ${clientForm.company} / ` : '/ '}Novo Briefing
-          </span>
-        </span>
-      </header>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="mx-auto max-w-3xl px-6 pt-6">
+        <div className="mb-3 flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="font-mono text-xl font-bold tracking-tight">
+            {clientId && clientForm.company
+              ? `${clientForm.company} / Novo Briefing`
+              : 'Novo Briefing'}
+          </h1>
+        </div>
 
-      {/* Progress */}
-      <div style={{ borderBottom: '1px solid var(--border)', padding: '0 24px', display: 'flex', gap: 0 }}>
-        {stepLabels.map(s => (
-          <div key={s.key} style={{ padding: '12px 0', marginRight: 24, fontSize: 13, fontWeight: 500, borderBottom: `2px solid ${step === s.key ? 'var(--accent)' : 'transparent'}`, color: step === s.key ? 'var(--text)' : 'var(--text-3)', marginBottom: -1 }}>
-            {s.label}
-          </div>
-        ))}
+        {/* Progress */}
+        <div className="mb-8 flex gap-6 border-b border-border">
+          {stepLabels.map((s) => (
+            <div
+              key={s.key}
+              className={cn(
+                '-mb-px border-b-2 py-3 text-sm font-medium',
+                step === s.key
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground',
+              )}
+            >
+              {s.label}
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div style={{ maxWidth: 600, margin: '36px auto', padding: '0 24px' }}>
-
+      <div className="mx-auto max-w-2xl px-6 pb-12">
         {/* STEP: select client */}
         {step === 'select' && !showNewClientForm && (
-          <div className="animate-in">
-            <h2 style={{ fontSize: 21, fontWeight: 700, marginBottom: 6, letterSpacing: '-0.02em' }}>Para qual cliente?</h2>
-            <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 24 }}>Selecione um cliente existente ou crie um novo.</p>
+          <div>
+            <h2 className="mb-1.5 font-mono text-2xl font-bold tracking-tight">
+              Para qual cliente?
+            </h2>
+            <p className="mb-6 text-sm text-muted-foreground">
+              Selecione um cliente existente ou crie um novo.
+            </p>
 
             {/* Search existing */}
-            <input value={clientSearch} onChange={e => setClientSearch(e.target.value)}
-              placeholder="🔍  Buscar por empresa ou nome..."
-              autoFocus style={{ marginBottom: 12 }} />
+            <div className="relative mb-3">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                placeholder="Buscar por empresa ou nome..."
+                autoFocus
+                className="pl-9"
+              />
+            </div>
 
             {/* Client list */}
             {loadingClients ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                {[1,2,3].map(i => (
-                  <div key={i} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
-                    <div className="skeleton" style={{ height: 14, width: '40%', marginBottom: 8 }} />
-                    <div className="skeleton" style={{ height: 11, width: '60%' }} />
-                  </div>
+              <div className="mb-4 flex flex-col gap-2">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="p-4">
+                    <div className="mb-2 h-3.5 w-2/5 animate-pulse rounded bg-muted" />
+                    <div className="h-2.5 w-3/5 animate-pulse rounded bg-muted" />
+                  </Card>
                 ))}
               </div>
             ) : filteredClients.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, maxHeight: 320, overflowY: 'auto' }}>
-                {filteredClients.map(c => (
-                  <button key={c.id} onClick={() => selectExistingClient(c)}
-                    style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 12 }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-border)'; e.currentTarget.style.background = 'var(--bg-3)' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-2)' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+              <div className="mb-4 flex max-h-80 flex-col gap-2 overflow-y-auto">
+                {filteredClients.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => selectExistingClient(c)}
+                    className="flex items-center gap-3 rounded-lg border border-border bg-card p-3.5 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 font-mono text-sm font-bold text-primary">
                       {c.company?.[0]?.toUpperCase() || '?'}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {c.company}
-                        {c.analysis && Object.keys(c.analysis).length > 0 && <span style={{ marginLeft: 6, fontSize: 11 }} title="Perfil IA disponível">🤖</span>}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 truncate text-sm font-semibold">
+                        <span className="truncate">{c.company}</span>
+                        {c.analysis &&
+                          Object.keys(c.analysis).length > 0 && (
+                            <Bot
+                              className="h-3.5 w-3.5 shrink-0 text-primary"
+                              aria-label="Perfil IA disponível"
+                            />
+                          )}
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {c.name}{c.email && ` · ${c.email}`}
+                      <div className="truncate text-xs text-muted-foreground">
+                        {c.name}
+                        {c.email && ` · ${c.email}`}
                       </div>
                     </div>
-                    <span style={{ color: 'var(--text-3)', fontSize: 18, flexShrink: 0 }}>›</span>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
                   </button>
                 ))}
               </div>
             ) : clientSearch ? (
-              <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 14, marginBottom: 16 }}>
+              <div className="mb-4 py-5 text-center text-sm text-muted-foreground">
                 Nenhum cliente encontrado para &ldquo;{clientSearch}&rdquo;
               </div>
             ) : (
-              <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 14, marginBottom: 16 }}>
+              <div className="mb-4 py-5 text-center text-sm text-muted-foreground">
                 Nenhum cliente cadastrado ainda
               </div>
             )}
 
             {/* Divider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-              <span style={{ fontSize: 12, color: 'var(--text-3)', flexShrink: 0 }}>ou</span>
-              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            <div className="mb-4 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="shrink-0 text-xs text-muted-foreground">
+                ou
+              </span>
+              <div className="h-px flex-1 bg-border" />
             </div>
 
-            <button onClick={() => { setShowNewClientForm(true); setStep('client') }}
-              style={{ width: '100%', background: 'transparent', color: 'var(--text-2)', fontWeight: 600, padding: '13px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, transition: 'all 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-border)'; e.currentTarget.style.color = 'var(--accent)' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)' }}>
-              + Criar novo cliente
-            </button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setShowNewClientForm(true)
+                setStep('client')
+              }}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              Criar novo cliente
+            </Button>
           </div>
         )}
 
         {/* STEP: new client form */}
         {step === 'client' && showNewClientForm && (
-          <form onSubmit={handleAnalyze} className="animate-in">
-            <h2 style={{ fontSize: 21, fontWeight: 700, marginBottom: 6, letterSpacing: '-0.02em' }}>Novo cliente</h2>
-            <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 26 }}>Preencha os dados. O Claude vai analisar o site automaticamente.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>{inputLabel('Nome do contato *')}<input value={clientForm.name} onChange={e => setClientForm(p => ({ ...p, name: e.target.value }))} placeholder="João Silva" required /></div>
-                <div>{inputLabel('Empresa *')}<input value={clientForm.company} onChange={e => setClientForm(p => ({ ...p, company: e.target.value }))} placeholder="Nome da empresa" required /></div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>{inputLabel('Email')}<input type="email" value={clientForm.email} onChange={e => setClientForm(p => ({ ...p, email: e.target.value }))} placeholder="email@empresa.com" /></div>
-                <div>{inputLabel('WhatsApp')}<input value={clientForm.phone} onChange={e => setClientForm(p => ({ ...p, phone: e.target.value }))} placeholder="(47) 99999-9999" /></div>
-              </div>
-              <div>{inputLabel('Site do cliente')}<input value={clientForm.website} onChange={e => setClientForm(p => ({ ...p, website: e.target.value }))} placeholder="https://empresa.com.br" /></div>
-              <div>{inputLabel('Informações extras (opcional)')}<textarea value={clientForm.extraText} onChange={e => setClientForm(p => ({ ...p, extraText: e.target.value }))} placeholder="Cole aqui qualquer informação adicional sobre o cliente..." style={{ minHeight: 80 }} /></div>
-              {clientForm.email && (
-                <div style={{ padding: '12px 16px', background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: 10, fontSize: 13, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 20, lineHeight: 1 }}>📨</span>
-                  <span>O briefing será enviado automaticamente para <strong style={{ color: 'var(--text)' }}>{clientForm.email}</strong></span>
+          <form onSubmit={handleAnalyze}>
+            <h2 className="mb-1.5 font-mono text-2xl font-bold tracking-tight">
+              Novo cliente
+            </h2>
+            <p className="mb-6 text-sm text-muted-foreground">
+              Preencha os dados. O Claude vai analisar o site automaticamente.
+            </p>
+            <div className="flex flex-col gap-3.5">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="nc-name"
+                    className="text-xs uppercase tracking-wider text-muted-foreground"
+                  >
+                    Nome do contato *
+                  </Label>
+                  <Input
+                    id="nc-name"
+                    value={clientForm.name}
+                    onChange={(e) =>
+                      setClientForm((p) => ({ ...p, name: e.target.value }))
+                    }
+                    placeholder="João Silva"
+                    required
+                  />
                 </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="nc-company"
+                    className="text-xs uppercase tracking-wider text-muted-foreground"
+                  >
+                    Empresa *
+                  </Label>
+                  <Input
+                    id="nc-company"
+                    value={clientForm.company}
+                    onChange={(e) =>
+                      setClientForm((p) => ({
+                        ...p,
+                        company: e.target.value,
+                      }))
+                    }
+                    placeholder="Nome da empresa"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="nc-email"
+                    className="text-xs uppercase tracking-wider text-muted-foreground"
+                  >
+                    Email
+                  </Label>
+                  <Input
+                    id="nc-email"
+                    type="email"
+                    value={clientForm.email}
+                    onChange={(e) =>
+                      setClientForm((p) => ({ ...p, email: e.target.value }))
+                    }
+                    placeholder="email@empresa.com"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="nc-phone"
+                    className="text-xs uppercase tracking-wider text-muted-foreground"
+                  >
+                    WhatsApp
+                  </Label>
+                  <Input
+                    id="nc-phone"
+                    value={clientForm.phone}
+                    onChange={(e) =>
+                      setClientForm((p) => ({ ...p, phone: e.target.value }))
+                    }
+                    placeholder="(47) 99999-9999"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="nc-website"
+                  className="text-xs uppercase tracking-wider text-muted-foreground"
+                >
+                  Site do cliente
+                </Label>
+                <Input
+                  id="nc-website"
+                  value={clientForm.website}
+                  onChange={(e) =>
+                    setClientForm((p) => ({ ...p, website: e.target.value }))
+                  }
+                  placeholder="https://empresa.com.br"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="nc-extra"
+                  className="text-xs uppercase tracking-wider text-muted-foreground"
+                >
+                  Informações extras (opcional)
+                </Label>
+                <textarea
+                  id="nc-extra"
+                  value={clientForm.extraText}
+                  onChange={(e) =>
+                    setClientForm((p) => ({
+                      ...p,
+                      extraText: e.target.value,
+                    }))
+                  }
+                  placeholder="Cole aqui qualquer informação adicional sobre o cliente..."
+                  className="min-h-[80px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+              </div>
+              {clientForm.email && (
+                <Card className="flex items-center gap-2.5 border-primary/30 bg-primary/5 p-3">
+                  <Mail className="h-5 w-5 shrink-0 text-primary" />
+                  <span className="text-sm text-muted-foreground">
+                    O briefing será enviado automaticamente para{' '}
+                    <strong className="text-foreground">
+                      {clientForm.email}
+                    </strong>
+                  </span>
+                </Card>
               )}
-              <button type="submit" disabled={loading || !clientForm.company}
-                style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '13px', borderRadius: 10, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 14, opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                {loading ? <><div className="spinner" /> Analisando com IA...</> : '✦ Analisar e continuar'}
-              </button>
+              <Button
+                type="submit"
+                disabled={loading || !clientForm.company}
+                size="lg"
+              >
+                {loading ? (
+                  <>
+                    <div className="spinner mr-2" /> Analisando com IA...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-1.5 h-4 w-4" />
+                    Analisar e continuar
+                  </>
+                )}
+              </Button>
             </div>
           </form>
         )}
 
         {/* STEP: type */}
         {step === 'type' && (
-          <div className="animate-in">
+          <div>
             {/* Client summary */}
             {clientForm.company && (
-              <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+              <Card className="mb-5 flex items-center gap-2.5 p-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 font-mono text-sm font-bold text-primary">
                   {clientForm.company[0].toUpperCase()}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{clientForm.company}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{clientForm.name}{clientForm.email && ` · ${clientForm.email}`}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold">
+                    {clientForm.company}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {clientForm.name}
+                    {clientForm.email && ` · ${clientForm.email}`}
+                  </div>
                 </div>
                 {analysis && Object.keys(analysis).length > 0 && (
-                  <span title="Perfil IA disponível — campos serão preenchidos automaticamente" style={{ fontSize: 18 }}>🤖</span>
+                  <Bot
+                    className="h-4 w-4 text-primary"
+                    aria-label="Perfil IA disponível — campos serão preenchidos automaticamente"
+                  />
                 )}
-                <button onClick={() => setStep(showNewClientForm ? 'client' : 'select')}
-                  style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', flexShrink: 0 }}>Trocar</button>
-              </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setStep(showNewClientForm ? 'client' : 'select')
+                  }
+                  className="shrink-0"
+                >
+                  Trocar
+                </Button>
+              </Card>
             )}
 
             {/* AI profile summary */}
             {analysis && Object.keys(analysis).length > 0 && (
-              <div style={{ background: 'var(--bg-2)', border: '1px solid var(--accent-border)', borderRadius: 12, padding: 18, marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>✦ Perfil IA — campos pré-preenchidos automaticamente</div>
-                <div style={{ fontSize: 14, lineHeight: 1.6 }}>{String(analysis.description || '')}</div>
-                {analysis.target_audience ? <div style={{ marginTop: 8, fontSize: 13, color: 'var(--text-2)' }}><strong style={{ color: 'var(--text-3)' }}>Público: </strong>{String(analysis.target_audience)}</div> : null}
-                {analysis.differentials ? <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-2)' }}><strong style={{ color: 'var(--text-3)' }}>Diferenciais: </strong>{String(analysis.differentials)}</div> : null}
-              </div>
+              <Card className="mb-5 border-primary/30 p-4">
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Perfil IA — campos pré-preenchidos automaticamente
+                </div>
+                <div className="text-sm leading-relaxed">
+                  {String(analysis.description || '')}
+                </div>
+                {analysis.target_audience ? (
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    <strong className="text-foreground/70">Público: </strong>
+                    {String(analysis.target_audience)}
+                  </div>
+                ) : null}
+                {analysis.differentials ? (
+                  <div className="mt-1.5 text-sm text-muted-foreground">
+                    <strong className="text-foreground/70">
+                      Diferenciais:{' '}
+                    </strong>
+                    {String(analysis.differentials)}
+                  </div>
+                ) : null}
+              </Card>
             )}
 
-            <h2 style={{ fontSize: 21, fontWeight: 700, marginBottom: 6, letterSpacing: '-0.02em' }}>Tipo de briefing</h2>
-            <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 16 }}>Escolha o serviço que será desenvolvido.</p>
+            <h2 className="mb-1.5 font-mono text-2xl font-bold tracking-tight">
+              Tipo de briefing
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Escolha o serviço que será desenvolvido.
+            </p>
 
             {/* Language toggle */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20, padding: '12px 16px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 10 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-2)', flex: 1 }}>🌐 Idioma do briefing para o cliente</span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => setLanguage('pt-BR')} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: `1px solid ${language === 'pt-BR' ? 'var(--accent-border)' : 'var(--border)'}`, background: language === 'pt-BR' ? 'var(--accent-dim)' : 'transparent', color: language === 'pt-BR' ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: language === 'pt-BR' ? 700 : 400 }}>🇧🇷 Português</button>
-                <button onClick={() => setLanguage('en-US')} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: `1px solid ${language === 'en-US' ? 'var(--accent-border)' : 'var(--border)'}`, background: language === 'en-US' ? 'var(--accent-dim)' : 'transparent', color: language === 'en-US' ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: language === 'en-US' ? 700 : 400 }}>🇺🇸 English</button>
+            <Card className="mb-5 flex items-center gap-2 p-3">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1 text-sm text-muted-foreground">
+                Idioma do briefing para o cliente
+              </span>
+              <div className="flex gap-1.5">
+                <Button
+                  variant={language === 'pt-BR' ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={() => setLanguage('pt-BR')}
+                  className={cn(
+                    language === 'pt-BR' &&
+                      'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
+                  )}
+                >
+                  🇧🇷 Português
+                </Button>
+                <Button
+                  variant={language === 'en-US' ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={() => setLanguage('en-US')}
+                  className={cn(
+                    language === 'en-US' &&
+                      'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
+                  )}
+                >
+                  🇺🇸 English
+                </Button>
               </div>
-            </div>
+            </Card>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-              {(Object.keys(BRIEFING_TEMPLATES) as BriefingType[]).map(type => {
-                const t = getTemplate(type, language)
-                return (
-                  <button key={type} onClick={() => setSelectedType(type)}
-                    style={{ background: selectedType === type ? 'var(--accent-dim)' : 'var(--bg-2)', border: `1px solid ${selectedType === type ? 'var(--accent-border)' : 'var(--border)'}`, borderRadius: 10, padding: '14px 18px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: selectedType === type ? 'var(--accent)' : 'var(--text)' }}>{t.label}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 3 }}>{t.description}</div>
-                  </button>
-                )
-              })}
+            <div className="mb-5 flex flex-col gap-2.5">
+              {(Object.keys(BRIEFING_TEMPLATES) as BriefingType[]).map(
+                (type) => {
+                  const t = getTemplate(type, language)
+                  const isSelected = selectedType === type
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => setSelectedType(type)}
+                      className={cn(
+                        'rounded-lg border px-4 py-3.5 text-left transition-colors',
+                        isSelected
+                          ? 'border-primary/40 bg-primary/10'
+                          : 'border-border bg-card hover:border-primary/30 hover:bg-muted/50',
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'text-[15px] font-semibold',
+                          isSelected ? 'text-primary' : 'text-foreground',
+                        )}
+                      >
+                        {t.label}
+                      </div>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        {t.description}
+                      </div>
+                    </button>
+                  )
+                },
+              )}
             </div>
 
             {/* Preview button */}
             {selectedType && (
-              <div style={{ marginBottom: 20 }}>
-                <button
-                  onClick={() => window.open(
+              <Button
+                variant="outline"
+                className="mb-5 w-full"
+                onClick={() =>
+                  window.open(
                     `/admin/preview?type=${selectedType}&lang=${language}&company=${encodeURIComponent(clientForm.company || 'Empresa')}`,
-                    '_blank', 'width=500,height=800,scrollbars=yes'
-                  )}
-                  style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  👁 Ver preview — como o cliente vai ver
-                </button>
-              </div>
+                    '_blank',
+                    'width=500,height=800,scrollbars=yes',
+                  )
+                }
+              >
+                <Eye className="mr-1.5 h-4 w-4" />
+                Ver preview — como o cliente vai ver
+              </Button>
             )}
 
             {/* Extra note */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Observação interna (opcional)</label>
-              <textarea value={extraNote} onChange={e => setExtraNote(e.target.value)}
-                placeholder="Contexto específico deste briefing — ex: reunião dia X, foco em produto Y, preferências do cliente..." style={{ minHeight: 72 }} />
-              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 5 }}>Visível só para você no painel — não aparece para o cliente.</div>
+            <div className="mb-5 space-y-1.5">
+              <Label
+                htmlFor="extra-note"
+                className="text-xs uppercase tracking-wider text-muted-foreground"
+              >
+                Observação interna (opcional)
+              </Label>
+              <textarea
+                id="extra-note"
+                value={extraNote}
+                onChange={(e) => setExtraNote(e.target.value)}
+                placeholder="Contexto específico deste briefing — ex: reunião dia X, foco em produto Y, preferências do cliente..."
+                className="min-h-[72px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+              <div className="text-xs text-muted-foreground">
+                Visível só para você no painel — não aparece para o cliente.
+              </div>
             </div>
 
-            <button onClick={handleCreate} disabled={!selectedType || loading}
-              style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '13px', borderRadius: 10, border: 'none', cursor: !selectedType || loading ? 'not-allowed' : 'pointer', fontSize: 14, opacity: !selectedType || loading ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-              {loading ? <><div className="spinner" /> Gerando briefing...</> : 'Gerar e enviar briefing →'}
-            </button>
+            <Button
+              onClick={handleCreate}
+              disabled={!selectedType || loading}
+              size="lg"
+              className="w-full"
+            >
+              {loading ? (
+                <>
+                  <div className="spinner mr-2" /> Gerando briefing...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-1.5 h-4 w-4" />
+                  Gerar e enviar briefing
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </>
+              )}
+            </Button>
           </div>
         )}
 
         {/* STEP: preview */}
         {step === 'preview' && (
-          <div className="animate-in" style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 52, marginBottom: 14 }}>🎉</div>
-            <h2 style={{ fontSize: 23, fontWeight: 700, marginBottom: 8, letterSpacing: '-0.02em' }}>Briefing criado!</h2>
-            <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 28 }}>
-              Pronto para <strong style={{ color: 'var(--text)' }}>{clientForm.name}</strong> da <strong style={{ color: 'var(--text)' }}>{clientForm.company}</strong>
+          <div className="text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <PartyPopper className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="mb-2 font-mono text-2xl font-bold tracking-tight">
+              Briefing criado!
+            </h2>
+            <p className="mb-7 text-sm text-muted-foreground">
+              Pronto para{' '}
+              <strong className="text-foreground">{clientForm.name}</strong> da{' '}
+              <strong className="text-foreground">{clientForm.company}</strong>
             </p>
 
             {clientForm.email && (
-              <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 10, background: emailSent ? 'rgba(200,255,0,0.08)' : 'rgba(255,100,100,0.08)', border: `1px solid ${emailSent ? 'var(--accent-border)' : 'rgba(255,100,100,0.3)'}`, fontSize: 13, color: emailSent ? 'var(--accent)' : '#ff6464' }}>
-                {emailSent ? `✅ Email enviado para ${clientForm.email}` : `⚠️ Email não enviado — copie e envie o link manualmente`}
-              </div>
+              <Card
+                className={cn(
+                  'mb-5 p-3 text-sm',
+                  emailSent
+                    ? 'border-primary/30 bg-primary/5 text-primary'
+                    : 'border-destructive/30 bg-destructive/5 text-destructive',
+                )}
+              >
+                {emailSent ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Email enviado para {clientForm.email}
+                  </span>
+                ) : (
+                  <span>
+                    ⚠️ Email não enviado — copie e envie o link manualmente
+                  </span>
+                )}
+              </Card>
             )}
 
-            <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', marginBottom: 14, textAlign: 'left' }}>
-              <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6 }}>Link do briefing</div>
-              <div style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--accent)', wordBreak: 'break-all' }}>{generatedLink}</div>
-            </div>
+            <Card className="mb-3.5 p-4 text-left">
+              <div className="mb-1.5 text-xs text-muted-foreground">
+                Link do briefing
+              </div>
+              <div className="break-all font-mono text-sm text-primary">
+                {generatedLink}
+              </div>
+            </Card>
 
-            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-              <button onClick={copyLink} style={{ flex: 1, background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 14 }}>
-                {copied ? '✓ Copiado!' : '📋 Copiar link'}
-              </button>
-              <button onClick={() => clientForm.id ? router.push(`/admin/clientes/${clientForm.id}`) : router.push('/admin')}
-                style={{ flex: 1, background: 'transparent', color: 'var(--text-2)', fontWeight: 500, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 14 }}>
+            <div className="mb-2.5 flex gap-2.5">
+              <Button onClick={copyLink} className="flex-1">
+                {copied ? (
+                  <>
+                    <ClipboardCheck className="mr-1.5 h-4 w-4" />
+                    Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Clipboard className="mr-1.5 h-4 w-4" />
+                    Copiar link
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  clientForm.id
+                    ? router.push(`/admin/clientes/${clientForm.id}`)
+                    : router.push('/admin')
+                }
+                className="flex-1"
+              >
                 {clientForm.id ? 'Ver cliente' : 'Ver painel'}
-              </button>
+              </Button>
             </div>
-            <button onClick={() => router.push('/admin')} style={{ width: '100%', background: 'transparent', color: 'var(--text-3)', fontWeight: 400, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 13 }}>
+            <Button
+              variant="ghost"
+              onClick={() => router.push('/admin')}
+              className="w-full"
+            >
               Ir para o painel
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -457,7 +931,13 @@ function NovoBriefingContent() {
 
 export default function NovoBriefingPage() {
   return (
-    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><div className="spinner" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <div className="spinner" />
+        </div>
+      }
+    >
       <NovoBriefingContent />
     </Suspense>
   )
