@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, ReactNode } from 'react'
 import { useToast, ToastContainer } from '@/components/toast'
 import { useRouter, useParams } from 'next/navigation'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
-import { downloadAsZip } from '@/lib/download-zip'
 
 interface Client {
   id: string; name: string; company: string; email: string; phone: string
@@ -423,73 +422,14 @@ export default function ClientePerfilPage() {
             </div>
             {loadingResponses ? (
               <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" /></div>
-            ) : responses ? (() => {
-              const allFiles: { url: string; name: string; type?: string; size?: number }[] = []
-              Object.entries(responses).forEach(([, value]) => {
-                if (Array.isArray(value)) {
-                  (value as { url: string; name: string; type?: string; size?: number }[]).forEach(f => {
-                    if (f && f.name && f.url?.startsWith('http')) allFiles.push(f)
-                  })
-                }
-              })
-              const imageFiles = allFiles.filter(f =>
-                f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
-              )
-              const otherFiles = allFiles.filter(f =>
-                !f.type?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
-              )
-              async function downloadAll() {
-                const name = client?.company || 'briefing'
-                await downloadAsZip(allFiles, `${name} - arquivos.zip`)
-              }
-              return <>
-              {allFiles.length > 0 && (
-                <div style={{ marginBottom: 14, padding: '12px 16px', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 20 }}>📎</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                      {allFiles.length} {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
-                      {imageFiles.length > 0 && (
-                        <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-3)', fontWeight: 400 }}>
-                          · {imageFiles.length} {imageFiles.length === 1 ? 'imagem' : 'imagens'}
-                          {otherFiles.length > 0 && `, ${otherFiles.length} ${otherFiles.length === 1 ? 'documento' : 'documentos'}`}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{allFiles.map(f => f.name).join(', ')}</div>
-                  </div>
-                  <button onClick={downloadAll} style={{ background: 'var(--accent)', color: '#000', fontWeight: 700, fontSize: 12, padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
-                    ⬇ Baixar ZIP
-                  </button>
-                </div>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {Object.entries(responses).filter(([,v]) => v).map(([key, value]) => {
-                  const bLang = briefings.find(b => b.slug === viewingResponses)?.language
-                  const labelMap = bLang === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
-                  const label = labelMap[key] || key.replace(/_/g, ' ')
-                  const isFileField = /arquivo|logo|referencia|anexo|upload|files/i.test(key) || (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'url' in (value[0] as object))
-                  const displayValue = isFileField ? '' : (Array.isArray(value) ? (value as string[]).join(', ') : String(value))
-                  const isShort = !isFileField && displayValue.length < 60
-                  return (
-                    <div key={key} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                      <div style={{ padding: '8px 14px', background: 'var(--bg-3)', borderBottom: (isShort && !isFileField) ? 'none' : '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                          {isFileField && '📎 '}{label}
-                        </span>
-                        {isShort && !isFileField && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{displayValue}</span>}
-                      </div>
-                      {(!isShort || isFileField) && (
-                        <div style={{ padding: '12px 14px', fontSize: 14, color: 'var(--text)', lineHeight: 1.7, background: 'var(--bg-2)' }}>
-                          {isFileField ? renderFileValue(value) : <span style={{ whiteSpace: 'pre-wrap' }}>{displayValue}</span>}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-              </>
-            })() : <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>Sem respostas ainda</div>}
+            ) : responses ? <ResponsesContent2
+                responses={responses}
+                language={briefings.find(b => b.slug === viewingResponses)?.language}
+                companyName={client?.company || 'briefing'}
+                renderFileValue={renderFileValue}
+                labelMapPT={FIELD_LABELS_PT}
+                labelMapEN={FIELD_LABELS_EN}
+              /> : <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>Sem respostas ainda</div>}
           </div>
         </div>
       )}
