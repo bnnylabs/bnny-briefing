@@ -233,7 +233,7 @@ export default function AdminPage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <header style={{ borderBottom: '1px solid var(--border)', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58 }}>
         <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.02em', cursor: 'pointer' }} onClick={() => setView('list')}>
-          <span style={{ color: 'var(--accent)' }}>Bnny</span> Labs <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: 12, marginLeft: 6 }}>Briefings</span>
+          <span style={{ color: 'var(--accent)' }}>Bnny</span> Labs <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: 12, marginLeft: 6 }}>Briefings</span><span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 8 }}>v2</span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setView(view === 'settings' ? 'list' : 'settings')} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: `1px solid ${view === 'settings' ? 'var(--accent-border)' : 'var(--border)'}`, background: view === 'settings' ? 'var(--accent-dim)' : 'transparent', color: view === 'settings' ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>⚙️ Config</button>
