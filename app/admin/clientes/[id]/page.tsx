@@ -924,7 +924,7 @@ export default function ClientePerfilPage() {
                               b.status === 'concluido' && 'border-success/30 bg-success/10 text-success',
                               b.status === 'em_andamento' && 'border-warning/30 bg-warning/10 text-warning',
                               b.status === 'visualizado' && 'border-info/30 bg-info/10 text-info',
-                              b.status === 'enviado' && 'border-warning/30 bg-warning/10 text-warning',
+                              b.status === 'enviado' && 'border-border bg-muted/60 text-muted-foreground',
                             )}>
                               <BriefingStatusIcon status={b.status} />
                               {BRIEFING_STATUS_LABELS[b.status]}

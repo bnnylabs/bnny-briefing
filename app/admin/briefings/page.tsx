@@ -77,8 +77,8 @@ function StatusIcon({ status, size = 11 }: { status: string; size?: number }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, 'muted' | 'warning' | 'success'> = {
-    enviado: 'warning', visualizado: 'muted', em_andamento: 'warning', concluido: 'success'
+  const variants: Record<string, 'muted' | 'info' | 'warning' | 'success'> = {
+    enviado: 'muted', visualizado: 'info', em_andamento: 'warning', concluido: 'success'
   }
   return (
     <Badge variant={variants[status] || 'muted'} className="text-[11px] font-medium whitespace-nowrap">
