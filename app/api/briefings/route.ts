@@ -106,8 +106,10 @@ export async function POST(req: NextRequest) {
 
   if (briefingError) return NextResponse.json({ error: briefingError.message }, { status: 500 })
 
-  // Send email to client if requested and email exists
+  // Build recipients list and send emails
+  const recipients: Array<{ email: string; name: string; role: 'primary' | 'cc' }> = []
   let emailSent = false
+
   if (sendEmail !== false && client.email) {
     const emailResult = await sendBriefingToClient({
       clientName: client.name,
@@ -119,16 +121,48 @@ export async function POST(req: NextRequest) {
     })
     emailSent = emailResult.ok
 
-    // Log notification
+    recipients.push({ email: client.email, name: client.name, role: 'primary' })
+
+    // Log primary send
     try { await supabaseAdmin.from('notifications').insert({
       briefing_id: briefing.id,
       type: 'email_client',
       status: emailResult.ok ? 'sent' : 'failed',
-      details: { to: client.email, link }
+      details: { to: client.email, name: client.name, role: 'primary', link }
     }) } catch(_e) {}
 
+    // Fetch CC contacts and send to each
+    const { data: ccContacts } = await supabaseAdmin
+      .from('client_contacts')
+      .select('name, email, language')
+      .eq('client_id', clientId)
+      .eq('receives_copies', true)
+
+    for (const cc of (ccContacts ?? []).filter(c => c.email)) {
+      const ccResult = await sendBriefingToClient({
+        clientName: cc.name,
+        clientEmail: cc.email!,
+        company: client.company,
+        typeLabel: briefingTypeLabel,
+        link,
+        language: cc.language || language || 'pt-BR',
+      })
+      recipients.push({ email: cc.email!, name: cc.name, role: 'cc' })
+      try { await supabaseAdmin.from('notifications').insert({
+        briefing_id: briefing.id,
+        type: 'email_client',
+        status: ccResult.ok ? 'sent' : 'failed',
+        details: { to: cc.email, name: cc.name, role: 'cc', link }
+      }) } catch(_e) {}
+    }
+
+    // Persist recipients snapshot on the briefing row
+    try { await supabaseAdmin.from('briefings')
+      .update({ recipients })
+      .eq('id', briefing.id) } catch(_e) {}
+
     // WhatsApp to admin
-    await sendWhatsApp(`📨 Novo briefing enviado!\nEmpresa: ${client.company}\nTipo: ${briefingTypeLabel}\nLink: ${link}`)
+    await sendWhatsApp(`📨 Novo briefing enviado!\nEmpresa: ${client.company}\nTipo: ${briefingTypeLabel}\nDestinatários: ${recipients.length}\nLink: ${link}`)
   }
 
   return NextResponse.json({ briefing, link, emailSent })

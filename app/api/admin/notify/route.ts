@@ -27,6 +27,14 @@ export async function POST(req: NextRequest) {
   const link = `${baseUrl}/${slug}`
   let emailSent = false
 
+  // Fetch CC contacts for this client
+  const { data: ccContacts } = await supabaseAdmin
+    .from('client_contacts')
+    .select('name, email, language')
+    .eq('client_id', briefing.client_id)
+    .eq('receives_copies', true)
+  const ccList = (ccContacts ?? []).filter(c => c.email)
+
   if (type === 'reminder' && briefing.clients?.email) {
     const result = await sendReminderToClient({
       clientName: briefing.clients.name,
@@ -37,7 +45,30 @@ export async function POST(req: NextRequest) {
     })
     emailSent = result.ok
 
-    await sendWhatsApp(`🔔 Lembrete enviado para ${briefing.clients.company} (${briefing.clients.email})`)
+    try { await supabaseAdmin.from('notifications').insert({
+      briefing_id: briefing.id, type,
+      status: result.ok ? 'sent' : 'failed',
+      details: { to: briefing.clients.email, name: briefing.clients.name, role: 'primary', link, manual: true }
+    }) } catch(_e) {}
+
+    // Send to CC contacts
+    for (const cc of ccList) {
+      const ccResult = await sendReminderToClient({
+        clientName: cc.name,
+        clientEmail: cc.email!,
+        company: briefing.clients.company,
+        typeLabel: briefing.type_label,
+        link,
+        language: cc.language || 'pt-BR',
+      })
+      try { await supabaseAdmin.from('notifications').insert({
+        briefing_id: briefing.id, type,
+        status: ccResult.ok ? 'sent' : 'failed',
+        details: { to: cc.email, name: cc.name, role: 'cc', link, manual: true }
+      }) } catch(_e) {}
+    }
+
+    await sendWhatsApp(`🔔 Lembrete enviado para ${briefing.clients.company}${ccList.length > 0 ? ` + ${ccList.length} CC` : ''}`)
   }
 
   if (type === 'resend' && briefing.clients?.email) {
@@ -50,14 +81,39 @@ export async function POST(req: NextRequest) {
       link,
     })
     emailSent = result.ok
-  }
 
-  try { await supabaseAdmin.from('notifications').insert({
-    briefing_id: briefing.id,
-    type,
-    status: emailSent ? 'sent' : 'failed',
-    details: { to: briefing.clients?.email, link, manual: true }
-  }) } catch(_e) {}
+    // Build/update recipients snapshot
+    const recipients = [
+      { email: briefing.clients.email, name: briefing.clients.name, role: 'primary' },
+      ...ccList.map(cc => ({ email: cc.email!, name: cc.name, role: 'cc' }))
+    ]
+
+    try { await supabaseAdmin.from('notifications').insert({
+      briefing_id: briefing.id, type,
+      status: result.ok ? 'sent' : 'failed',
+      details: { to: briefing.clients.email, name: briefing.clients.name, role: 'primary', link, manual: true }
+    }) } catch(_e) {}
+
+    // Send to CC contacts
+    for (const cc of ccList) {
+      const ccResult = await sendBriefingToClient({
+        clientName: cc.name,
+        clientEmail: cc.email!,
+        company: briefing.clients.company,
+        typeLabel: briefing.type_label,
+        link,
+        language: cc.language || 'pt-BR',
+      })
+      try { await supabaseAdmin.from('notifications').insert({
+        briefing_id: briefing.id, type,
+        status: ccResult.ok ? 'sent' : 'failed',
+        details: { to: cc.email, name: cc.name, role: 'cc', link, manual: true }
+      }) } catch(_e) {}
+    }
+
+    // Update recipients on briefing
+    try { await supabaseAdmin.from('briefings').update({ recipients }).eq('id', briefing.id) } catch(_e) {}
+  }
 
   return NextResponse.json({ ok: true, emailSent })
 }

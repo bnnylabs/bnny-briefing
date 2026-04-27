@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     supabaseAdmin.from('clients').select('*').eq('id', id).single(),
     supabaseAdmin
       .from('briefings')
-      .select('id, slug, type, type_label, status, created_at, completed_at, internal_notes')
+      .select('id, slug, type, type_label, status, language, created_at, completed_at, internal_notes, editing_locked, update_count, recipients')
       .eq('client_id', id)
       .order('created_at', { ascending: false }),
     supabaseAdmin

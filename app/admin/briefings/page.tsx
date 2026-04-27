@@ -37,7 +37,9 @@ interface Briefing {
   id: string; slug: string; type: string; type_label: string; status: string
   created_at: string; viewed_at: string | null; started_at: string | null
   completed_at: string | null; expires_at: string | null; internal_notes: string | null
-  language?: string; editing_locked?: boolean; editing_expires_at?: string | null; update_count?: number; clients: Client
+  language?: string; editing_locked?: boolean; editing_expires_at?: string | null
+  update_count?: number; clients: Client
+  recipients?: Array<{ email: string; name: string; role: 'primary' | 'cc' }>
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -770,6 +772,12 @@ export default function AdminPage() {
                         </button>
                       )}
                       <span className="text-[11px] text-muted-foreground">{b.clients?.name}</span>
+                      {/* CC recipients indicator */}
+                      {(b.recipients?.filter(r => r.role === 'cc').length ?? 0) > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          CC · {b.recipients!.filter(r => r.role === 'cc').length}
+                        </span>
+                      )}
                       <span className="text-[11px] text-muted-foreground">· {timeAgo(b.created_at)} ({fmt(b.created_at)})</span>
                       {b.completed_at && <span className="text-[11px] text-muted-foreground">· concluído {fmt(b.completed_at)}</span>}
                       {b.expires_at && new Date(b.expires_at) > new Date() && <span className="text-[11px] text-warning">· expira {fmt(b.expires_at)}</span>}

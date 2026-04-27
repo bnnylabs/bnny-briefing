@@ -67,6 +67,7 @@ interface Briefing {
   status: string; language?: string; created_at: string
   completed_at: string | null; internal_notes: string | null
   editing_locked?: boolean; editing_expires_at?: string | null; update_count?: number
+  recipients?: Array<{ email: string; name: string; role: 'primary' | 'cc' }>
 }
 
 interface SocialLinks {
@@ -924,6 +925,11 @@ export default function ClientePerfilPage() {
                             </span>
                             <span className="whitespace-nowrap text-xs text-muted-foreground">{fmt(b.created_at)}</span>
                             {b.completed_at && <span className="whitespace-nowrap text-xs text-muted-foreground">· concluído {fmt(b.completed_at)}</span>}
+                            {(b.recipients?.filter(r => r.role === 'cc').length ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                CC · {b.recipients!.filter(r => r.role === 'cc').length}
+                              </span>
+                            )}
                           </div>
                         </div>
 
