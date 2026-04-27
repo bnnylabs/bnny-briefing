@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Trash2 } from 'lucide-react'
+import { CheckCircle2, Trash2 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -50,19 +50,24 @@ export function SelectionBar({
       role="region"
       aria-label="Ações em lote"
       className={cn(
-        'mb-3 flex items-center justify-between gap-3 rounded-lg bg-foreground px-3.5 py-2 text-background shadow-md',
+        'mb-3 flex items-center justify-between gap-3 rounded-lg border border-foreground/15 bg-card px-3.5 py-2 shadow-md',
         'animate-in slide-in-from-top-2 fade-in-0 duration-200',
         className,
       )}
     >
-      <span className="text-sm font-medium tabular-nums">
+      <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground tabular-nums">
+        <CheckCircle2
+          size={14}
+          strokeWidth={2}
+          className="text-foreground/70"
+        />
         {count} selecionado{count > 1 ? 's' : ''}
       </span>
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md px-2.5 py-1 text-sm text-background/80 transition-colors hover:bg-background/10 hover:text-background"
+          className="rounded-md px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           Cancelar
         </button>
