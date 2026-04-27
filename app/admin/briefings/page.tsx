@@ -6,6 +6,7 @@ import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 import { useToast, ToastContainer } from '@/components/toast'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
+import { SelectionBar } from '@/components/admin/SelectionBar'
 import { Pencil, FileText, Bell, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -522,25 +523,34 @@ export default function AdminPage() {
               />
             </div>
 
-            {/* Select all + bulk actions */}
+            {/* Batch selection bar — appears when at least one row is selected */}
+            <SelectionBar
+              count={selectedIds.size}
+              itemLabel="briefing"
+              itemLabelPlural="briefings"
+              onCancel={() => setSelectedIds(new Set())}
+              onDelete={() => setBatchDeleteConfirm(true)}
+            />
+
+            {/* Permanent select-all row */}
             {filtered.length > 1 && (
-              <div className="flex items-center gap-3 mb-3">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <Checkbox
-                    checked={selectedIds.size === filtered.length && filtered.length > 0}
-                    onCheckedChange={checked => setSelectedIds(checked ? new Set(filtered.map(b => b.id)) : new Set())}
-                  />
-                  <span className="text-xs text-muted-foreground">Selecionar todos ({filtered.length})</span>
+              <div className="mb-3 flex items-center gap-2 px-1">
+                <Checkbox
+                  id="select-all-briefings"
+                  checked={selectedIds.size === filtered.length && filtered.length > 0}
+                  onCheckedChange={checked =>
+                    setSelectedIds(checked ? new Set(filtered.map(b => b.id)) : new Set())
+                  }
+                />
+                <label
+                  htmlFor="select-all-briefings"
+                  className="cursor-pointer select-none text-xs text-muted-foreground"
+                >
+                  {selectedIds.size === filtered.length && filtered.length > 0
+                    ? 'Desmarcar todos'
+                    : 'Selecionar todos'}{' '}
+                  ({filtered.length})
                 </label>
-                {selectedIds.size > 0 && (
-                  <div className="flex items-center gap-2 ml-auto animate-in fade-in-0 duration-150">
-                    <span className="text-xs text-muted-foreground">{selectedIds.size} selecionado{selectedIds.size > 1 ? 's' : ''}</span>
-                    <Button variant="destructive" size="sm" onClick={() => setBatchDeleteConfirm(true)}>
-                      <Trash2 size={13} /> Excluir {selectedIds.size}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Cancelar</Button>
-                  </div>
-                )}
               </div>
             )}
 

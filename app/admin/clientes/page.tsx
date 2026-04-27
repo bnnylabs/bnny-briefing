@@ -13,6 +13,7 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
+import { SelectionBar } from '@/components/admin/SelectionBar'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -320,32 +321,14 @@ export default function ClientesPage() {
           ))}
         </div>
 
-        {/* Batch bar */}
-        {selectedIds.size > 0 && (
-          <Card className="mb-3 flex flex-wrap items-center justify-between gap-3 border-destructive/30 bg-destructive/5 p-3">
-            <span className="text-sm text-muted-foreground">
-              <strong className="text-foreground">{selectedIds.size}</strong>{' '}
-              selecionado{selectedIds.size > 1 ? 's' : ''}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedIds(new Set())}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setBatchDeleteConfirm(true)}
-              >
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                Excluir {selectedIds.size}
-              </Button>
-            </div>
-          </Card>
-        )}
+        {/* Batch selection bar — same component as /admin/briefings */}
+        <SelectionBar
+          count={selectedIds.size}
+          itemLabel="cliente"
+          itemLabelPlural="clientes"
+          onCancel={() => setSelectedIds(new Set())}
+          onDelete={() => setBatchDeleteConfirm(true)}
+        />
 
         {/* Select all */}
         {!loading && filtered.length > 1 && (
