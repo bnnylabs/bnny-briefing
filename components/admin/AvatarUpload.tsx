@@ -109,20 +109,34 @@ export function AvatarUpload({
           <button
             type="button"
             onClick={() => !uploading && inputRef.current?.click()}
-            title="Trocar foto"
+            title="Clique para adicionar foto"
             className={cn(
-              'absolute inset-0 flex items-center justify-center transition-opacity',
+              'absolute inset-0 flex items-center justify-center transition-all',
               radius,
               uploading
                 ? 'cursor-wait bg-black/40 opacity-100'
-                : 'cursor-pointer bg-black/0 opacity-0 hover:bg-black/40 hover:opacity-100',
+                : hasImage
+                  ? 'cursor-pointer bg-black/0 opacity-0 hover:bg-black/40 hover:opacity-100'
+                  : 'cursor-pointer bg-black/0 opacity-0 hover:bg-black/30 hover:opacity-100',
             )}
           >
-            <Camera
-              size={size === 32 ? 12 : size === 36 ? 13 : 16}
-              className="text-white drop-shadow"
-            />
+            {(uploading || hasImage) && (
+              <Camera
+                size={size === 32 ? 12 : size === 36 ? 13 : 16}
+                className="text-white drop-shadow"
+              />
+            )}
           </button>
+
+          {/* Persistent camera badge — bottom-right, only when no image */}
+          {!hasImage && !uploading && (
+            <span className={cn(
+              'pointer-events-none absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground',
+              size === 48 ? 'h-5 w-5' : 'h-4 w-4',
+            )}>
+              <Camera size={size === 48 ? 10 : 8} />
+            </span>
+          )}
 
           {/* Remove button — top-right corner, only when has image */}
           {hasImage && deleteUrl && !uploading && (
