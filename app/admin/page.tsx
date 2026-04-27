@@ -226,8 +226,18 @@ export default function AdminPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
-    if (res.ok) { setAuthed(true); loadBriefings() }
-    else setLoginError('Senha incorreta')
+    if (res.ok) {
+      setAuthed(true)
+      loadBriefings()
+      // Critical: cookie was just set server-side. The server layout has
+      // already rendered without the sidebar (because cookie wasn't there
+      // when the page first loaded). router.refresh() forces a re-render
+      // of all server components for the current route — so the layout
+      // re-evaluates the cookie and now wraps us in AdminShell.
+      router.refresh()
+    } else {
+      setLoginError('Senha incorreta')
+    }
   }
 
   async function openDiffModal(b: Briefing) {
