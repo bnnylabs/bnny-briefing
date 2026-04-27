@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
+  Activity,
   ArrowRight,
   Bot,
   Plus,
   Search,
+  Star,
   Trash2,
   User,
 } from 'lucide-react'
@@ -50,11 +52,38 @@ interface Client {
   phone: string
   website: string | null
   analysis: Record<string, unknown> | null
+  status: string
+  tags: string[]
+  is_starred: boolean
+  last_activity_at: string | null
   created_at: string
   stats: ClientStats
 }
 type Filter = 'all' | 'with_briefing' | 'no_briefing' | 'with_ai'
 type SortKey = 'recent' | 'name' | 'briefings'
+
+const STATUS_COLORS: Record<string, string> = {
+  lead: 'border-blue-200 bg-blue-50 text-blue-700',
+  active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  recurring: 'border-lime-300 bg-lime-50 text-lime-700',
+  paused: 'border-amber-200 bg-amber-50 text-amber-700',
+  archived: 'border-border bg-muted text-muted-foreground',
+}
+const STATUS_LABELS: Record<string, string> = {
+  lead: 'Lead', active: 'Ativo', recurring: 'Recorrente',
+  paused: 'Pausado', archived: 'Arquivado',
+}
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return ''
+  const diff = Date.now() - new Date(iso).getTime()
+  const days = Math.floor(diff / 86400000)
+  if (days === 0) return 'hoje'
+  if (days === 1) return 'ontem'
+  if (days < 7) return `${days}d atrás`
+  if (days < 30) return `${Math.floor(days / 7)}sem atrás`
+  return `${Math.floor(days / 30)}m atrás`
+}
 
 function SkeletonCard() {
   return (
@@ -376,7 +405,7 @@ export default function ClientesPage() {
               <Card
                 key={c.id}
                 className={cn(
-                  'p-4 transition-colors',
+                  'group p-4 transition-colors',
                   selectedIds.has(c.id) && 'border-primary/40 bg-primary/5',
                 )}
               >
@@ -386,64 +415,71 @@ export default function ClientesPage() {
                     onCheckedChange={() => toggleSelect(c.id)}
                   />
                   <div
-                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
+                    className="flex min-w-0 flex-1 cursor-pointer flex-col gap-1"
                     onClick={() => router.push(`/admin/clientes/${c.id}`)}
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 truncate text-sm font-semibold">
-                        <span className="truncate">{c.company}</span>
-                        {c.analysis &&
-                          Object.keys(c.analysis).length > 0 && (
-                            <Bot className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          )}
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {c.name}
-                        {c.email && ` · ${c.email}`}
-                      </div>
+                    {/* Row 1: company + icons */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-semibold">{c.company}</span>
+                      {c.is_starred && <Star size={12} className="shrink-0 fill-lime-400 text-lime-500" />}
+                      {c.analysis && Object.keys(c.analysis).length > 0 && (
+                        <Bot size={12} className="shrink-0 text-muted-foreground" />
+                      )}
+                    </div>
+                    {/* Row 2: contact name + email */}
+                    <div className="truncate text-xs text-muted-foreground">
+                      {c.name}{c.email && ` · ${c.email}`}
+                    </div>
+                    {/* Row 3: status + segments + activity */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      {c.status && c.status !== 'active' && (
+                        <span className={cn(
+                          'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                          STATUS_COLORS[c.status] ?? STATUS_COLORS.active,
+                        )}>
+                          {STATUS_LABELS[c.status] ?? c.status}
+                        </span>
+                      )}
+                      {(c.tags ?? []).slice(0, 2).map(tag => (
+                        <span key={tag} className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          {tag}
+                        </span>
+                      ))}
+                      {(() => {
+                        const t = c.last_activity_at ?? c.stats.last_at
+                        return t ? (
+                          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
+                            <Activity size={9} />
+                            {relativeTime(t)}
+                          </span>
+                        ) : null
+                      })()}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <div className="min-w-[32px] text-center">
-                      <div className="font-mono text-base font-bold">
-                        {c.stats.total}
-                      </div>
-                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                        brief.
-                      </div>
+                      <div className="font-mono text-base font-bold">{c.stats.total}</div>
+                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">brief.</div>
                     </div>
                     <div className="min-w-[28px] text-center">
-                      <div
-                        className={cn(
-                          'font-mono text-base font-bold',
-                          c.stats.concluido > 0
-                            ? 'text-primary'
-                            : 'text-muted-foreground',
-                        )}
-                      >
+                      <div className={cn('font-mono text-base font-bold', c.stats.concluido > 0 ? 'text-primary' : 'text-muted-foreground')}>
                         {c.stats.concluido}
                       </div>
-                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                        ok
-                      </div>
+                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">ok</div>
                     </div>
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="outline" size="sm"
                       onClick={() => router.push(`/admin/clientes/${c.id}`)}
                     >
-                      Ver
-                      <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                      Ver <ArrowRight className="ml-1 h-3.5 w-3.5" />
                     </Button>
+                    {/* Delete — only visible on hover */}
                     <IconButton
                       icon={<Trash2 className="h-4 w-4" />}
                       label="Excluir cliente"
                       size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setDeleteTarget(c)
-                      }}
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(c) }}
+                      className="opacity-0 transition-opacity group-hover:opacity-100 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     />
                   </div>
                 </div>

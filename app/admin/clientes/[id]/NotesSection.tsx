@@ -88,7 +88,7 @@ export function NotesSection({ clientId, notes, onUpdate, onError }: Props) {
         <button
           type="button" onClick={submit}
           disabled={!body.trim() || submitting}
-          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-lime-400 py-1.5 text-xs font-semibold text-neutral-900 transition-colors hover:bg-lime-300 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
           <StickyNote size={11} />
           {submitting ? 'Salvando…' : 'Adicionar nota'}

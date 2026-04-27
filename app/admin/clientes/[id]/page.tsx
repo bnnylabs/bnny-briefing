@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback, ReactNode } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
-  ArrowLeft, ArrowRight, Bot, Briefcase, Check, CheckCircle2, ChevronDown,
+  Activity, ArrowLeft, ArrowRight, BarChart2, Bot, Briefcase, Building2,
+  Check, CheckCircle2, ChevronDown,
   Clipboard, ClipboardCheck, ClipboardList, Clock, Download, ExternalLink,
   Eye, FileText, Image as ImageIcon, Link as LinkIcon,
   Lock, Paperclip, Pencil, Plus, RefreshCw, Save, Send,
-  Sparkles, Star, Unlock, X,
+  Sparkles, Star, StickyNote, Unlock, Users, X,
 } from 'lucide-react'
 import { SOCIAL_NETWORKS } from './SocialIcons'
 
@@ -595,7 +596,10 @@ export default function ClientePerfilPage() {
             {/* Client info card */}
             <Card className="p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">Informações</span>
+                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  Informações
+                </div>
                 <Button variant={editMode ? 'secondary' : 'outline'} size="sm" onClick={() => setEditMode(!editMode)}>
                   {editMode ? <><X className="mr-1 h-3.5 w-3.5" />Cancelar</> : <><Pencil className="mr-1 h-3.5 w-3.5" />Editar</>}
                 </Button>
@@ -696,7 +700,10 @@ export default function ClientePerfilPage() {
 
             {/* Contacts card */}
             <Card className="p-5">
-              <div className="mb-3 text-sm font-semibold">Contatos</div>
+              <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                Contatos
+              </div>
               <ContactsSection
                 clientId={id} contacts={contacts} onUpdate={load}
                 onError={msg => toast(msg, 'error')}
@@ -911,16 +918,22 @@ export default function ClientePerfilPage() {
 
             {/* Metrics */}
             <Card className="p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Métricas</div>
-              <div className="space-y-2">
+              <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+                <BarChart2 className="h-4 w-4 text-muted-foreground" />
+                Métricas
+              </div>
+              <div className="space-y-0.5">
                 {[
-                  { label: 'Briefings', value: String(totalBriefings) },
-                  { label: 'Concluídos', value: `${concluded.length} (${completionRate}%)` },
-                  { label: 'Tempo médio', value: avgDays !== null ? `${avgDays} dias` : '—' },
-                  { label: 'Última atividade', value: lastActivity ? relativeTime(lastActivity) : '—' },
+                  { icon: <FileText size={12} />, label: 'Briefings', value: String(totalBriefings) },
+                  { icon: <CheckCircle2 size={12} />, label: 'Concluídos', value: `${concluded.length} (${completionRate}%)` },
+                  { icon: <Clock size={12} />, label: 'Tempo médio', value: avgDays !== null ? `${avgDays} dias` : '—' },
+                  { icon: <Activity size={12} />, label: 'Última atividade', value: lastActivity ? relativeTime(lastActivity) : '—' },
                 ].map(m => (
-                  <div key={m.label} className="flex items-center justify-between border-b border-border/50 py-1.5 last:border-0">
-                    <span className="text-xs text-muted-foreground">{m.label}</span>
+                  <div key={m.label} className="flex items-center justify-between border-b border-border/50 py-2 last:border-0">
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className="text-muted-foreground/60">{m.icon}</span>
+                      {m.label}
+                    </span>
                     <span className="text-xs font-medium text-foreground">{m.value}</span>
                   </div>
                 ))}
@@ -929,7 +942,10 @@ export default function ClientePerfilPage() {
 
             {/* Notes */}
             <Card className="p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notas internas</div>
+              <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+                <StickyNote className="h-4 w-4 text-muted-foreground" />
+                Notas internas
+              </div>
               <NotesSection
                 clientId={id} notes={notes} onUpdate={load}
                 onError={msg => toast(msg, 'error')}
