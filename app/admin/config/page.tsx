@@ -46,6 +46,7 @@ type SettingsBag = {
   // Marca
   brand_name: string
   brand_logo_url: string
+  brand_logo_email: string
   brand_primary_color: string
   brand_email_from_name: string
   brand_email_signature: string
@@ -61,6 +62,7 @@ const EMPTY: SettingsBag = {
   admin_password: '',
   brand_name: '',
   brand_logo_url: '',
+  brand_logo_email: '',
   brand_primary_color: '',
   brand_email_from_name: '',
   brand_email_signature: '',
@@ -346,6 +348,13 @@ export default function ConfigPage() {
                 onError={(msg) => toast(msg, 'error')}
                 onSuccess={(msg) => toast(msg, 'success')}
               />
+              <BrandLogoField
+                kind="email"
+                currentUrl={settings.brand_logo_email}
+                onChange={(url) => update('brand_logo_email', url)}
+                onError={(msg) => toast(msg, 'error')}
+                onSuccess={(msg) => toast(msg, 'success')}
+              />
               <Field
                 label="Cor primária (HEX)"
                 value={settings.brand_primary_color}
@@ -534,11 +543,13 @@ function KeyValueRow({
 }
 
 function BrandLogoField({
+  kind = 'app',
   currentUrl,
   onChange,
   onError,
   onSuccess,
 }: {
+  kind?: 'app' | 'email'
   currentUrl: string
   onChange: (url: string) => void
   onError: (msg: string) => void
@@ -547,11 +558,21 @@ function BrandLogoField({
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = React.useState(false)
 
+  const isEmail = kind === 'email'
+  const label = isEmail ? 'Logo do email' : 'Logo'
+  const accept = isEmail ? 'image/png,image/jpeg' : 'image/svg+xml,image/png,image/jpeg,image/webp'
+  const formatHint = isEmail
+    ? 'PNG ou JPG, fundo transparente — mín 400px de largura. Recomendado 600×150px'
+    : 'SVG, PNG, JPG ou WebP — máximo 2 MB'
+  const fallbackHint = isEmail
+    ? 'Sem logo customizado — usaremos o texto Bnny Labs nos emails'
+    : 'Usando logo padrão Bnny Labs'
+
   async function handleFile(file: File) {
     setUploading(true)
     const fd = new FormData()
     fd.append('file', file)
-    const res = await fetch('/api/admin/brand/upload', {
+    const res = await fetch(`/api/admin/brand/upload?kind=${kind}`, {
       method: 'POST',
       body: fd,
     })
@@ -568,7 +589,7 @@ function BrandLogoField({
 
   async function handleRemove() {
     setUploading(true)
-    await fetch('/api/admin/brand/upload', { method: 'DELETE' })
+    await fetch(`/api/admin/brand/upload?kind=${kind}`, { method: 'DELETE' })
     setUploading(false)
     onChange('')
     onSuccess('Logo removido — usando padrão')
@@ -577,19 +598,21 @@ function BrandLogoField({
   return (
     <div className="space-y-1.5">
       <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-        Logo
+        {label}
       </Label>
       <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
         <div className="flex h-12 w-24 shrink-0 items-center justify-center rounded border border-border bg-card">
           {currentUrl ? (
-            // Use plain <img> rather than next/image because the URL is dynamic
-            // (Supabase) and we don't want to configure remotePatterns.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={currentUrl}
-              alt="Logo"
+              alt={label}
               className="max-h-full max-w-full object-contain p-1"
             />
+          ) : isEmail ? (
+            <span className="font-mono text-[10px] font-bold tracking-tight text-muted-foreground">
+              Bnny Labs
+            </span>
           ) : (
             <Logo className="h-5 w-auto text-foreground" />
           )}
@@ -597,16 +620,15 @@ function BrandLogoField({
         <div className="min-w-0 flex-1 text-xs text-muted-foreground">
           {currentUrl ? (
             <>
-              Logo personalizado em uso
+              {isEmail ? 'Logo de email em uso' : 'Logo personalizado em uso'}
               <br />
               <span className="break-all opacity-60">{currentUrl}</span>
             </>
           ) : (
             <>
-              Usando logo padrão{' '}
-              <span className="font-mono">Bnny Labs</span>
+              {fallbackHint}
               <br />
-              SVG, PNG, JPG ou WebP — máximo 2 MB
+              {formatHint}
             </>
           )}
         </div>
@@ -614,7 +636,7 @@ function BrandLogoField({
           <input
             ref={inputRef}
             type="file"
-            accept="image/svg+xml,image/png,image/jpeg,image/webp"
+            accept={accept}
             onChange={(e) => {
               const f = e.target.files?.[0]
               if (f) handleFile(f)

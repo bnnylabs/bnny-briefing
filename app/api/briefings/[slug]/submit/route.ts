@@ -65,46 +65,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   const clientName = briefing.clients?.name || 'Cliente'
   const clientEmail = briefing.clients?.email
   const lang = briefing.language || 'pt-BR'
-  const isEN = lang === 'en-US'
 
-  // Build diff for updates
-  let diffHtml = ''
+  // Build diff for updates — collected as structured data, the email
+  // module owns the rendering. Same shape both surfaces (email + future
+  // PDF export, etc) can consume.
+  const changes: { field: string; old: string; new: string }[] = []
   if (isUpdate) {
-    const changes: { field: string; old: string; new: string }[] = []
     for (const [key, newVal] of Object.entries(answers)) {
       const oldVal = (previousAnswers as Record<string, unknown>)[key]
-      const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
-      const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
+      const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal ?? '')
+      const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal ?? '')
       if (oldStr !== newStr && newStr && key !== 'filled_by') {
         changes.push({ field: key.replace(/_/g, ' '), old: oldStr, new: newStr })
       }
-    }
-    if (changes.length > 0) {
-      diffHtml = changes.map(c => `
-        <div style="margin-bottom:16px;padding:12px 16px;background:#f8f8f8;border-left:3px solid #c8ff00;border-radius:0 8px 8px 0">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:8px">${c.field}</div>
-          <div style="font-size:13px;color:#999;text-decoration:line-through;margin-bottom:4px">${c.old}</div>
-          <div style="font-size:14px;color:#111;font-weight:600">${c.new}</div>
-        </div>`).join('')
     }
   }
 
   // Email to admin
   if (adminEmail) {
-    const subject = isUpdate
-      ? `📝 ${briefing.clients?.company} atualizou o briefing de ${briefing.type_label}`
-      : `✅ Briefing concluído — ${briefing.clients?.company} (${briefing.type_label})`
-
-    const bodyHtml = isUpdate
-      ? `<h1>${isEN ? 'Briefing updated!' : 'Briefing atualizado!'} 📝</h1>
-         <p><strong>${briefing.clients?.company}</strong> ${isEN ? 'updated their' : 'atualizou o'} briefing de <strong>${briefing.type_label}</strong>.</p>
-         ${diffHtml || '<p style="color:#888">Sem alterações detectadas.</p>'}
-         <a href="${baseUrl}/admin" class="btn">${isEN ? 'View in admin →' : 'Ver no painel →'}</a>`
-      : `<h1>${isEN ? 'Briefing completed!' : 'Briefing concluído!'} ✅</h1>
-         <p>${isEN ? 'Client' : 'O cliente'} <strong>${clientName}</strong> ${isEN ? 'from' : 'da'} <strong>${briefing.clients?.company}</strong> ${isEN ? 'completed the' : 'concluiu o briefing de'} <strong>${briefing.type_label}</strong>.</p>
-         <a href="${baseUrl}/admin" class="btn">${isEN ? 'View responses →' : 'Ver respostas →'}</a>`
-
-    await sendCompletionToAdmin({ adminEmail, clientName, company: briefing.clients?.company, typeLabel: briefing.type_label, slug, baseUrl, customSubject: subject, customBody: bodyHtml })
+    await sendCompletionToAdmin({
+      adminEmail,
+      clientName,
+      company: briefing.clients?.company || '',
+      typeLabel: briefing.type_label,
+      baseUrl,
+      kind: isUpdate ? 'updated' : 'completed',
+      changes,
+      language: lang,
+    })
     try { await supabaseAdmin.from('notifications').insert({ briefing_id: briefing.id, type: isUpdate ? 'update_admin' : 'email_admin', status: 'sent', details: { to: adminEmail } }) } catch (_e) {}
   }
 

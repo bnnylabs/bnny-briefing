@@ -11,20 +11,43 @@ function isAuthed(req: NextRequest) {
 
 const BUCKET = 'briefing-files'
 const MAX_BYTES = 2 * 1024 * 1024 // 2 MB ceiling — logos should be small
-const ALLOWED_MIME = new Set([
-  'image/svg+xml',
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-])
+
+// Two upload "kinds" — the app logo (renders in admin UI, can be SVG) and
+// the email logo (renders in email clients, must be raster: PNG/JPG only).
+// Outlook in particular won't render SVG, and Gmail will downscale poorly.
+type Kind = 'app' | 'email'
+
+const CONFIG: Record<Kind, { mimes: Set<string>; settingsKey: string; pathPrefix: string }> = {
+  app: {
+    mimes: new Set(['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp']),
+    settingsKey: 'brand_logo_url',
+    pathPrefix: 'brand/logo',
+  },
+  email: {
+    // PNG strongly preferred for transparency, JPG accepted as fallback.
+    mimes: new Set(['image/png', 'image/jpeg']),
+    settingsKey: 'brand_logo_email',
+    pathPrefix: 'brand/email-logo',
+  },
+}
+
+function parseKind(req: NextRequest): Kind {
+  const k = req.nextUrl.searchParams.get('kind')
+  return k === 'email' ? 'email' : 'app'
+}
 
 /**
- * POST /api/admin/brand/upload
- * Accepts a single logo file, stores it under brand/, returns a public URL.
+ * POST /api/admin/brand/upload?kind=app|email
+ * Stores the uploaded image under the bucket and persists its public URL
+ * in the matching settings key. `kind=app` is the default for backward
+ * compatibility with the existing call site.
  */
 export async function POST(req: NextRequest) {
   if (!isAuthed(req))
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const kind = parseKind(req)
+  const { mimes, settingsKey, pathPrefix } = CONFIG[kind]
 
   try {
     const formData = await req.formData()
@@ -38,16 +61,16 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       )
     }
-    if (!ALLOWED_MIME.has(file.type)) {
+    if (!mimes.has(file.type)) {
+      const allowed = kind === 'email' ? 'PNG ou JPG' : 'SVG, PNG, JPG ou WebP'
       return NextResponse.json(
-        { error: 'Formato não suportado. Use SVG, PNG, JPG ou WebP.' },
+        { error: `Formato não suportado. Use ${allowed}.` },
         { status: 400 },
       )
     }
 
     const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
-    // Cache-busting filename so browsers pick up new uploads immediately
-    const path = `brand/logo-${Date.now()}.${ext}`
+    const path = `${pathPrefix}-${Date.now()}.${ext}`
 
     const buffer = Buffer.from(await file.arrayBuffer())
     const { error: uploadError } = await supabaseAdmin.storage
@@ -64,10 +87,9 @@ export async function POST(req: NextRequest) {
       .from(BUCKET)
       .getPublicUrl(path)
 
-    // Persist URL in settings table
     await supabaseAdmin.from('settings').upsert(
       {
-        key: 'brand_logo_url',
+        key: settingsKey,
         value: urlData.publicUrl,
         updated_at: new Date().toISOString(),
       },
@@ -82,16 +104,19 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * DELETE /api/admin/brand/upload
- * Removes the brand_logo_url setting (falls back to bundled SVG).
+ * DELETE /api/admin/brand/upload?kind=app|email
+ * Clears the corresponding settings key (falls back to bundled SVG / text).
  */
 export async function DELETE(req: NextRequest) {
   if (!isAuthed(req))
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const kind = parseKind(req)
+  const { settingsKey } = CONFIG[kind]
+
   await supabaseAdmin.from('settings').upsert(
     {
-      key: 'brand_logo_url',
+      key: settingsKey,
       value: '',
       updated_at: new Date().toISOString(),
     },
