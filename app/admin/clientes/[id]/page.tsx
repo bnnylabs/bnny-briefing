@@ -33,6 +33,7 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -531,30 +532,63 @@ export default function ClientePerfilPage() {
     setLoadingResponses(false)
   }
 
-  async function copyResponses(briefingTitle: string) {
-    if (!responses) return
+  /**
+   * Build a plain-text dump of a briefing's responses for copy-paste.
+   * Header includes type, company, contact, email, whatsapp, completion
+   * date — same shape as the one on /admin/briefings, but pulls contact
+   * info from the page-level `client` state since this page is already
+   * scoped to a single client.
+   */
+  function buildText(b: Briefing, resp: Record<string, unknown>) {
+    const labelMap = b.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
     const lines = [
-      `BRIEFING — ${briefingTitle}`,
-      `Empresa: ${client?.company}`,
+      `BRIEFING — ${b.type_label.toUpperCase()}`,
+      `Empresa: ${client?.company || '—'}`,
+      `Contato: ${client?.name || '—'}`,
+      `Email: ${client?.email || '—'}`,
+      `WhatsApp: ${client?.phone || '—'}`,
+      `Concluído: ${fmt(b.completed_at)}`,
+      '',
+      '─────────────────────────────────',
       '',
     ]
-    Object.entries(responses)
-      .filter(([, v]) => v)
-      .forEach(([k, v]) => {
-        const bLang = briefings.find(
-          (b) => b.slug === viewingResponses,
-        )?.language
-        const label =
-          (bLang === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT)[k] ||
-          k.replace(/_/g, ' ').toUpperCase()
-        lines.push(label.toUpperCase())
-        lines.push(Array.isArray(v) ? (v as string[]).join(', ') : String(v))
-        lines.push('')
-      })
-    await navigator.clipboard.writeText(lines.join('\n'))
+    Object.entries(resp).forEach(([k, v]) => {
+      if (!v) return
+      const label = labelMap[k] || k.replace(/_/g, ' ').toUpperCase()
+      lines.push(label.toUpperCase())
+      lines.push(Array.isArray(v) ? (v as string[]).join(', ') : String(v))
+      lines.push('')
+    })
+    return lines.join('\n')
+  }
+
+  async function copyResponses() {
+    if (!responses || !viewingResponses) return
+    const b = briefings.find((br) => br.slug === viewingResponses)
+    if (!b) return
+    await navigator.clipboard.writeText(buildText(b, responses))
     setCopiedResponses(true)
     toast('Respostas copiadas!', 'success', 2000)
     setTimeout(() => setCopiedResponses(false), 2000)
+  }
+
+  /**
+   * Open a print-ready HTML document in a new tab. Mirrors the
+   * /admin/briefings export so a briefing exported from either entry
+   * point produces an identical PDF.
+   */
+  function exportPDF() {
+    if (!responses || !viewingResponses) return
+    const b = briefings.find((br) => br.slug === viewingResponses)
+    if (!b) return
+    const fields = Object.entries(responses).filter(([, v]) => v)
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111;padding:48px;max-width:800px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #c8ff00;margin-bottom:32px}.logo{font-size:22px;font-weight:800;letter-spacing:-0.04em}.logo span{color:#c8ff00;background:#111;padding:2px 8px;border-radius:4px}.badge{background:#111;color:#c8ff00;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:inline-block}.cb{background:#f8f8f8;border-radius:12px;padding:20px 24px;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.cf label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;display:block;margin-bottom:3px}.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}.f{margin-bottom:18px}.fl{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}.fv{font-size:14px;color:#111;line-height:1.6;background:#f8f8f8;padding:10px 14px;border-radius:8px;border-left:3px solid #c8ff00}.footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="hdr"><div><div class="logo"><span>Bnny</span> Labs</div><div style="font-size:12px;color:#555;margin-top:4px">Sistema de Briefings</div></div><div style="text-align:right"><div style="font-size:17px;font-weight:700">${b.type_label}</div><div class="badge">${STATUS_LABELS[b.status] || b.status}</div></div></div><div class="cb"><div class="cf"><label>Empresa</label><span style="font-size:15px;font-weight:700">${client?.company || '—'}</span></div><div class="cf"><label>Contato</label><span>${client?.name || '—'}</span></div><div class="cf"><label>Email</label><span>${client?.email || '—'}</span></div><div class="cf"><label>WhatsApp</label><span>${client?.phone || '—'}</span></div><div class="cf"><label>Concluído em</label><span>${fmt(b.completed_at)}</span></div><div class="cf"><label>Tipo</label><span>${b.type_label}</span></div></div><div class="st">Respostas do briefing</div>${fields.map(([k, v]) => `<div class="f"><div class="fl">${k.replace(/_/g, ' ')}</div><div class="fv">${Array.isArray(v) ? (v as string[]).join(', ') : String(v)}</div></div>`).join('')}<div class="footer">Gerado por Bnny Labs · briefing.bnnylabs.com · ${new Date().toLocaleDateString('pt-BR')}</div></body></html>`
+    const win = window.open('', '_blank')
+    if (win) {
+      win.document.write(html)
+      win.document.close()
+      setTimeout(() => win.print(), 500)
+    }
   }
 
   async function toggleLock(briefingSlug: string, currentLocked: boolean) {
@@ -1049,7 +1083,7 @@ export default function ClientePerfilPage() {
         </Card>
       </div>
 
-      {/* RESPONSES MODAL */}
+      {/* RESPONSES MODAL — mirrors the one on /admin/briefings */}
       <Dialog
         open={!!viewingResponses}
         onOpenChange={(open) => {
@@ -1059,130 +1093,171 @@ export default function ClientePerfilPage() {
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{client?.company}</DialogTitle>
-            <DialogDescription>
-              Respostas do briefing
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="mb-4 mt-2 flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() =>
-                viewingResponses && copyResponses(viewingResponses)
-              }
-              className="flex-1"
-            >
-              {copiedResponses ? (
-                <>
-                  <ClipboardCheck className="mr-1.5 h-4 w-4" />
-                  Copiado!
-                </>
-              ) : (
-                <>
-                  <Clipboard className="mr-1.5 h-4 w-4" />
-                  Copiar tudo
-                </>
-              )}
-            </Button>
-          </div>
-
-          {responseVersions2 > 1 && responseDiff2 && (
-            <div className="mb-4">
-              <div className="mb-2 flex gap-2">
-                <Button
-                  variant={!showDiff2 ? 'secondary' : 'outline'}
-                  size="sm"
-                  onClick={() => setShowDiff2(false)}
-                  className="flex-1"
-                >
-                  Respostas atuais
-                </Button>
-                <Button
-                  variant={showDiff2 ? 'secondary' : 'outline'}
-                  size="sm"
-                  onClick={() => setShowDiff2(true)}
-                  className="flex-1"
-                >
-                  <Pencil className="mr-1.5 h-3 w-3" />
-                  Alterações
-                  <span className="ml-1.5 rounded-full bg-foreground/10 px-1.5 py-px text-[10px] font-bold text-foreground">
-                    {Object.keys(responseDiff2).length}
-                  </span>
-                </Button>
-              </div>
-              {showDiff2 && (
-                <div className="flex flex-col gap-2">
-                  {Object.entries(responseDiff2).map(
-                    ([key, { old: oldVal, new: newVal }]) => {
-                      const bLang = briefings.find(
-                        (b) => b.slug === viewingResponses,
-                      )?.language
-                      const labelMap =
-                        bLang === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
-                      const label = labelMap[key] || key.replace(/_/g, ' ')
-                      const oldStr = Array.isArray(oldVal)
-                        ? (oldVal as string[]).join(', ')
-                        : String(oldVal || '')
-                      const newStr = Array.isArray(newVal)
-                        ? (newVal as string[]).join(', ')
-                        : String(newVal || '')
-                      return (
-                        <div
-                          key={key}
-                          className="overflow-hidden rounded-lg border border-primary/30 bg-card"
-                        >
-                          <div className="border-b border-primary/30 bg-primary/5 px-3.5 py-1.5">
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary">
-                              <Pencil className="h-3 w-3" />
-                              {label}
-                            </span>
-                          </div>
-                          <div className="flex flex-col gap-2 px-3.5 py-2.5">
-                            <div className="text-xs leading-relaxed text-muted-foreground line-through">
-                              <span className="mr-1.5 text-[10px] font-semibold">
-                                ERA:
-                              </span>
-                              {oldStr || '—'}
-                            </div>
-                            <div className="text-sm font-semibold leading-relaxed text-foreground">
-                              <span className="mr-1.5 text-[10px] font-bold text-primary">
-                                AGORA:
-                              </span>
-                              {newStr}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    },
+        <DialogContent
+          wide
+          className="max-h-[90vh] gap-0 overflow-y-auto p-6"
+        >
+          {(() => {
+            const b = briefings.find((br) => br.slug === viewingResponses)
+            if (!b) return null
+            return (
+              <>
+                <DialogHeader className="mb-5 border-b border-border/60 p-0 pb-4">
+                  <DialogTitle className="text-xl">
+                    {client?.company}
+                  </DialogTitle>
+                  <DialogDescription asChild>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <Badge
+                        variant="default"
+                        className="text-[10px] uppercase tracking-wider"
+                      >
+                        {b.type_label}
+                      </Badge>
+                      {client?.name && (
+                        <span className="text-sm text-muted-foreground">
+                          {client.name}
+                        </span>
+                      )}
+                      {client?.email && (
+                        <span className="text-sm text-muted-foreground">
+                          · {client.email}
+                        </span>
+                      )}
+                    </div>
+                  </DialogDescription>
+                  {b.completed_at && (
+                    <div className="mt-1.5 text-xs text-muted-foreground">
+                      Concluído em {fmt(b.completed_at)}
+                    </div>
                   )}
-                </div>
-              )}
-            </div>
-          )}
+                </DialogHeader>
 
-          {loadingResponses ? (
-            <div className="py-10 text-center">
-              <div className="spinner" />
-            </div>
-          ) : responses ? (
-            <ResponsesContent2
-              responses={responses}
-              language={
-                briefings.find((b) => b.slug === viewingResponses)?.language
-              }
-              companyName={client?.company || 'briefing'}
-              renderFileValue={renderFileValue}
-              labelMapPT={FIELD_LABELS_PT}
-              labelMapEN={FIELD_LABELS_EN}
-            />
-          ) : (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              Sem respostas ainda
-            </div>
-          )}
+                <div className="mb-5 flex gap-2">
+                  <Button
+                    onClick={copyResponses}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    {copiedResponses ? (
+                      <>
+                        <ClipboardCheck size={14} />
+                        Copiado!
+                      </>
+                    ) : (
+                      <>
+                        <Clipboard size={14} />
+                        Copiar tudo
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={exportPDF}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <FileText size={14} />
+                    Exportar PDF
+                  </Button>
+                </div>
+
+                {responseVersions2 > 1 && responseDiff2 && (
+                  <div className="mb-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowDiff2(false)}
+                        className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs transition-colors ${
+                          !showDiff2
+                            ? 'border-foreground/20 bg-muted font-medium text-foreground'
+                            : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                        }`}
+                      >
+                        <ClipboardList size={12} /> Respostas atuais
+                      </button>
+                      <button
+                        onClick={() => setShowDiff2(true)}
+                        className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg border py-2 text-xs transition-colors ${
+                          showDiff2
+                            ? 'border-foreground/20 bg-muted font-medium text-foreground'
+                            : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                        }`}
+                      >
+                        <Pencil size={12} /> Ver alterações
+                        <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] font-bold text-foreground">
+                          {Object.keys(responseDiff2).length}
+                        </span>
+                      </button>
+                    </div>
+                    {showDiff2 && (
+                      <div className="mt-3 flex flex-col gap-2">
+                        {Object.keys(responseDiff2).length === 0 ? (
+                          <div className="py-8 text-center text-sm text-muted-foreground">
+                            Nenhuma alteração detectada
+                          </div>
+                        ) : (
+                          Object.entries(responseDiff2).map(
+                            ([key, { old: oldVal, new: newVal }]) => {
+                              const labelMap =
+                                b.language === 'en-US'
+                                  ? FIELD_LABELS_EN
+                                  : FIELD_LABELS_PT
+                              const label =
+                                labelMap[key] || key.replace(/_/g, ' ')
+                              const oldStr = Array.isArray(oldVal)
+                                ? (oldVal as string[]).join(', ')
+                                : String(oldVal || '')
+                              const newStr = Array.isArray(newVal)
+                                ? (newVal as string[]).join(', ')
+                                : String(newVal || '')
+                              return (
+                                <div
+                                  key={key}
+                                  className="overflow-hidden rounded-lg border border-border"
+                                >
+                                  <div className="border-b border-border bg-muted/40 px-3.5 py-2">
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-foreground">
+                                      <Pencil size={10} /> {label}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-col gap-2 bg-card px-3.5 py-3">
+                                    <div className="text-xs text-muted-foreground line-through">
+                                      {oldStr || '—'}
+                                    </div>
+                                    <div className="text-sm font-semibold text-foreground">
+                                      {newStr}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            },
+                          )
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {loadingResponses ? (
+                  <div className="py-10 text-center">
+                    <div className="spinner" />
+                  </div>
+                ) : responses && !showDiff2 ? (
+                  <ResponsesContent2
+                    responses={responses}
+                    language={b.language}
+                    companyName={client?.company || 'briefing'}
+                    renderFileValue={renderFileValue}
+                    labelMapPT={FIELD_LABELS_PT}
+                    labelMapEN={FIELD_LABELS_EN}
+                  />
+                ) : !responses && !showDiff2 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    Sem respostas ainda
+                  </div>
+                ) : null}
+              </>
+            )
+          })()}
         </DialogContent>
       </Dialog>
     </div>

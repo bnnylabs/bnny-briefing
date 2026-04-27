@@ -8,7 +8,7 @@
  *   - MINOR (0.x.0): new feature / phase complete
  *   - MAJOR (x.0.0): redesign / breaking flow change
  */
-export const APP_VERSION = 'v0.3.0'
+export const APP_VERSION = 'v0.3.1'
 
 /** First 7 chars of the deployed git commit, when available */
 export const APP_BUILD =
