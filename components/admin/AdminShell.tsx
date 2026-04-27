@@ -19,7 +19,7 @@ import {
   SidebarLayout,
   type SidebarSection,
 } from '@/components/ui/sidebar'
-import { MobileHeader } from '@/components/admin/MobileHeader'
+import { MobileMenuTrigger } from '@/components/admin/MobileMenuTrigger'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import {
   DropdownMenu,
@@ -102,7 +102,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       />
 
       <SidebarLayout>
-        <MobileHeader onMenuClick={() => setMobileOpen(true)} />
+        <MobileMenuTrigger onClick={() => setMobileOpen(true)} />
         {children}
       </SidebarLayout>
     </>
@@ -146,85 +146,76 @@ function UserProfileFooter() {
   const initials = getInitials(profile.name)
 
   return (
-    <div className="space-y-1.5">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-muted/60"
-          >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-foreground/5 text-[11px] font-semibold text-foreground">
-              {profile.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={profile.photoUrl}
-                  alt={profile.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                initials
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-medium text-foreground">
-                {profile.name}
-              </div>
-              <div className="truncate text-[11px] text-muted-foreground">
-                {profile.jobTitle}
-              </div>
-            </div>
-            <ChevronUp
-              size={14}
-              strokeWidth={1.75}
-              className="shrink-0 text-muted-foreground"
-            />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          side="top"
-          align="start"
-          sideOffset={6}
-          className="w-[208px]"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-muted/60"
         >
-          <DropdownMenuLabel>Conta</DropdownMenuLabel>
-          <DropdownMenuItem
-            onClick={() => router.push('/admin/config')}
-            className="cursor-pointer"
-          >
-            <Settings size={14} strokeWidth={1.75} />
-            <span>Config</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => router.push('/admin/log')}
-            className="cursor-pointer"
-          >
-            <ScrollText size={14} strokeWidth={1.75} />
-            <span>Log de atividades</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel>Versão</DropdownMenuLabel>
-          <div className="px-2 pb-1.5 font-mono text-[11px] text-muted-foreground">
-            {fullVersion()}
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-foreground/5 text-[11px] font-semibold text-foreground">
+            {profile.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={profile.photoUrl}
+                alt={profile.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              initials
+            )}
           </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <button
-        type="button"
-        onClick={handleLogout}
-        disabled={loggingOut}
-        className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-50"
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[13px] font-medium text-foreground">
+              {profile.name}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {profile.jobTitle}
+            </div>
+          </div>
+          <ChevronUp
+            size={14}
+            strokeWidth={1.75}
+            className="shrink-0 text-muted-foreground"
+          />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        side="top"
+        align="start"
+        sideOffset={6}
+        className="w-[208px]"
       >
-        <LogOut size={13} strokeWidth={1.75} />
-        <span>{loggingOut ? 'Saindo…' : 'Sair'}</span>
-      </button>
-
-      {/* Build identifier — sits at the very bottom so every deploy is
-          visibly different. Stays subtle and out of the way. */}
-      <div className="px-2.5 pt-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">
-        {fullVersion()}
-      </div>
-    </div>
+        <DropdownMenuLabel>Conta</DropdownMenuLabel>
+        <DropdownMenuItem
+          onClick={() => router.push('/admin/config')}
+          className="cursor-pointer"
+        >
+          <Settings size={14} strokeWidth={1.75} />
+          <span>Config</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => router.push('/admin/log')}
+          className="cursor-pointer"
+        >
+          <ScrollText size={14} strokeWidth={1.75} />
+          <span>Log de atividades</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+        >
+          <LogOut size={14} strokeWidth={1.75} />
+          <span>{loggingOut ? 'Saindo…' : 'Sair'}</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Versão</DropdownMenuLabel>
+        <div className="px-2 pb-1.5 font-mono text-[11px] text-muted-foreground">
+          {fullVersion()}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
