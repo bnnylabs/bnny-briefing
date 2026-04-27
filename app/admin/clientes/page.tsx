@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { IconButton } from '@/components/ui/icon-button'
 import { SelectionBar } from '@/components/admin/SelectionBar'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -407,94 +406,88 @@ export default function ClientesPage() {
               <Card
                 key={c.id}
                 className={cn(
-                  'group p-4 transition-colors',
+                  'group overflow-hidden p-0 transition-colors',
                   selectedIds.has(c.id) && 'border-primary/40 bg-primary/5',
                 )}
               >
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    checked={selectedIds.has(c.id)}
-                    onCheckedChange={() => toggleSelect(c.id)}
-                  />
+                <div className="flex items-stretch">
+                  {/* ── Main clickable area ─────────────────────── */}
                   <div
-                    className="flex min-w-0 flex-1 cursor-pointer flex-col gap-1"
+                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 px-4 py-3"
                     onClick={() => router.push(`/admin/clientes/${c.id}`)}
                   >
-                    {/* Row 1: company + icons */}
-                    <div className="flex items-center gap-2">
-                      <AvatarUpload
-                        url={c.avatar_url}
-                        name={c.company}
-                        size={36}
-                        shape="rounded"
-                        editable={false}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="truncate text-sm font-semibold">{c.company}</span>
-                          {c.is_starred && <Star size={12} className="shrink-0 fill-lime-400 text-lime-500" />}
-                          {c.analysis && Object.keys(c.analysis).length > 0 && (
-                            <Bot size={12} className="shrink-0 text-muted-foreground" />
-                          )}
-                        </div>
-                        {/* Row 2: contact name + email */}
-                        <div className="truncate text-xs text-muted-foreground">
-                          {c.name}{c.email && ` · ${c.email}`}
-                        </div>
-                        {/* Row 3: status + segments + activity */}
-                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                          {c.status && (
-                            <span className={cn(
-                              'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium',
-                              STATUS_COLORS[c.status] ?? STATUS_COLORS.active,
-                            )}>
-                              {STATUS_LABELS[c.status] ?? c.status}
-                            </span>
-                          )}
-                          {(c.tags ?? []).slice(0, 2).map(tag => (
-                            <span key={tag} className="rounded-md border border-border bg-muted/60 px-2 py-0.5 text-[11px] text-muted-foreground">
-                              {tag}
-                            </span>
-                          ))}
-                          {(() => {
-                            const t = c.last_activity_at ?? c.stats.last_at
-                            return t ? (
-                              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
-                                <Activity size={9} />
-                                {relativeTime(t)}
-                              </span>
-                            ) : null
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <div className="min-w-[32px] text-center">
-                      <div className="font-mono text-base font-bold">{c.stats.total}</div>
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">brief.</div>
-                    </div>
-                    <div className="min-w-[28px] text-center">
-                      <div className={cn('font-mono text-base font-bold', c.stats.concluido > 0 ? 'text-primary' : 'text-muted-foreground')}>
-                        {c.stats.concluido}
-                      </div>
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">ok</div>
-                    </div>
-                    <Button
-                      variant="outline" size="sm"
-                      onClick={() => router.push(`/admin/clientes/${c.id}`)}
-                    >
-                      Ver <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                    </Button>
-                    {/* Delete — only visible on hover */}
-                    <IconButton
-                      icon={<Trash2 className="h-4 w-4" />}
-                      label="Excluir cliente"
-                      size="icon"
-                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(c) }}
-                      className="opacity-0 transition-opacity group-hover:opacity-100 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    <Checkbox
+                      checked={selectedIds.has(c.id)}
+                      onCheckedChange={(v) => { toggleSelect(c.id); }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="shrink-0"
                     />
+                    <AvatarUpload
+                      url={c.avatar_url}
+                      name={c.company}
+                      size={36}
+                      shape="rounded"
+                      editable={false}
+                    />
+                    <div className="min-w-0 flex-1">
+                      {/* Row 1: company + contact name muted inline + icons */}
+                      <div className="flex items-baseline gap-2">
+                        <span className="truncate text-sm font-semibold leading-snug">{c.company}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground/70">{c.name}</span>
+                        {c.is_starred && <Star size={11} className="shrink-0 fill-lime-400 text-lime-500" />}
+                        {c.analysis && Object.keys(c.analysis).length > 0 && (
+                          <Bot size={11} className="shrink-0 text-muted-foreground/50" />
+                        )}
+                      </div>
+                      {/* Row 2: status + segments + activity */}
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        {c.status && (
+                          <span className={cn(
+                            'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium',
+                            STATUS_COLORS[c.status] ?? STATUS_COLORS.active,
+                          )}>
+                            {STATUS_LABELS[c.status] ?? c.status}
+                          </span>
+                        )}
+                        {(c.tags ?? []).slice(0, 2).map(tag => (
+                          <span key={tag} className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            {tag}
+                          </span>
+                        ))}
+                        {(() => {
+                          const t = c.last_activity_at ?? c.stats.last_at
+                          return t ? (
+                            <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/50">
+                              <Activity size={9} />{relativeTime(t)}
+                            </span>
+                          ) : null
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="flex shrink-0 items-center gap-4 pr-2">
+                      <div className="text-center">
+                        <div className="font-mono text-sm font-bold leading-none">{c.stats.total}</div>
+                        <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">brief.</div>
+                      </div>
+                      <div className="text-center">
+                        <div className={cn('font-mono text-sm font-bold leading-none', c.stats.concluido > 0 ? 'text-primary' : 'text-muted-foreground')}>
+                          {c.stats.concluido}
+                        </div>
+                        <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">ok</div>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* ── Arrow button — border-left divider ──────── */}
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/admin/clientes/${c.id}`)}
+                    className="flex w-10 shrink-0 items-center justify-center border-l border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <ArrowRight size={14} />
+                  </button>
                 </div>
               </Card>
             ))}
