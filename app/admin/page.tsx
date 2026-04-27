@@ -289,7 +289,7 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
         {/* Greeting + primary CTA */}
         <div className="mb-7 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="font-mono text-2xl font-bold tracking-tight">
+            <h1 className="font-mono text-xl font-bold tracking-tight">
               {greeting}, {profile?.name?.split(' ')[0] || 'Bnny'}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">

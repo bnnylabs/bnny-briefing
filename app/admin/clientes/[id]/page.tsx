@@ -78,7 +78,7 @@ const STATUS_LABELS: Record<ClientStatus, string> = {
   lead: 'Lead', active: 'Ativo', recurring: 'Recorrente', paused: 'Pausado', archived: 'Arquivado',
 }
 const STATUS_COLORS: Record<ClientStatus, string> = {
-  lead: 'border-blue-200 bg-blue-50 text-blue-700',
+  lead: 'border-info/30 bg-info/10 text-info',
   active: 'border-success/30 bg-success/10 text-success',
   recurring: 'border-lime-300 bg-lime-50 text-lime-700',
   paused: 'border-warning/30 bg-warning/10 text-warning',
@@ -637,7 +637,7 @@ export default function ClientePerfilPage() {
             {/* Client info card */}
             <Card className="p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
                   <Building2 className="h-4 w-4 text-muted-foreground" />
                   Informações
                 </div>
@@ -741,7 +741,7 @@ export default function ClientePerfilPage() {
 
             {/* Contacts card */}
             <Card className="p-5">
-              <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+              <div className="mb-3 flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
                 <Users className="h-4 w-4 text-muted-foreground" />
                 Contatos
               </div>
@@ -758,7 +758,7 @@ export default function ClientePerfilPage() {
                 className={cn('flex items-center justify-between gap-3', hasAiProfile && 'cursor-pointer')}
                 onClick={() => hasAiProfile && setAiExpanded(e => !e)}
               >
-                <div className="flex items-center gap-2 text-[15px] font-bold">
+                <div className="flex items-center gap-2 text-[15px] font-bold tracking-tight">
                   <Bot className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
                   Perfil de IA
                   {hasAiProfile && (
@@ -881,7 +881,7 @@ export default function ClientePerfilPage() {
 
             {/* Briefings */}
             <Card className="p-5">
-              <div className="mb-4 flex items-center gap-1.5 text-[15px] font-bold">
+              <div className="mb-4 flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
                 <ClipboardList className="h-4 w-4" /> Briefings
                 <span className="ml-1 text-xs font-normal text-muted-foreground">{briefings.length} no histórico</span>
               </div>
@@ -983,7 +983,7 @@ export default function ClientePerfilPage() {
 
             {/* Orçamentos — placeholder */}
             <Card className="p-5">
-              <div className="mb-1 flex items-center gap-1.5 text-[15px] font-bold">
+              <div className="mb-1 flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
                 <Briefcase className="h-4 w-4" /> Orçamentos
               </div>
               <div className="flex flex-col items-start gap-3 py-6">

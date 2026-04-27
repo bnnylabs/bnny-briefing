@@ -63,10 +63,10 @@ type Filter = 'all' | 'with_briefing' | 'no_briefing' | 'with_ai'
 type SortKey = 'recent' | 'name' | 'briefings'
 
 const STATUS_COLORS: Record<string, string> = {
-  lead: 'border-blue-200 bg-blue-50 text-blue-700',
-  active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  lead: 'border-info/30 bg-info/10 text-info',
+  active: 'border-success/30 bg-success/10 text-success',
   recurring: 'border-lime-300 bg-lime-50 text-lime-700',
-  paused: 'border-amber-200 bg-amber-50 text-amber-700',
+  paused: 'border-warning/30 bg-warning/10 text-warning',
   archived: 'border-border bg-muted text-muted-foreground',
 }
 const STATUS_LABELS: Record<string, string> = {
@@ -459,13 +459,13 @@ export default function ClientesPage() {
                   <div className="flex shrink-0 items-center gap-3">
                     <div className="min-w-[32px] text-center">
                       <div className="font-mono text-base font-bold">{c.stats.total}</div>
-                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">brief.</div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">brief.</div>
                     </div>
                     <div className="min-w-[28px] text-center">
                       <div className={cn('font-mono text-base font-bold', c.stats.concluido > 0 ? 'text-primary' : 'text-muted-foreground')}>
                         {c.stats.concluido}
                       </div>
-                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">ok</div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">ok</div>
                     </div>
                     <Button
                       variant="outline" size="sm"
