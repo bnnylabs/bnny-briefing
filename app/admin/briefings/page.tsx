@@ -544,10 +544,9 @@ export default function AdminPage() {
               ))}
             </div>
 
-            {/* Search + Filters */}
-            {/* Search + Sort row */}
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
+            {/* Search + Sort + DatePicker */}
+            <div className="flex flex-wrap gap-2">
+              <div className="flex-1 min-w-0 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar cliente, empresa ou tipo..." className="pl-9 bg-card" />
@@ -562,24 +561,23 @@ export default function AdminPage() {
                   <SelectItem value="company">A → Z</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            {/* DatePicker — full width on mobile */}
-            <div className="mt-2">
-              <DateRangePicker
-                value={
-                  dateFrom || dateTo
-                    ? {
-                        from: dateFrom ? new Date(dateFrom) : undefined,
-                        to: dateTo ? new Date(dateTo) : undefined,
-                      }
-                    : undefined
-                }
-                onChange={(range) => {
-                  setDateFrom(range?.from ? toIsoDay(range.from) : '')
-                  setDateTo(range?.to ? toIsoDay(range.to) : '')
-                }}
-                placeholder="Filtrar por período"
-              />
+              <div className="w-full sm:w-auto">
+                <DateRangePicker
+                  value={
+                    dateFrom || dateTo
+                      ? {
+                          from: dateFrom ? new Date(dateFrom) : undefined,
+                          to: dateTo ? new Date(dateTo) : undefined,
+                        }
+                      : undefined
+                  }
+                  onChange={(range) => {
+                    setDateFrom(range?.from ? toIsoDay(range.from) : '')
+                    setDateTo(range?.to ? toIsoDay(range.to) : '')
+                  }}
+                  placeholder="Filtrar por período"
+                />
+              </div>
             </div>
 
             {/* Select-all + inline batch actions — single persistent row, no layout shift */}

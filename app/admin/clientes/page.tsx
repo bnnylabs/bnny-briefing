@@ -346,94 +346,96 @@ export default function ClientesPage() {
           </Select>
         </div>
 
-        {/* Select-all + batch actions row */}
-        {!loading && filtered.length > 0 && (
-          <div className="mt-4 mb-2 flex items-center justify-between gap-2 px-1">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="select-all"
-                className="data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background"
-                checked={selectedIds.size === filtered.length && filtered.length > 0}
-                onCheckedChange={(checked) =>
-                  checked === true
-                    ? setSelectedIds(new Set(filtered.map((c) => c.id)))
-                    : setSelectedIds(new Set())
-                }
-              />
-              <Label
-                htmlFor="select-all"
-                className="cursor-pointer whitespace-nowrap text-xs font-normal text-muted-foreground"
-              >
-                {selectedIds.size === filtered.length && filtered.length > 0
-                  ? 'Desmarcar todos'
-                  : 'Selecionar todos'}{' '}
-                ({filtered.length})
-              </Label>
-            </div>
+        {/* Select-all + batch actions + status chips — always rendered when data loaded */}
+        {!loading && clients.length > 0 && (
+          <>
+            <div className="mt-4 mb-2 flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="select-all"
+                  className="data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background"
+                  checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                  onCheckedChange={(checked) =>
+                    checked === true
+                      ? setSelectedIds(new Set(filtered.map((c) => c.id)))
+                      : setSelectedIds(new Set())
+                  }
+                />
+                <Label
+                  htmlFor="select-all"
+                  className="cursor-pointer whitespace-nowrap text-xs font-normal text-muted-foreground"
+                >
+                  {filtered.length > 0 && selectedIds.size === filtered.length
+                    ? 'Desmarcar todos'
+                    : 'Selecionar todos'}{' '}
+                  ({filtered.length})
+                </Label>
+              </div>
 
-            <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              <span className="hidden sm:inline whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-                {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedIds(new Set())}
-                className="hidden sm:inline-flex rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => setBatchDeleteConfirm(true)}
-                className="inline-flex items-center gap-1 rounded-md border border-destructive/40 px-2.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground whitespace-nowrap"
-              >
-                <Trash2 size={11} />
-                Excluir {selectedIds.size}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Status filter chips — own row, only when multiple statuses exist */}
-        {!loading && (() => {
-          const presentStatuses = Array.from(new Set(clients.map(c => c.status))).filter(Boolean)
-          if (presentStatuses.length < 2) return null
-          return (
-            <div className="mb-3 flex flex-wrap items-center gap-1.5 px-1">
-              {presentStatuses.map(s => {
-                const active = statusFilter.has(s)
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setStatusFilter(prev => {
-                      const next = new Set(prev)
-                      if (next.has(s)) next.delete(s); else next.add(s)
-                      return next
-                    })}
-                    className={cn(
-                      'inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
-                      active
-                        ? STATUS_COLORS[s] ?? 'border-border bg-muted text-foreground'
-                        : 'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',
-                    )}
-                  >
-                    {STATUS_LABELS[s] ?? s}
-                  </button>
-                )
-              })}
-              {statusFilter.size > 0 && (
+              <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <span className="hidden sm:inline whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                  {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
+                </span>
                 <button
                   type="button"
-                  onClick={() => setStatusFilter(new Set())}
-                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="hidden sm:inline-flex rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
-                  <X size={10} /> Limpar
+                  Cancelar
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setBatchDeleteConfirm(true)}
+                  className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-destructive/40 px-2.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <Trash2 size={11} />
+                  Excluir {selectedIds.size}
+                </button>
+              </div>
             </div>
-          )
-        })()}
+
+            {/* Status chips */}
+            {(() => {
+              const presentStatuses = Array.from(new Set(clients.map(c => c.status))).filter(Boolean)
+              if (presentStatuses.length < 2) return null
+              return (
+                <div className="mb-3 flex flex-wrap items-center gap-1.5 px-1">
+                  {presentStatuses.map(s => {
+                    const active = statusFilter.has(s)
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setStatusFilter(prev => {
+                          const next = new Set(prev)
+                          if (next.has(s)) next.delete(s); else next.add(s)
+                          return next
+                        })}
+                        className={cn(
+                          'inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                          active
+                            ? STATUS_COLORS[s] ?? 'border-border bg-muted text-foreground'
+                            : 'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+                        )}
+                      >
+                        {STATUS_LABELS[s] ?? s}
+                      </button>
+                    )
+                  })}
+                  {statusFilter.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter(new Set())}
+                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      <X size={10} /> Limpar
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
+          </>
+        )}
 
         {/* List */}
         {loading ? (
