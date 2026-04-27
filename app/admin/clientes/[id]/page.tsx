@@ -1096,7 +1096,7 @@ export default function ClientePerfilPage() {
             return (
               <>
                 <DialogHeader className="mb-5 border-b border-border/60 p-0 pb-4">
-                  <DialogTitle className="text-xl">{client?.company}</DialogTitle>
+                  <DialogTitle>{client?.company}</DialogTitle>
                   <DialogDescription asChild>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
                       <Badge variant="default" className="text-[10px] uppercase tracking-wider">{b.type_label}</Badge>

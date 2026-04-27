@@ -123,7 +123,7 @@ export function RecipientPickerModal({
         </button>
 
         <div className="mb-5 pr-8">
-          <h2 className="font-bold text-lg tracking-tight">{cfg.title}</h2>
+          <div className="font-bold text-lg tracking-tight">{cfg.title}</div>
           <p className="mt-0.5 text-sm text-muted-foreground">{briefingCompany} · {briefingLabel}</p>
         </div>
 

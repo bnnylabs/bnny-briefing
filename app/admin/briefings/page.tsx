@@ -837,9 +837,8 @@ export default function AdminPage() {
           <div className="mb-5 pb-4 border-b border-border/60">
             <div className="font-bold text-lg tracking-tight">{responsesBriefing.clients?.company}</div>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <Badge variant="default" className="text-[10px] uppercase tracking-wider">{responsesBriefing.type_label}</Badge>
-              <span className="text-sm text-muted-foreground">{responsesBriefing.clients?.name}</span>
-              {responsesBriefing.clients?.email && <span className="text-sm text-muted-foreground">· {responsesBriefing.clients.email}</span>}
+              <Badge variant="outline" className="text-[11px] font-medium">{responsesBriefing.type_label}</Badge>
+              {responsesBriefing.clients?.name && <span className="text-sm text-muted-foreground">{responsesBriefing.clients.name}</span>}
             </div>
             {responsesBriefing.completed_at && <div className="text-xs text-muted-foreground mt-1.5">Concluído em {fmt(responsesBriefing.completed_at)}</div>}
           </div>
@@ -951,19 +950,16 @@ export default function AdminPage() {
           >
             <div className="mb-5">
               <div className="font-bold text-lg tracking-tight">Editar cliente</div>
-              <div className="text-sm text-muted-foreground mt-0.5">Após salvar, copie o link e reenvie se necessário.</div>
+              <div className="text-sm text-muted-foreground mt-0.5">{editBriefing.clients?.company}</div>
             </div>
             <div className="flex flex-col gap-4">
               {[{ label: 'Empresa', key: 'company' as const }, { label: 'Nome', key: 'name' as const }, { label: 'Email', key: 'email' as const }, { label: 'WhatsApp', key: 'phone' as const }].map((f, i) => (
                 <div key={f.key} className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">{f.label}</label>
+                  <label className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground block">{f.label}</label>
                   <Input autoFocus={i === 0} value={editForm[f.key]} onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
                 </div>
               ))}
-              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground inline-flex items-center gap-1.5">
-                <Link size={12} /> Após salvar, copie o link e reenvie o briefing.
-              </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-1">
                 <Button variant="outline" onClick={() => setEditBriefing(null)} className="flex-1">Cancelar</Button>
                 <Button onClick={saveEdit} disabled={savingEdit} className="flex-1">{savingEdit ? 'Salvando…' : 'Salvar'}</Button>
               </div>
@@ -983,7 +979,7 @@ export default function AdminPage() {
               }
             }}
           >
-            <div className="mb-4">
+            <div className="mb-5">
               <div className="font-bold text-lg tracking-tight">Anotações internas</div>
               <div className="text-sm text-muted-foreground mt-0.5">Visível só para você — o cliente não vê.</div>
             </div>
