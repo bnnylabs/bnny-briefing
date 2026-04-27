@@ -4,9 +4,11 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
+  Activity,
   ArrowRight,
   Bell,
   CheckCircle2,
+  Clock,
   FileText,
   Pencil,
   Plus,
@@ -375,7 +377,8 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
         <Card className="mb-3 p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <div className="text-[15px] font-bold tracking-tight">
+              <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
+                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                 Pra você revisar
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -423,7 +426,8 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
         <Card className="mb-5 p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <div className="text-[15px] font-bold tracking-tight">
+              <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
+                <Clock className="h-4 w-4 text-muted-foreground" />
                 Aguardando cliente
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -478,6 +482,7 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
+                <Activity className="h-4 w-4 text-muted-foreground" />
                 Atividade recente
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">

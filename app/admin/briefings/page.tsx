@@ -7,7 +7,7 @@ import { useToast, ToastContainer } from '@/components/toast'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { SelectionBar } from '@/components/admin/SelectionBar'
-import { Pencil, FileText, Bell, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight } from 'lucide-react'
+import { Pencil, FileText, Bell, BellRing, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight, ScrollText } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -645,7 +645,7 @@ export default function AdminPage() {
               <div className="flex flex-col gap-2">
                 {filtered.map(b => (
                   <div key={b.id}
-                    className={`rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
+                    className={`group rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
                     {/* Row: checkbox + name + actions */}
                     <div className="flex items-center gap-2.5">
                       <Checkbox checked={selectedIds.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} className="shrink-0" />
@@ -654,73 +654,83 @@ export default function AdminPage() {
                         {b.clients?.company}
                       </button>
                       <div className="flex items-center gap-1 shrink-0">
-                        <IconButton
-                          icon={<Pencil size={13} />}
-                          label="Editar cliente"
-                          onClick={() => openEdit(b)}
-                        />
-                        <IconButton
-                          icon={<FileText size={13} />}
-                          label={b.internal_notes ? 'Anotações (preenchidas)' : 'Anotações'}
-                          className={b.internal_notes ? 'text-foreground' : ''}
-                          onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }}
-                        />
-                        <IconButton
-                          icon={<Bell size={13} />}
-                          label="Histórico de envios"
-                          onClick={() => viewNotifications(b)}
-                        />
-                        <IconButton
-                          icon={<Copy size={13} />}
-                          label="Duplicar briefing"
-                          disabled={duplicating === b.id}
-                          onClick={() => duplicateBriefing(b)}
-                        />
-                        {b.status !== 'concluido' && b.clients?.email && (
-                          <IconButton
-                            icon={
-                              sendingResend === b.id ? <RefreshCw size={13} className="animate-spin" /> :
-                              reminderSent === b.id + '_resend' ? <Check size={13} /> :
-                              <Mail size={13} />
-                            }
-                            label="Reenviar email"
-                            className={reminderSent === b.id + '_resend' ? 'text-foreground' : ''}
-                            disabled={sendingResend === b.id}
-                            onClick={() => resendEmail(b)}
-                          />
-                        )}
-                        {b.status !== 'concluido' && (
-                          <IconButton
-                            icon={
-                              sendingReminder === b.id ? <RefreshCw size={13} className="animate-spin" /> :
-                              reminderSent === b.id ? <Check size={13} /> :
-                              <Bell size={13} />
-                            }
-                            label="Enviar lembrete"
-                            className={reminderSent === b.id ? 'text-foreground' : ''}
-                            disabled={sendingReminder === b.id}
-                            onClick={() => sendReminder(b)}
-                          />
+
+                        {/* ── Primary actions — always visible ── */}
+                        {b.status === 'concluido' && (
+                          <Button variant="secondary" size="sm" onClick={() => viewResponses(b)}>
+                            Ver respostas
+                          </Button>
                         )}
                         <IconButton
-                          icon={copiedId === b.slug ? <Check size={13} /> : <Link size={13} />}
+                          icon={copiedId === b.slug ? <Check size={14} /> : <Link size={14} />}
                           label="Copiar link"
                           onClick={() => copyLink(b.slug)}
                         />
-                        {b.status === 'concluido' && (
-                          <>
-                            <Button variant="secondary" size="sm" onClick={() => viewResponses(b)}>Ver respostas</Button>
+
+                        {/* ── Secondary actions — reveal on hover ── */}
+                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          <IconButton
+                            icon={<Pencil size={14} />}
+                            label="Editar cliente"
+                            onClick={() => openEdit(b)}
+                          />
+                          <IconButton
+                            icon={<FileText size={14} />}
+                            label={b.internal_notes ? 'Anotações (preenchidas)' : 'Anotações'}
+                            className={b.internal_notes ? 'text-foreground' : ''}
+                            onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }}
+                          />
+                          <IconButton
+                            icon={<ScrollText size={14} />}
+                            label="Histórico de envios"
+                            onClick={() => viewNotifications(b)}
+                          />
+                          <IconButton
+                            icon={<Copy size={14} />}
+                            label="Duplicar briefing"
+                            disabled={duplicating === b.id}
+                            onClick={() => duplicateBriefing(b)}
+                          />
+                          {b.status !== 'concluido' && b.clients?.email && (
                             <IconButton
-                              icon={b.editing_locked ? <Unlock size={13} /> : <Lock size={13} />}
+                              icon={
+                                sendingResend === b.id ? <RefreshCw size={14} className="animate-spin" /> :
+                                reminderSent === b.id + '_resend' ? <Check size={14} /> :
+                                <Mail size={14} />
+                              }
+                              label="Reenviar email"
+                              className={reminderSent === b.id + '_resend' ? 'text-foreground' : ''}
+                              disabled={sendingResend === b.id}
+                              onClick={() => resendEmail(b)}
+                            />
+                          )}
+                          {b.status !== 'concluido' && (
+                            <IconButton
+                              icon={
+                                sendingReminder === b.id ? <RefreshCw size={14} className="animate-spin" /> :
+                                reminderSent === b.id ? <Check size={14} /> :
+                                <BellRing size={14} />
+                              }
+                              label="Enviar lembrete agora"
+                              className={reminderSent === b.id ? 'text-foreground' : ''}
+                              disabled={sendingReminder === b.id}
+                              onClick={() => sendReminder(b)}
+                            />
+                          )}
+                          {b.status === 'concluido' && (
+                            <IconButton
+                              icon={b.editing_locked ? <Unlock size={14} /> : <Lock size={14} />}
                               label={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
                               onClick={() => toggleEditingLock(b.slug, !!b.editing_locked)}
                             />
-                          </>
-                        )}
+                          )}
+                        </div>
+
+                        {/* ── Destructive — hover only, neutral until hover ── */}
                         <IconButton
-                          icon={<Trash2 size={13} />}
+                          icon={<Trash2 size={14} />}
                           label="Excluir"
-                          className="text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                          className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10"
                           onClick={() => setDeleteBriefing(b)}
                         />
                       </div>
