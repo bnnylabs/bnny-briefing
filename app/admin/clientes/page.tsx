@@ -452,7 +452,7 @@ export default function ClientesPage() {
                             </span>
                           )}
                           {(c.tags ?? []).slice(0, 2).map(tag => (
-                            <span key={tag} className="rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] text-muted-foreground">
+                            <span key={tag} className="rounded-md border border-border bg-muted/60 px-2 py-0.5 text-[11px] text-muted-foreground">
                               {tag}
                             </span>
                           ))}

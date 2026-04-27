@@ -695,7 +695,7 @@ export default function ClientePerfilPage() {
                     <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Segmentos</div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       {client.tags.map(tag => (
-                        <span key={tag} className="group inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px]">
+                        <span key={tag} className="group inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-2 py-0.5 text-[11px]">
                           {tag}
                           <button type="button" onClick={() => removeTag(tag)} className="opacity-0 transition-opacity group-hover:opacity-100">
                             <X size={10} />
@@ -739,7 +739,7 @@ export default function ClientePerfilPage() {
                       <div className="flex flex-wrap gap-2">
                         {clientSocials.map(s => (
                           <a key={s.key} href={s.url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-muted">
+                            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-muted">
                             <s.Icon size={12} />
                             {s.label}
                             <ExternalLink size={10} className="text-muted-foreground/60" />
@@ -926,7 +926,7 @@ export default function ClientePerfilPage() {
                             <span className="whitespace-nowrap text-xs text-muted-foreground">{fmt(b.created_at)}</span>
                             {b.completed_at && <span className="whitespace-nowrap text-xs text-muted-foreground">· concluído {fmt(b.completed_at)}</span>}
                             {(b.recipients?.filter(r => r.role === 'cc').length ?? 0) > 0 && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
                                 CC · {b.recipients!.filter(r => r.role === 'cc').length}
                               </span>
                             )}
@@ -1097,7 +1097,7 @@ export default function ClientePerfilPage() {
                         className={cn('inline-flex flex-1 items-center justify-center gap-2 rounded-lg border py-2 text-xs transition-colors',
                           showDiff ? 'border-foreground/20 bg-muted font-medium text-foreground' : 'border-border text-muted-foreground hover:bg-muted/40')}>
                         <Pencil size={12} /> Ver alterações
-                        <span className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-bold text-foreground">{Object.keys(responseDiff).length}</span>
+                        <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-bold text-foreground">{Object.keys(responseDiff).length}</span>
                       </button>
                     </div>
                     {showDiff && (

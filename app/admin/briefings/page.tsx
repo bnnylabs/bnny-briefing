@@ -771,7 +771,7 @@ export default function AdminPage() {
                       <span className="text-[11px] text-muted-foreground">{b.clients?.name}</span>
                       {/* CC recipients indicator */}
                       {(b.recipients?.filter(r => r.role === 'cc').length ?? 0) > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
                           CC · {b.recipients!.filter(r => r.role === 'cc').length}
                         </span>
                       )}
@@ -814,7 +814,7 @@ export default function AdminPage() {
                 <button onClick={() => setShowDiffView(true)}
                   className={`flex-1 text-xs py-2 rounded-lg border transition-colors inline-flex items-center justify-center gap-2 ${showDiffView ? 'border-foreground/20 bg-muted text-foreground font-medium' : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}>
                   <Pencil size={12} /> Ver alterações
-                  <span className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-bold text-foreground">{Object.keys(responseDiff).length}</span>
+                  <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-bold text-foreground">{Object.keys(responseDiff).length}</span>
                 </button>
               </div>
               {showDiffView && (
@@ -994,7 +994,7 @@ export default function AdminPage() {
                     {n.details?.to && (
                       <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                         {n.details.role === 'cc' && (
-                          <span className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">CC</span>
+                          <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">CC</span>
                         )}
                         {n.details.name && <span className="font-medium text-foreground">{n.details.name}</span>}
                         {n.details.name && <span>·</span>}
