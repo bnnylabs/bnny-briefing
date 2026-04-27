@@ -629,10 +629,9 @@ export default function ClientePerfilPage() {
               {editMode ? (
                 <div className="flex flex-col gap-4">
                   <div className="grid grid-cols-2 gap-3">
-                    {[{ label: 'Empresa', key: 'company' }, { label: 'Nome do contato', key: 'name' },
-                      { label: 'Email', key: 'email' }, { label: 'WhatsApp', key: 'phone' },
+                    {[{ label: 'Empresa', key: 'company' },
                       { label: 'Site', key: 'website' }].map(f => (
-                      <div key={f.key} className={cn('space-y-1.5', (f.key === 'website') && 'col-span-2')}>
+                      <div key={f.key} className="col-span-2 space-y-1.5">
                         <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{f.label}</Label>
                         <Input value={editForm[f.key as keyof typeof editForm]}
                           onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
@@ -660,9 +659,6 @@ export default function ClientePerfilPage() {
                 <div className="space-y-4">
                   <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
                     {[
-                      { label: 'Contato', value: client.name },
-                      { label: 'Email', value: client.email || '—' },
-                      { label: 'WhatsApp', value: client.phone || '—' },
                       { label: 'Site', value: client.website || '—', link: client.website ?? undefined },
                     ].map(f => (
                       <div key={f.label}>
