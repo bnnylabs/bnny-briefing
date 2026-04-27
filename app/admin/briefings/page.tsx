@@ -227,8 +227,6 @@ export default function AdminPage() {
   const [duplicatedSlug, setDuplicatedSlug] = useState<string | null>(null)
   const [dupLink, setDupLink] = useState('')
 
-  const [clientHistoryClient, setClientHistoryClient] = useState<Client | null>(null)
-  const [clientHistoryBriefings, setClientHistoryBriefings] = useState<Briefing[]>([])
 
   const router = useRouter()
 
@@ -390,8 +388,7 @@ export default function AdminPage() {
   }
 
   function viewClientHistory(client: Client) {
-    setClientHistoryClient(client)
-    setClientHistoryBriefings(briefings.filter(b => b.clients?.id === client.id))
+    router.push(`/admin/clientes/${client.id}`)
   }
 
   type SortKey = 'recent' | 'oldest' | 'company'
@@ -994,7 +991,16 @@ export default function AdminPage() {
                         {n.status === 'sent' ? <><Check size={12} /> Enviado</> : <><Trash2 size={12} /> Falhou</>}
                       </span>
                     </div>
-                    {n.details?.to && <div className="text-xs text-muted-foreground mt-1">Para: {n.details.to}</div>}
+                    {n.details?.to && (
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        {n.details.role === 'cc' && (
+                          <span className="rounded border border-border px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide">CC</span>
+                        )}
+                        {n.details.name && <span className="font-medium text-foreground">{n.details.name}</span>}
+                        {n.details.name && <span>·</span>}
+                        <span>{n.details.to}</span>
+                      </div>
+                    )}
                     <div className="text-xs text-muted-foreground mt-0.5">{new Date(n.sent_at).toLocaleString('pt-BR')}</div>
                   </div>
                 )
@@ -1031,32 +1037,6 @@ export default function AdminPage() {
               <Button variant="outline" onClick={() => setBatchDeleteConfirm(false)} className="flex-1">Cancelar</Button>
               <Button variant="destructive" onClick={confirmBatchDelete} disabled={batchDeleting} className="flex-1">{batchDeleting ? 'Excluindo…' : `Excluir ${selectedIds.size}`}</Button>
             </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* ── CLIENT HISTORY ───────────────────────────────────────────── */}
-      {clientHistoryClient && (
-        <Modal onClose={() => setClientHistoryClient(null)} wide>
-          <div className="mb-4">
-            <div className="font-bold text-lg tracking-tight">{clientHistoryClient.company}</div>
-            <div className="text-sm text-muted-foreground mt-0.5">{clientHistoryClient.name} · {clientHistoryClient.email}</div>
-          </div>
-          <div className="flex flex-col gap-2">
-            {briefings.filter(b => b.clients?.company === clientHistoryClient.company).map(b => (
-              <div key={b.id} className="rounded-lg border border-border bg-secondary px-4 py-3 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-medium">{b.type_label}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{timeAgo(b.created_at)} · {fmt(b.created_at)}</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <StatusBadge status={b.status} />
-                  {b.status === 'concluido' && (
-                    <Button variant="accent" size="sm" onClick={() => { setClientHistoryClient(null); viewResponses(b) }}>Ver respostas</Button>
-                  )}
-                </div>
-              </div>
-            ))}
           </div>
         </Modal>
       )}
