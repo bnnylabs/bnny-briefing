@@ -10,13 +10,31 @@
  *   • All emails are sent with a plain-text alternative, which improves
  *     deliverability and renders in clients that opt out of HTML.
  *
- * Tokens mirror the admin app's CSS variables — bg, card, fg, muted,
- * border, primary (lime). Cor primária é hardcoded por enquanto;
- * Fase B vai trazê-la de settings.brand_primary_color.
+ * Phase 5a refactor:
+ *   • Copy is no longer hardcoded here — every sender resolves its
+ *     subject/preheader/title/body/cta through getTemplate(), which
+ *     reads admin overrides from `email_templates` and falls back to
+ *     EMAIL_DEFAULTS when the row is absent or disabled.
+ *   • The body comes in as markdown with {var} placeholders and
+ *     {{block_name}} structural placeholders. We interpolate vars,
+ *     render the markdown to email-safe HTML, and let the renderer
+ *     splice structural blocks (meta cards, diff tables, fallback
+ *     links) into their named slots.
+ *   • Primary color is resolved from settings.brand_primary_color
+ *     (hex validated, lime fallback) so the editor's color picker
+ *     ripples through to actual sends.
  */
 
 import { Resend } from 'resend'
 import { supabaseAdmin } from './supabase'
+import {
+  escapeHtml,
+  interpolate,
+  renderMarkdownToHtml,
+  type TemplateVars,
+} from './email-markdown'
+import { getTemplate } from './email-templates'
+import type { TemplateLanguage, TemplateType } from './email-defaults'
 
 // ─── Resend client ───────────────────────────────────────────────────────
 
@@ -35,12 +53,27 @@ const T = {
   muted: '#737373',
   border: '#e5e5e5',
   borderSubtle: '#f0f0f0',
-  primary: '#a3e635', // lime-400, identical to the app's --primary
+  primaryFallback: '#a3e635', // lime-400
   primaryFg: '#0a0a0a',
 }
 
 const FONT_STACK =
   '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/
+
+/**
+ * Resolves the primary color (used for CTA bg + accents) from the
+ * settings cache. Validates hex format strictly so a stray value can't
+ * inject CSS — anything that fails the regex falls back to the lime
+ * default. This keeps the editor's color picker honest without trusting
+ * the DB shape.
+ */
+function getPrimaryColor(settings: Record<string, string>): string {
+  const v = settings.brand_primary_color
+  if (v && HEX_RE.test(v)) return v
+  return T.primaryFallback
+}
 
 // ─── Settings cache ──────────────────────────────────────────────────────
 //
@@ -63,15 +96,11 @@ async function getSettings(): Promise<Record<string, string>> {
   return next
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────
-
-function escapeHtml(s: string | undefined | null): string {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+export function invalidateEmailSettingsCache(): void {
+  cachedAt = 0
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────
 
 function renderLogo(logoUrl: string | undefined): string {
   if (logoUrl) {
@@ -82,7 +111,7 @@ function renderLogo(logoUrl: string | undefined): string {
   return `<span style="font-family:${FONT_STACK};font-size:18px;font-weight:800;letter-spacing:-0.04em;color:${T.fg}">Bnny Labs</span>`
 }
 
-function renderButton(href: string, text: string): string {
+function renderButton(href: string, text: string, primary: string): string {
   // Email clients (notably Apple Mail across all platforms) apply
   // text-decoration:underline on <a> tags regardless of !important
   // overrides. The trick that works: make the inner <span> a separate
@@ -93,7 +122,7 @@ function renderButton(href: string, text: string): string {
   // Defense in depth still applies: !important + -webkit-text-decoration
   // on both the <a> and the <span> for clients that do honor them.
   const safeText = escapeHtml(text)
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr><td align="center" bgcolor="${T.primary}" style="border-radius:8px;background-color:${T.primary};mso-padding-alt:12px 22px"><a href="${escapeHtml(href)}" target="_blank" style="display:inline-block;padding:12px 22px;font-family:${FONT_STACK};font-size:14px;font-weight:600;color:${T.primaryFg} !important;text-decoration:none !important;-webkit-text-decoration:none !important;letter-spacing:-0.01em;line-height:1;border-radius:8px;mso-line-height-rule:exactly"><span style="display:inline-block;color:${T.primaryFg};text-decoration:none !important;-webkit-text-decoration:none !important">${safeText}</span></a></td></tr></table>`
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr><td align="center" bgcolor="${primary}" style="border-radius:8px;background-color:${primary};mso-padding-alt:12px 22px"><a href="${escapeHtml(href)}" target="_blank" style="display:inline-block;padding:12px 22px;font-family:${FONT_STACK};font-size:14px;font-weight:600;color:${T.primaryFg} !important;text-decoration:none !important;-webkit-text-decoration:none !important;letter-spacing:-0.01em;line-height:1;border-radius:8px;mso-line-height-rule:exactly"><span style="display:inline-block;color:${T.primaryFg};text-decoration:none !important;-webkit-text-decoration:none !important">${safeText}</span></a></td></tr></table>`
 }
 
 interface MetaItem {
@@ -104,7 +133,8 @@ interface MetaItem {
 function renderMetaCard(items: MetaItem[]): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${T.bg};border:1px solid ${T.border};border-radius:8px;margin:20px 0"><tr><td style="padding:16px 20px;font-family:${FONT_STACK}">${items
     .map(
-      (it, i) => `<div style="${i > 0 ? `margin-top:14px;padding-top:14px;border-top:1px solid ${T.border}` : ''}"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${T.muted};margin:0 0 4px">${escapeHtml(it.label)}</div><div style="font-size:14px;color:${T.fg};font-weight:500;line-height:1.4">${escapeHtml(it.value)}</div></div>`,
+      (it, i) =>
+        `<div style="${i > 0 ? `margin-top:14px;padding-top:14px;border-top:1px solid ${T.border}` : ''}"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${T.muted};margin:0 0 4px">${escapeHtml(it.label)}</div><div style="font-size:14px;color:${T.fg};font-weight:500;line-height:1.4">${escapeHtml(it.value)}</div></div>`,
     )
     .join('')}</td></tr></table>`
 }
@@ -115,32 +145,69 @@ export interface DiffChange {
   new: string
 }
 
-function renderDiffSection(changes: DiffChange[], lang: 'pt-BR' | 'en-US'): string {
+function renderDiffSection(changes: DiffChange[], lang: TemplateLanguage): string {
+  const sectionLabel = lang === 'en-US' ? 'CHANGES' : 'ALTERAÇÕES'
+  const header = `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${T.muted};margin:24px 0 10px">${sectionLabel}</div>`
+
   if (changes.length === 0) {
-    return `<p style="font-family:${FONT_STACK};font-size:14px;color:${T.muted};margin:16px 0">${lang === 'en-US' ? 'No changes detected.' : 'Sem alterações detectadas.'}</p>`
+    return `${header}<p style="font-family:${FONT_STACK};font-size:14px;color:${T.muted};margin:16px 0">${lang === 'en-US' ? 'No changes detected.' : 'Sem alterações detectadas.'}</p>`
   }
-  return changes
+  const rows = changes
     .map(
       (c) =>
         `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${T.bg};border:1px solid ${T.border};border-radius:8px;margin-bottom:12px"><tr><td style="padding:14px 18px;font-family:${FONT_STACK}"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${T.muted};margin:0 0 8px">${escapeHtml(c.field)}</div><div style="font-size:13px;color:${T.muted};text-decoration:line-through;margin:0 0 6px;line-height:1.5">${escapeHtml(c.old || (lang === 'en-US' ? '(empty)' : '(vazio)'))}</div><div style="font-size:14px;color:${T.fg};font-weight:500;line-height:1.5">${escapeHtml(c.new)}</div></td></tr></table>`,
     )
     .join('')
+  return `${header}${rows}`
+}
+
+/**
+ * Fallback link block — auto-rendered for invitation-style emails so
+ * the recipient can copy the URL if their client mangled the button.
+ * This sits at the {{fallback_link}} placeholder inside the body
+ * markdown.
+ */
+function renderFallbackLinkBlock(link: string, lang: TemplateLanguage): string {
+  const label =
+    lang === 'en-US'
+      ? "If the button below doesn't work, copy this link:"
+      : 'Se o botão abaixo não funcionar, copie o link:'
+  return `<p style="margin:0 0 12px;font-family:${FONT_STACK};color:${T.muted};font-size:13px;line-height:1.5">${escapeHtml(label)}<br><a href="${escapeHtml(link)}" target="_blank" style="color:${T.muted} !important;text-decoration:underline;-webkit-text-decoration:underline;word-break:break-all">${escapeHtml(link)}</a></p>`
+}
+
+function renderEditingWindowBlock(hours: number, lang: TemplateLanguage): string {
+  const label = lang === 'en-US' ? 'Editing window' : 'Janela de edição'
+  const value =
+    lang === 'en-US'
+      ? `${hours} hours to review and edit your answers`
+      : `${hours} horas para revisar e editar suas respostas`
+  return renderMetaCard([{ label, value }])
 }
 
 // ─── Base template ───────────────────────────────────────────────────────
 
 interface TemplateOpts {
-  preheader?: string // hidden inbox-preview text (Gmail/Apple Mail)
+  preheader?: string
   title: string
   bodyHtml: string
   ctaText?: string
   ctaHref?: string
-  lang?: 'pt-BR' | 'en-US'
+  lang?: TemplateLanguage
   logoUrl?: string
+  primaryColor: string
 }
 
 function renderTemplate(opts: TemplateOpts): string {
-  const { preheader, title, bodyHtml, ctaText, ctaHref, lang = 'pt-BR', logoUrl } = opts
+  const {
+    preheader,
+    title,
+    bodyHtml,
+    ctaText,
+    ctaHref,
+    lang = 'pt-BR',
+    logoUrl,
+    primaryColor,
+  } = opts
   const isEN = lang === 'en-US'
   const footerText = isEN
     ? "This is an automated message. Please don't reply directly."
@@ -193,7 +260,7 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:al
             </div>
             ${
               ctaText && ctaHref
-                ? `<div style="margin-top:28px">${renderButton(ctaHref, ctaText)}</div>`
+                ? `<div style="margin-top:28px">${renderButton(ctaHref, ctaText, primaryColor)}</div>`
                 : ''
             }
           </td>
@@ -243,6 +310,113 @@ function renderPlainText({
   return `${title}\n\n${cleanBody}${cta}\n\n—\nBnny Labs`
 }
 
+// ─── Renderer entry point — used by the test-send + preview routes ───────
+
+/**
+ * Resolves a template, interpolates variables, renders the body with
+ * its block placeholders filled in, and returns a fully composed HTML
+ * + plain-text pair plus subject. Callers that just want to send an
+ * email use the typed wrappers below; this lower-level entry exists so
+ * the test-send endpoint and the live-preview API can reuse the exact
+ * same pipeline.
+ */
+export interface RenderedEmail {
+  subject: string
+  html: string
+  text: string
+  ctaText?: string
+  ctaHref?: string
+  preheader: string
+  title: string
+  primaryColor: string
+}
+
+interface ComposeArgs {
+  type: TemplateType
+  language: TemplateLanguage
+  vars: TemplateVars
+  blocks: Record<string, string>
+  ctaHref?: string
+  /**
+   * When set to '' (empty string), forces the CTA off even if the
+   * template has cta_text. Used by the confirmation sender when no
+   * editing link is available — there's nowhere for the button to go.
+   * When undefined, the template's cta_text is used.
+   */
+  ctaTextOverride?: string
+  /**
+   * If provided, used in place of getSettings(). Lets the preview API
+   * render a draft without persisting changes.
+   */
+  settings?: Record<string, string>
+  /**
+   * If provided, overrides the resolved template fields. Used by the
+   * live preview so the admin sees their unsaved draft, not the DB row.
+   */
+  override?: {
+    subject?: string
+    preheader?: string
+    title?: string
+    body_markdown?: string
+    cta_text?: string
+  }
+}
+
+export async function composeEmail(args: ComposeArgs): Promise<RenderedEmail> {
+  const { type, language, vars, blocks, ctaHref, ctaTextOverride, override } = args
+  const settings = args.settings ?? (await getSettings())
+  const tpl = await getTemplate(type, language)
+
+  const subject = interpolate(override?.subject ?? tpl.subject, vars)
+  const preheader = interpolate(override?.preheader ?? tpl.preheader, vars)
+  const title = interpolate(override?.title ?? tpl.title, vars)
+
+  const interpolatedBody = interpolate(
+    override?.body_markdown ?? tpl.body_markdown,
+    vars,
+  )
+  const bodyHtml = renderMarkdownToHtml(interpolatedBody, {
+    fontStack: FONT_STACK,
+    mutedColor: T.muted,
+    blocks,
+  })
+
+  const rawCta =
+    ctaTextOverride !== undefined ? ctaTextOverride : (override?.cta_text ?? tpl.cta_text)
+  const ctaText = rawCta ? interpolate(rawCta, vars) : undefined
+
+  const primaryColor = getPrimaryColor(settings)
+  const logoUrl = settings.brand_logo_email || undefined
+
+  const html = renderTemplate({
+    title,
+    bodyHtml,
+    ctaText: ctaText && ctaHref ? ctaText : undefined,
+    ctaHref: ctaText && ctaHref ? ctaHref : undefined,
+    lang: language,
+    logoUrl,
+    preheader,
+    primaryColor,
+  })
+  const text = renderPlainText({
+    title,
+    bodyHtml,
+    ctaText: ctaText && ctaHref ? ctaText : undefined,
+    ctaHref: ctaText && ctaHref ? ctaHref : undefined,
+  })
+
+  return {
+    subject,
+    html,
+    text,
+    ctaText,
+    ctaHref,
+    preheader,
+    title,
+    primaryColor,
+  }
+}
+
 // ─── Public email functions ──────────────────────────────────────────────
 
 /**
@@ -263,52 +437,30 @@ export async function sendBriefingToClient({
   link: string
   language?: string
 }) {
-  const isEN = language === 'en-US'
-  const lang = isEN ? 'en-US' : 'pt-BR'
-  const settings = await getSettings()
-  const logoUrl = settings.brand_logo_email || undefined
+  const lang: TemplateLanguage = language === 'en-US' ? 'en-US' : 'pt-BR'
+  const vars: TemplateVars = {
+    client_name: clientName,
+    company,
+    type_label: typeLabel,
+  }
 
-  const title = isEN
-    ? 'Your briefing is ready'
-    : 'Seu briefing está pronto'
-
-  const fallbackLinkBlock = (label: string) => `<p style="margin:0;color:${T.muted};font-size:13px">${label}<br><a href="${escapeHtml(link)}" target="_blank" style="color:${T.muted} !important;text-decoration:underline;-webkit-text-decoration:underline;word-break:break-all">${escapeHtml(link)}</a></p>`
-
-  const bodyHtml = isEN
-    ? `<p style="margin:0 0 12px">Hello, <strong>${escapeHtml(clientName)}</strong>!</p>
-       <p style="margin:0 0 12px">We've prepared a <strong>${escapeHtml(typeLabel)}</strong> briefing for <strong>${escapeHtml(company)}</strong>.</p>
-       <p style="margin:0 0 12px">Some fields are pre-filled based on what we know — just review, complete the rest, and submit. Takes a few minutes.</p>
-       ${fallbackLinkBlock("If the button below doesn't work, copy this link:")}`
-    : `<p style="margin:0 0 12px">Olá, <strong>${escapeHtml(clientName)}</strong>!</p>
-       <p style="margin:0 0 12px">Preparamos um briefing de <strong>${escapeHtml(typeLabel)}</strong> para a <strong>${escapeHtml(company)}</strong>.</p>
-       <p style="margin:0 0 12px">Alguns campos já estão preenchidos com base no que sabemos. É só revisar, completar o que faltar e enviar. Leva poucos minutos.</p>
-       ${fallbackLinkBlock('Se o botão abaixo não funcionar, copie o link:')}`
-
-  const ctaText = isEN ? 'Fill out briefing →' : 'Preencher briefing →'
-  const preheader = isEN
-    ? `Personalized briefing for ${company}`
-    : `Briefing personalizado para ${company}`
-
-  const html = renderTemplate({
-    title,
-    bodyHtml,
-    ctaText,
+  const composed = await composeEmail({
+    type: 'briefing_invitation',
+    language: lang,
+    vars,
+    blocks: {
+      fallback_link: renderFallbackLinkBlock(link, lang),
+    },
     ctaHref: link,
-    lang,
-    logoUrl,
-    preheader,
   })
-  const text = renderPlainText({ title, bodyHtml, ctaText, ctaHref: link })
 
   try {
     const result = await getResend().emails.send({
       from: FROM,
       to: clientEmail,
-      subject: isEN
-        ? `${typeLabel} briefing — ${company}`
-        : `Briefing de ${typeLabel} — ${company}`,
-      html,
-      text,
+      subject: composed.subject,
+      html: composed.html,
+      text: composed.text,
     })
     return { ok: true, id: result.data?.id }
   } catch (error) {
@@ -322,9 +474,6 @@ export async function sendBriefingToClient({
  *
  * Accepts a `kind` to switch between completion and update copy, and a
  * `changes` array (only for updates) which renders as the diff section.
- * The HTML is built here from structured data, not handed in pre-rendered
- * — that's the whole point of this refactor: callers pass facts, this
- * module renders.
  */
 export async function sendCompletionToAdmin({
   adminEmail,
@@ -345,92 +494,62 @@ export async function sendCompletionToAdmin({
   changes?: DiffChange[]
   language?: string
 }) {
-  const isEN = language === 'en-US'
-  const lang = isEN ? 'en-US' : 'pt-BR'
-  const settings = await getSettings()
-  const logoUrl = settings.brand_logo_email || undefined
-
+  const lang: TemplateLanguage = language === 'en-US' ? 'en-US' : 'pt-BR'
   const isUpdate = kind === 'updated'
+  const adminUrl = `${baseUrl}/admin`
+  const localeForDate = lang === 'en-US' ? 'en-US' : 'pt-BR'
 
-  const title = isUpdate
-    ? isEN
-      ? 'Briefing updated'
-      : 'Briefing atualizado'
-    : isEN
-      ? 'Briefing completed'
-      : 'Briefing concluído'
+  const vars: TemplateVars = isUpdate
+    ? {
+        company,
+        type_label: typeLabel,
+        changes_count: String(changes.length),
+      }
+    : {
+        client_name: clientName,
+        company,
+        type_label: typeLabel,
+        completed_at: new Date().toLocaleString(localeForDate),
+      }
 
-  const subject = isUpdate
-    ? isEN
-      ? `${company} updated their ${typeLabel} briefing`
-      : `${company} atualizou o briefing de ${typeLabel}`
-    : isEN
-      ? `Briefing completed — ${company} (${typeLabel})`
-      : `Briefing concluído — ${company} (${typeLabel})`
+  const blocks: Record<string, string> = isUpdate
+    ? { changes: renderDiffSection(changes, lang) }
+    : {
+        meta_card: renderMetaCard([
+          {
+            label: lang === 'en-US' ? 'Client' : 'Cliente',
+            value: clientName,
+          },
+          {
+            label: lang === 'en-US' ? 'Company' : 'Empresa',
+            value: company,
+          },
+          {
+            label: lang === 'en-US' ? 'Type' : 'Tipo',
+            value: typeLabel,
+          },
+          {
+            label: lang === 'en-US' ? 'Completed at' : 'Concluído em',
+            value: new Date().toLocaleString(localeForDate),
+          },
+        ]),
+      }
 
-  const lead = isUpdate
-    ? isEN
-      ? `<strong>${escapeHtml(company)}</strong> just updated the <strong>${escapeHtml(typeLabel)}</strong> briefing.`
-      : `<strong>${escapeHtml(company)}</strong> acabou de atualizar o briefing de <strong>${escapeHtml(typeLabel)}</strong>.`
-    : isEN
-      ? `<strong>${escapeHtml(clientName)}</strong> from <strong>${escapeHtml(company)}</strong> just completed the <strong>${escapeHtml(typeLabel)}</strong> briefing.`
-      : `<strong>${escapeHtml(clientName)}</strong> da <strong>${escapeHtml(company)}</strong> acabou de concluir o briefing de <strong>${escapeHtml(typeLabel)}</strong>.`
-
-  const sectionLabel = isUpdate
-    ? isEN
-      ? 'CHANGES'
-      : 'ALTERAÇÕES'
-    : ''
-
-  const middleBlock = isUpdate
-    ? `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${T.muted};margin:24px 0 10px">${sectionLabel}</div>${renderDiffSection(changes, lang)}`
-    : renderMetaCard([
-        {
-          label: isEN ? 'Client' : 'Cliente',
-          value: clientName,
-        },
-        {
-          label: isEN ? 'Company' : 'Empresa',
-          value: company,
-        },
-        {
-          label: isEN ? 'Type' : 'Tipo',
-          value: typeLabel,
-        },
-        {
-          label: isEN ? 'Completed at' : 'Concluído em',
-          value: new Date().toLocaleString(isEN ? 'en-US' : 'pt-BR'),
-        },
-      ])
-
-  const bodyHtml = `<p style="margin:0 0 12px">${lead}</p>${middleBlock}`
-
-  const ctaText = isEN ? 'View in admin →' : 'Ver no painel →'
-  const ctaHref = `${baseUrl}/admin`
-  const preheader = isUpdate
-    ? `${changes.length} ${changes.length === 1 ? (isEN ? 'change' : 'alteração') : isEN ? 'changes' : 'alterações'}`
-    : isEN
-      ? 'New responses to review'
-      : 'Novas respostas para revisar'
-
-  const html = renderTemplate({
-    title,
-    bodyHtml,
-    ctaText,
-    ctaHref,
-    lang,
-    logoUrl,
-    preheader,
+  const composed = await composeEmail({
+    type: isUpdate ? 'briefing_updated_admin' : 'briefing_completed_admin',
+    language: lang,
+    vars,
+    blocks,
+    ctaHref: adminUrl,
   })
-  const text = renderPlainText({ title, bodyHtml, ctaText, ctaHref })
 
   try {
     const result = await getResend().emails.send({
       from: FROM,
       to: adminEmail,
-      subject,
-      html,
-      text,
+      subject: composed.subject,
+      html: composed.html,
+      text: composed.text,
     })
     return { ok: true, id: result.data?.id }
   } catch (error) {
@@ -457,46 +576,28 @@ export async function sendReminderToClient({
   link: string
   language?: string
 }) {
-  const isEN = language === 'en-US'
-  const lang = isEN ? 'en-US' : 'pt-BR'
-  const settings = await getSettings()
-  const logoUrl = settings.brand_logo_email || undefined
+  const lang: TemplateLanguage = language === 'en-US' ? 'en-US' : 'pt-BR'
+  const vars: TemplateVars = {
+    client_name: clientName,
+    company,
+    type_label: typeLabel,
+  }
 
-  const title = isEN ? 'Reminder: your briefing is waiting' : 'Lembrete: briefing aguardando'
-
-  const bodyHtml = isEN
-    ? `<p style="margin:0 0 12px">Hello, <strong>${escapeHtml(clientName)}</strong>!</p>
-       <p style="margin:0 0 12px">Just a quick reminder that your <strong>${escapeHtml(typeLabel)}</strong> briefing for <strong>${escapeHtml(company)}</strong> is still waiting.</p>
-       <p style="margin:0">It only takes a few minutes — some answers are already pre-filled, you just need to review and confirm.</p>`
-    : `<p style="margin:0 0 12px">Olá, <strong>${escapeHtml(clientName)}</strong>!</p>
-       <p style="margin:0 0 12px">Passando para lembrar que seu briefing de <strong>${escapeHtml(typeLabel)}</strong> da <strong>${escapeHtml(company)}</strong> ainda está aguardando.</p>
-       <p style="margin:0">Leva apenas alguns minutos — algumas respostas já estão preenchidas, é só revisar e confirmar.</p>`
-
-  const ctaText = isEN ? 'Fill out now →' : 'Preencher agora →'
-  const preheader = isEN
-    ? `Quick reminder — briefing pending for ${company}`
-    : `Lembrete rápido — briefing pendente da ${company}`
-
-  const html = renderTemplate({
-    title,
-    bodyHtml,
-    ctaText,
+  const composed = await composeEmail({
+    type: 'briefing_reminder',
+    language: lang,
+    vars,
+    blocks: {},
     ctaHref: link,
-    lang,
-    logoUrl,
-    preheader,
   })
-  const text = renderPlainText({ title, bodyHtml, ctaText, ctaHref: link })
 
   try {
     const result = await getResend().emails.send({
       from: FROM,
       to: clientEmail,
-      subject: isEN
-        ? `Reminder: ${typeLabel} briefing pending — ${company}`
-        : `Lembrete: briefing de ${typeLabel} aguardando — ${company}`,
-      html,
-      text,
+      subject: composed.subject,
+      html: composed.html,
+      text: composed.text,
     })
     return { ok: true, id: result.data?.id }
   } catch (error) {
@@ -526,70 +627,38 @@ export async function sendClientConfirmation({
   briefingLink?: string
   editingHours?: number
 }) {
-  const isEN = language === 'en-US'
-  const lang = isEN ? 'en-US' : 'pt-BR'
-  const settings = await getSettings()
-  const logoUrl = settings.brand_logo_email || undefined
+  const lang: TemplateLanguage = language === 'en-US' ? 'en-US' : 'pt-BR'
+  const vars: TemplateVars = {
+    client_name: clientName,
+    company,
+    type_label: typeLabel,
+    editing_hours: editingHours,
+  }
 
-  const title = isEN ? 'Briefing received' : 'Briefing recebido'
+  const blocks: Record<string, string> = briefingLink
+    ? { editing_window: renderEditingWindowBlock(editingHours, lang) }
+    : {} // no edit window → block placeholder is silently dropped
 
-  const editBlock = briefingLink
-    ? renderMetaCard([
-        {
-          label: isEN ? 'Editing window' : 'Janela de edição',
-          value: isEN
-            ? `${editingHours} hours to review and edit your answers`
-            : `${editingHours} horas para revisar e editar suas respostas`,
-        },
-      ])
-    : ''
-
-  const bodyHtml = isEN
-    ? `<p style="margin:0 0 12px">Hello, <strong>${escapeHtml(clientName)}</strong>!</p>
-       <p style="margin:0 0 12px">We received the <strong>${escapeHtml(typeLabel)}</strong> briefing for <strong>${escapeHtml(company)}</strong>. Thank you for taking the time.</p>
-       ${editBlock}
-       <p style="margin:0 0 12px">Our team will review your answers and reach out shortly to move things forward.</p>
-       <p style="margin:0;color:${T.muted};font-size:13px">If you need to add anything else, just reply to this email.</p>`
-    : `<p style="margin:0 0 12px">Olá, <strong>${escapeHtml(clientName)}</strong>!</p>
-       <p style="margin:0 0 12px">Recebemos o briefing de <strong>${escapeHtml(typeLabel)}</strong> da <strong>${escapeHtml(company)}</strong>. Obrigado pelo seu tempo.</p>
-       ${editBlock}
-       <p style="margin:0 0 12px">Nossa equipe vai analisar suas respostas e em breve entrará em contato para dar andamento.</p>
-       <p style="margin:0;color:${T.muted};font-size:13px">Se precisar adicionar algo, é só responder esse email.</p>`
-
-  // CTA is the edit link when present, otherwise no CTA — confirmation
-  // emails without an edit window don't need a button.
-  const ctaText = briefingLink
-    ? isEN
-      ? 'Review my answers →'
-      : 'Revisar minhas respostas →'
-    : undefined
-  const ctaHref = briefingLink
-
-  const preheader = isEN
-    ? `Briefing received — ${company}`
-    : `Briefing recebido — ${company}`
-
-  const html = renderTemplate({
-    title,
-    bodyHtml,
-    ctaText,
-    ctaHref,
-    lang,
-    logoUrl,
-    preheader,
+  const composed = await composeEmail({
+    type: 'briefing_confirmation',
+    language: lang,
+    vars,
+    blocks,
+    ctaHref: briefingLink,
+    // CTA only when there's a link to send them to. The cta_text
+    // column may still be set, but there's nowhere for the button to go
+    // without briefingLink.
+    ctaTextOverride: briefingLink ? undefined : '',
   })
-  const text = renderPlainText({ title, bodyHtml, ctaText, ctaHref })
 
   try {
     const result = await getResend().emails.send({
       from: FROM,
       to: clientEmail,
       replyTo: process.env.NOTIFICATION_EMAIL || FROM,
-      subject: isEN
-        ? `Briefing received — ${company}`
-        : `Briefing recebido — ${company}`,
-      html,
-      text,
+      subject: composed.subject,
+      html: composed.html,
+      text: composed.text,
     })
     return { ok: true, id: result.data?.id }
   } catch (error) {
@@ -603,14 +672,19 @@ export async function sendClientConfirmation({
 export async function sendWhatsApp(message: string) {
   const phone = process.env.CALLMEBOT_PHONE
   const apikey = process.env.CALLMEBOT_APIKEY
-  if (!phone || !apikey) return { ok: false, reason: 'not configured' }
+
+  if (!phone || !apikey) {
+    console.warn('WhatsApp env vars not configured (CALLMEBOT_PHONE/APIKEY)')
+    return { ok: false, error: 'not_configured' }
+  }
+
+  const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${encodeURIComponent(apikey)}`
+
   try {
-    const encoded = encodeURIComponent(message)
-    const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=${apikey}`
-    const res = await fetch(url)
-    return { ok: res.ok }
+    const response = await fetch(url)
+    return { ok: response.ok }
   } catch (error) {
-    console.error('WhatsApp failed:', error)
+    console.error('sendWhatsApp failed:', error)
     return { ok: false, error }
   }
 }
