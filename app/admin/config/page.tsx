@@ -198,7 +198,7 @@ export default function ConfigPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-6">
+          <TabsList className="mb-6 flex w-full overflow-x-auto sm:grid sm:grid-cols-6">
             <TabsTrigger value="geral">Geral</TabsTrigger>
             <TabsTrigger value="briefings">Briefings</TabsTrigger>
             <TabsTrigger value="emails">Emails</TabsTrigger>

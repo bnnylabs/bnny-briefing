@@ -583,8 +583,8 @@ export default function AdminPage() {
             </div>
 
             {/* Select-all + inline batch actions — single persistent row, no layout shift */}
-            {filtered.length > 1 && (
-              <div className="mt-4 mb-3 flex items-center justify-between px-1">
+            {filtered.length > 0 && (
+              <div className="mt-4 mb-3 flex items-center justify-between gap-2 px-1">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="select-all-briefings"
@@ -596,7 +596,7 @@ export default function AdminPage() {
                   />
                   <label
                     htmlFor="select-all-briefings"
-                    className="cursor-pointer select-none text-xs text-muted-foreground"
+                    className="cursor-pointer select-none whitespace-nowrap text-xs text-muted-foreground"
                   >
                     {selectedIds.size === filtered.length && filtered.length > 0
                       ? 'Desmarcar todos'
@@ -605,22 +605,22 @@ export default function AdminPage() {
                   </label>
                 </div>
 
-                {/* Batch actions — same height always, opacity transition only */}
+                {/* Batch actions — hidden count+cancel on mobile */}
                 <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                  <span className="text-xs text-muted-foreground tabular-nums">
+                  <span className="hidden sm:inline text-xs text-muted-foreground tabular-nums">
                     {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
                   </span>
                   <button
                     type="button"
                     onClick={() => setSelectedIds(new Set())}
-                    className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className="hidden sm:inline-flex rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     Cancelar
                   </button>
                   <button
                     type="button"
                     onClick={() => setBatchDeleteConfirm(true)}
-                    className="inline-flex items-center gap-1 rounded-md border border-destructive/40 px-2.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                    className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-destructive/40 px-2.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
                   >
                     <Trash2 size={11} />
                     Excluir {selectedIds.size}

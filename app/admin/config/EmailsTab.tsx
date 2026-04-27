@@ -345,20 +345,19 @@ function EmailTemplateEditor({
     <div className="space-y-4">
       <Card className="p-5">
         {/* Header */}
-        <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <IconButton icon={<ArrowLeft className="h-4 w-4" />} label="Voltar" size="icon" onClick={onBack} />
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">{TEMPLATE_LABELS[template.type][template.language]}</span>
-                {/* Fix #7 — same badge in editor header */}
                 {!template.is_default && <CustomizedBadge />}
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">{langLabel}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {/* Fix #6 — distinct visual states for restore button */}
             <button
               type="button"
