@@ -31,6 +31,7 @@ import {
 import { useToast, ToastContainer } from '@/components/toast'
 import { fullVersion, APP_VERSION } from '@/lib/version'
 import { Logo } from '@/components/brand/Logo'
+import { EmailsTab } from './EmailsTab'
 
 type SettingsBag = {
   // Geral
@@ -196,9 +197,10 @@ export default function ConfigPage() {
         </div>
 
         <Tabs defaultValue="geral" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-5">
+          <TabsList className="mb-6 grid w-full grid-cols-6">
             <TabsTrigger value="geral">Geral</TabsTrigger>
             <TabsTrigger value="briefings">Briefings</TabsTrigger>
+            <TabsTrigger value="emails">Emails</TabsTrigger>
             <TabsTrigger value="perfil">Perfil</TabsTrigger>
             <TabsTrigger value="marca">Marca</TabsTrigger>
             <TabsTrigger value="sobre">Sobre</TabsTrigger>
@@ -279,6 +281,11 @@ export default function ConfigPage() {
                 </div>
               </div>
             </SectionCard>
+          </TabsContent>
+
+          {/* EMAILS */}
+          <TabsContent value="emails" className="space-y-4">
+            <EmailsTab toast={toast} />
           </TabsContent>
 
           {/* PERFIL */}
