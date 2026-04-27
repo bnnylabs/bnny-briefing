@@ -360,7 +360,7 @@ function NovoBriefingContent() {
     } else {
       clientId
         ? router.push(`/admin/clientes/${clientId}`)
-        : router.push('/admin')
+        : router.push('/admin/briefings')
     }
   }
 

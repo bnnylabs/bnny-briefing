@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   FileText,
+  LayoutDashboard,
   Users,
   ChevronUp,
   Settings,
@@ -45,8 +46,14 @@ const SECTIONS: SidebarSection[] = [
     items: [
       {
         href: '/admin',
+        label: 'Dashboard',
+        icon: <LayoutDashboard size={15} strokeWidth={1.75} />,
+      },
+      {
+        href: '/admin/briefings',
         label: 'Briefings',
         icon: <FileText size={15} strokeWidth={1.75} />,
+        matchPrefix: '/admin/briefings',
       },
       {
         href: '/admin/clientes',

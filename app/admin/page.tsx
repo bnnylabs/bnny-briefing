@@ -1,417 +1,121 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import * as React from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
-import { useToast, ToastContainer } from '@/components/toast'
+import {
+  ArrowRight,
+  Bell,
+  Bot,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  FileText,
+  Pencil,
+  Plus,
+  Send,
+  Trash2,
+  TrendingUp,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
-import { IconButton } from '@/components/ui/icon-button'
-import { BrandLogo } from '@/components/brand/BrandLogo'
-import { Pencil, FileText, Bell, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { BrandLogo } from '@/components/brand/BrandLogo'
+import { useToast, ToastContainer } from '@/components/toast'
+import { cn } from '@/lib/utils'
 
-/** Format Date as YYYY-MM-DD string in local time, matching the existing date filter format */
-function toIsoDay(d: Date): string {
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
+interface Client {
+  id: string
+  name: string
+  company: string
+  email?: string
+  phone?: string
 }
 
-interface Client { id: string; name: string; company: string; email: string; phone: string }
 interface Briefing {
-  id: string; slug: string; type: string; type_label: string; status: string
-  created_at: string; viewed_at: string | null; started_at: string | null
-  completed_at: string | null; expires_at: string | null; internal_notes: string | null
-  language?: string; editing_locked?: boolean; editing_expires_at?: string | null; update_count?: number; clients: Client
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  enviado: 'Enviado', visualizado: 'Visualizado', em_andamento: 'Em andamento', concluido: 'Concluído',
-}
-
-function fmt(d: string | null) {
-  if (!d) return '—'
-  return new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
-}
-
-function timeAgo(d: string) {
-  const diff = Date.now() - new Date(d).getTime()
-  const mins = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-  if (mins < 60) return `há ${mins}min`
-  if (hours < 24) return `há ${hours}h`
-  if (days === 1) return 'há 1 dia'
-  return `há ${days} dias`
-}
-
-function StatusIcon({ status, size = 11 }: { status: string; size?: number }) {
-  switch (status) {
-    case 'enviado':       return <Send size={size} />
-    case 'visualizado':   return <Eye size={size} />
-    case 'em_andamento':  return <Clock size={size} />
-    case 'concluido':     return <CheckCircle2 size={size} />
-    default:              return null
-  }
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, 'muted' | 'outline' | 'warning' | 'success'> = {
-    enviado: 'outline', visualizado: 'muted', em_andamento: 'warning', concluido: 'success'
-  }
-  return (
-    <Badge variant={variants[status] || 'muted'} className="text-[11px] font-medium whitespace-nowrap">
-      <StatusIcon status={status} />
-      {STATUS_LABELS[status] || status}
-    </Badge>
-  )
-}
-
-function Modal({ onClose, children, wide }: { onClose: () => void; children: React.ReactNode; wide?: boolean }) {
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', h)
-    // Lock body scroll while modal open
-    const orig = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', h)
-      document.body.style.overflow = orig
-    }
-  }, [onClose])
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in-0 duration-150"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className={`relative bg-card border border-border rounded-xl w-full ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[88vh] overflow-y-auto shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1 duration-200 p-6`}
-        onClick={e => e.stopPropagation()}>
-        <button
-          onClick={onClose}
-          aria-label="Fechar"
-          className="absolute top-3.5 right-3.5 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-          <X size={15} strokeWidth={2} />
-        </button>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-interface FileEntry2 { url: string; name: string; type?: string; size?: number }
-function ResponsesContent({ responses, language, companyName, renderFileValue, labelMapPT, labelMapEN }: {
-  responses: Record<string, unknown>
+  id: string
+  slug: string
+  type_label: string
+  status: 'enviado' | 'visualizado' | 'em_andamento' | 'concluido'
   language?: string
-  companyName: string
-  renderFileValue: (v: unknown) => React.ReactNode
-  labelMapPT: Record<string, string>
-  labelMapEN: Record<string, string>
-}) {
-  const allFiles: FileEntry2[] = []
-  Object.entries(responses).forEach(([, value]) => {
-    if (Array.isArray(value)) {
-      (value as FileEntry2[]).forEach(f => {
-        if (f && f.name && f.url?.startsWith('http')) allFiles.push(f)
-      })
-    }
-  })
-  const imageFiles = allFiles.filter(f =>
-    f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
-  )
-  const otherFiles = allFiles.filter(f =>
-    !f.type?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
-  )
-  const labelMap = language === 'en-US' ? labelMapEN : labelMapPT
-
-  async function handleDownloadAll() {
-    const { downloadAsZip } = await import('@/lib/download-zip')
-    await downloadAsZip(allFiles, `${companyName} - arquivos.zip`)
-  }
-
-  return (
-    <>
-      {allFiles.length > 0 && (
-        <div className="mb-4 px-4 py-3 bg-secondary border border-border rounded-xl flex items-center gap-3">
-          <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold">
-              {allFiles.length} {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
-              {imageFiles.length > 0 && <span className="ml-2 text-xs text-muted-foreground font-normal">· {imageFiles.length} {imageFiles.length === 1 ? 'imagem' : 'imagens'}{otherFiles.length > 0 && `, ${otherFiles.length} doc`}</span>}
-            </div>
-            <div className="text-xs text-muted-foreground mt-0.5 truncate">{allFiles.map(f => f.name).join(', ')}</div>
-          </div>
-          <Button onClick={handleDownloadAll} size="sm" className="shrink-0"><Download size={14} /> Baixar ZIP</Button>
-        </div>
-      )}
-      <div className="flex flex-col gap-2">
-        {Object.entries(responses).filter(([, v]) => v).map(([key, value]) => {
-          const isFileField = /arquivo|logo|referencia|anexo|upload|files/i.test(key) || (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'url' in (value[0] as object))
-          const displayValue = isFileField ? '' : (Array.isArray(value) ? (value as string[]).join(', ') : String(value))
-          const isShort = !isFileField && displayValue.length < 60
-          return (
-            <div key={key} className="rounded-xl overflow-hidden border border-border">
-              <div className={`px-3.5 py-2 bg-secondary flex items-center justify-between gap-2 ${(!isShort || isFileField) ? 'border-b border-border' : ''}`}>
-                <span className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  {isFileField && <Paperclip size={10} />}
-                  {labelMap[key] || key.replace(/_/g, ' ')}
-                </span>
-                {isShort && !isFileField && <span className="text-sm font-semibold text-foreground">{displayValue}</span>}
-              </div>
-              {(!isShort || isFileField) && (
-                <div className="px-3.5 py-3 text-sm text-foreground leading-relaxed bg-card">
-                  {isFileField ? renderFileValue(value) : <span className="whitespace-pre-wrap">{displayValue}</span>}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </>
-  )
+  update_count?: number
+  created_at: string
+  completed_at: string | null
+  clients: Client | null
 }
 
+interface ActivityLogEntry {
+  id: string
+  action: string
+  details: Record<string, unknown> | null
+  created_at: string
+}
 
-export default function AdminPage() {
-  const [authed, setAuthed] = useState<boolean | null>(null)
-  const [password, setPassword] = useState('')
-  const [loginError, setLoginError] = useState('')
-  const [briefings, setBriefings] = useState<Briefing[]>([])
-  const [loading, setLoading] = useState(false)
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [search, setSearch] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-  const { toasts, toast, remove: removeToast } = useToast()
-
-  const [responsesBriefing, setResponsesBriefing] = useState<Briefing | null>(null)
-  const [responses, setResponses] = useState<Record<string, unknown> | null>(null)
-  const [responseDiff, setResponseDiff] = useState<Record<string, { old: unknown; new: unknown }> | null>(null)
-  const [responseVersions, setResponseVersions] = useState(0)
-  const [showDiffView, setShowDiffView] = useState(false)
-  const [diffModal, setDiffModal] = useState<{ briefing: Briefing; diff: Record<string, { old: unknown; new: unknown }>; versions: number } | null>(null)
-  const [loadingDiff, setLoadingDiff] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [editBriefing, setEditBriefing] = useState<Briefing | null>(null)
-  const [notesBriefing, setNotesBriefing] = useState<Briefing | null>(null)
-  const [notesText, setNotesText] = useState('')
-  const [savingNotes, setSavingNotes] = useState(false)
-  const [editForm, setEditForm] = useState({ name: '', company: '', email: '', phone: '' })
-  const [savingEdit, setSavingEdit] = useState(false)
-  const [sendingReminder, setSendingReminder] = useState<string | null>(null)
-  const [reminderSent, setReminderSent] = useState<string | null>(null)
-  const [notifBriefing, setNotifBriefing] = useState<Briefing | null>(null)
-  const [notifHistory, setNotifHistory] = useState<Array<{type: string; status: string; sent_at: string; details: Record<string, string>}>>([])
-  const [sendingResend, setSendingResend] = useState<string | null>(null)
-
-  const [deleteBriefing, setDeleteBriefing] = useState<Briefing | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false)
-  const [batchDeleting, setBatchDeleting] = useState(false)
-
-  const [duplicating, setDuplicating] = useState<string | null>(null)
-  const [duplicatedSlug, setDuplicatedSlug] = useState<string | null>(null)
-  const [dupLink, setDupLink] = useState('')
-
-  const [clientHistoryClient, setClientHistoryClient] = useState<Client | null>(null)
-  const [clientHistoryBriefings, setClientHistoryBriefings] = useState<Briefing[]>([])
-
+/**
+ * /admin — when not authenticated, renders the login screen. When authed,
+ * renders the dashboard. Login lives here so the unauthenticated route is
+ * the predictable entry point of the panel.
+ */
+export default function AdminHome() {
+  const [authed, setAuthed] = React.useState<boolean | null>(null)
   const router = useRouter()
 
-  const loadBriefings = useCallback(async () => {
-    setLoading(true)
-    const res = await fetch('/api/briefings')
-    if (res.ok) { const data = await res.json(); setBriefings(data.briefings || []) }
-    setLoading(false)
+  React.useEffect(() => {
+    fetch('/api/briefings').then((r) => {
+      setAuthed(r.status !== 401)
+    })
   }, [])
 
-  useEffect(() => {
-    fetch('/api/briefings').then(r => {
-      if (r.status === 401) setAuthed(false)
-      else { setAuthed(true); loadBriefings() }
-    })
-  }, [loadBriefings])
+  if (authed === null) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="spinner" />
+      </div>
+    )
+  }
+
+  if (!authed) {
+    return <LoginScreen onAuthed={() => setAuthed(true)} />
+  }
+
+  return <Dashboard router={router} />
+}
+
+/* ──────────────────────────────────────────────────────────────────── */
+/* Login                                                                 */
+/* ──────────────────────────────────────────────────────────────────── */
+
+function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
+  const router = useRouter()
+  const [password, setPassword] = React.useState('')
+  const [loginError, setLoginError] = React.useState('')
+  const [submitting, setSubmitting] = React.useState(false)
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
+    setSubmitting(true)
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    })
+    setSubmitting(false)
     if (res.ok) {
-      setAuthed(true)
-      loadBriefings()
-      // Critical: cookie was just set server-side. The server layout has
-      // already rendered without the sidebar (because cookie wasn't there
-      // when the page first loaded). router.refresh() forces a re-render
-      // of all server components for the current route — so the layout
-      // re-evaluates the cookie and now wraps us in AdminShell.
+      onAuthed()
+      // Force the server layout to re-evaluate the cookie so the sidebar
+      // appears (the layout had already rendered before the cookie was set).
       router.refresh()
     } else {
       setLoginError('Senha incorreta')
     }
   }
 
-  async function openDiffModal(b: Briefing) {
-    setLoadingDiff(true)
-    const res = await fetch(`/api/briefings/${b.slug}/responses`)
-    if (res.ok) {
-      const d = await res.json()
-      setDiffModal({ briefing: b, diff: d.diff || {}, versions: d.versions || 0 })
-    }
-    setLoadingDiff(false)
-  }
-
-  async function toggleEditingLock(slug: string, currentLocked: boolean) {
-    await fetch(`/api/briefings/${slug}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ editing_locked: !currentLocked }),
-    })
-    setBriefings(prev => prev.map(b => b.slug === slug ? { ...b, editing_locked: !currentLocked } : b))
-    toast(!currentLocked ? 'Edição bloqueada' : 'Edição liberada', 'success', 2000)
-  }
-
-  async function copyLink(slug: string) {
-    await navigator.clipboard.writeText(`${window.location.origin}/${slug}`)
-    setCopiedId(slug); setTimeout(() => setCopiedId(null), 2000)
-    toast('Link copiado!', 'success', 2000)
-  }
-
-  async function viewResponses(b: Briefing) {
-    setResponsesBriefing(b); setResponses(null); setShowDiffView(false)
-    const res = await fetch(`/api/briefings/${b.slug}/responses`)
-    if (res.ok) {
-      const d = await res.json()
-      setResponses(d.answers || {})
-      setResponseDiff(d.diff || null)
-      setResponseVersions(d.versions || 1)
-    }
-  }
-
-  function buildText(b: Briefing, resp: Record<string, unknown>) {
-    const lines = [`BRIEFING — ${b.type_label.toUpperCase()}`, `Empresa: ${b.clients?.company}`, `Contato: ${b.clients?.name}`, `Email: ${b.clients?.email || '—'}`, `WhatsApp: ${b.clients?.phone || '—'}`, `Concluído: ${fmt(b.completed_at)}`, '', '─────────────────────────────────', '']
-    Object.entries(resp).forEach(([k, v]) => { if (!v) return; lines.push(k.replace(/_/g, ' ').toUpperCase()); lines.push(Array.isArray(v) ? (v as string[]).join(', ') : String(v)); lines.push('') })
-    return lines.join('\n')
-  }
-
-  async function copyAll() {
-    if (!responsesBriefing || !responses) return
-    await navigator.clipboard.writeText(buildText(responsesBriefing, responses))
-    setCopied(true); setTimeout(() => setCopied(false), 2000)
-    toast('Respostas copiadas!', 'success', 2000)
-  }
-
-  function exportPDF() {
-    if (!responsesBriefing || !responses) return
-    const b = responsesBriefing
-    const fields = Object.entries(responses).filter(([, v]) => v)
-    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111;padding:48px;max-width:800px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #c8ff00;margin-bottom:32px}.logo{font-size:22px;font-weight:800;letter-spacing:-0.04em}.logo span{color:#c8ff00;background:#111;padding:2px 8px;border-radius:4px}.badge{background:#111;color:#c8ff00;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:inline-block}.cb{background:#f8f8f8;border-radius:12px;padding:20px 24px;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.cf label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;display:block;margin-bottom:3px}.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}.f{margin-bottom:18px}.fl{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}.fv{font-size:14px;color:#111;line-height:1.6;background:#f8f8f8;padding:10px 14px;border-radius:8px;border-left:3px solid #c8ff00}.footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="hdr"><div><div class="logo"><span>Bnny</span> Labs</div><div style="font-size:12px;color:#555;margin-top:4px">Sistema de Briefings</div></div><div style="text-align:right"><div style="font-size:17px;font-weight:700">${b.type_label}</div><div class="badge">${STATUS_LABELS[b.status]||b.status}</div></div></div><div class="cb"><div class="cf"><label>Empresa</label><span style="font-size:15px;font-weight:700">${b.clients?.company||'—'}</span></div><div class="cf"><label>Contato</label><span>${b.clients?.name||'—'}</span></div><div class="cf"><label>Email</label><span>${b.clients?.email||'—'}</span></div><div class="cf"><label>WhatsApp</label><span>${b.clients?.phone||'—'}</span></div><div class="cf"><label>Concluído em</label><span>${fmt(b.completed_at)}</span></div><div class="cf"><label>Tipo</label><span>${b.type_label}</span></div></div><div class="st">Respostas do briefing</div>${fields.map(([k,v])=>`<div class="f"><div class="fl">${k.replace(/_/g,' ')}</div><div class="fv">${Array.isArray(v)?(v as string[]).join(', '):String(v)}</div></div>`).join('')}<div class="footer">Gerado por Bnny Labs · briefing.bnnylabs.com · ${new Date().toLocaleDateString('pt-BR')}</div></body></html>`
-    const win = window.open('', '_blank')
-    if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
-  }
-
-  function openEdit(b: Briefing) {
-    setEditBriefing(b)
-    setEditForm({ name: b.clients?.name || '', company: b.clients?.company || '', email: b.clients?.email || '', phone: b.clients?.phone || '' })
-  }
-
-  async function saveEdit() {
-    if (!editBriefing) return
-    setSavingEdit(true)
-    await fetch(`/api/admin/clients/${editBriefing.clients?.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editForm) })
-    setSavingEdit(false); setEditBriefing(null); loadBriefings()
-    toast('Cliente atualizado', 'success')
-  }
-
-  async function saveNotes() {
-    if (!notesBriefing) return
-    setSavingNotes(true)
-    await fetch(`/api/briefings/${notesBriefing.slug}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ internal_notes: notesText }) })
-    setSavingNotes(false); setNotesBriefing(null); loadBriefings()
-    toast('Anotação salva', 'success')
-  }
-
-  async function sendReminder(b: Briefing) {
-    setSendingReminder(b.id)
-    await fetch(`/api/admin/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: b.slug, type: 'reminder' }) })
-    setSendingReminder(null); setReminderSent(b.id); setTimeout(() => setReminderSent(null), 3000)
-  }
-
-  async function viewNotifications(b: Briefing) {
-    setNotifBriefing(b)
-    const res = await fetch(`/api/briefings/${b.slug}/notifications`)
-    if (res.ok) { const data = await res.json(); setNotifHistory(data.notifications || []) }
-  }
-
-  async function resendEmail(b: Briefing) {
-    setSendingResend(b.id)
-    const res = await fetch('/api/admin/notify', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug: b.slug, type: 'resend' })
-    })
-    const data = await res.json()
-    setSendingResend(null)
-    if (data.emailSent) { setReminderSent(b.id + '_resend'); setTimeout(() => setReminderSent(null), 3000) }
-  }
-
-  async function confirmDelete() {
-    if (!deleteBriefing) return
-    setDeleting(true)
-    await fetch(`/api/briefings/${deleteBriefing.slug}`, { method: 'DELETE' })
-    setDeleting(false); setDeleteBriefing(null); loadBriefings()
-    toast('Briefing excluído', 'success')
-  }
-
-  async function confirmBatchDelete() {
-    if (selectedIds.size === 0) return
-    setBatchDeleting(true)
-    const slugs = filtered.filter(b => selectedIds.has(b.id)).map(b => b.slug)
-    await fetch('/api/admin/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slugs }) })
-    setBatchDeleting(false); setBatchDeleteConfirm(false); setSelectedIds(new Set()); loadBriefings()
-    toast(`${slugs.length} briefing${slugs.length > 1 ? 's' : ''} excluído${slugs.length > 1 ? 's' : ''}`, 'success')
-  }
-
-  function toggleSelect(id: string) {
-    setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
-  }
-
-  function toggleSelectAll() {
-    if (selectedIds.size === filtered.length) setSelectedIds(new Set())
-    else setSelectedIds(new Set(filtered.map(b => b.id)))
-  }
-
-  async function duplicateBriefing(b: Briefing) {
-    setDuplicating(b.id)
-    const res = await fetch(`/api/briefings/${b.slug}/duplicate`, { method: 'POST' })
-    if (res.ok) {
-      const data = await res.json()
-      setDuplicatedSlug(data.briefing?.slug)
-      setDupLink(data.link || '')
-      await loadBriefings()
-      toast('Briefing duplicado!', 'success')
-    }
-    setDuplicating(null)
-  }
-
-  function viewClientHistory(client: Client) {
-    setClientHistoryClient(client)
-    setClientHistoryBriefings(briefings.filter(b => b.clients?.id === client.id))
-  }
-
-  const filtered = briefings.filter(b => {
-    if (statusFilter !== 'all' && b.status !== statusFilter) return false
-    if (search) { const q = search.toLowerCase(); if (!b.clients?.company?.toLowerCase().includes(q) && !b.clients?.name?.toLowerCase().includes(q) && !b.type_label?.toLowerCase().includes(q)) return false }
-    if (dateFrom && new Date(b.created_at) < new Date(dateFrom)) return false
-    if (dateTo && new Date(b.created_at) > new Date(dateTo + 'T23:59:59')) return false
-    return true
-  })
-
-  const counts = { all: briefings.length, enviado: briefings.filter(b=>b.status==='enviado').length, visualizado: briefings.filter(b=>b.status==='visualizado').length, em_andamento: briefings.filter(b=>b.status==='em_andamento').length, concluido: briefings.filter(b=>b.status==='concluido').length }
-
-  if (authed === null) return <div className="flex items-center justify-center h-screen bg-background"><div className="spinner" /></div>
-
-  if (!authed) return (
-    <div className="flex items-center justify-center min-h-screen bg-background px-4">
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm animate-in fade-in-0 duration-300">
         <div className="mb-8 flex flex-col items-center gap-1.5">
           <BrandLogo className="h-7 w-auto" />
@@ -420,592 +124,544 @@ export default function AdminPage() {
           </p>
         </div>
         <form onSubmit={handleLogin} className="flex flex-col gap-3">
-          <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha de acesso" autoFocus className="h-11 text-base" />
-          {loginError && <p className="text-destructive text-sm text-center">{loginError}</p>}
-          <Button type="submit" className="h-11 text-base font-bold">Entrar</Button>
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Senha de acesso"
+            autoFocus
+            className="h-11 text-base"
+          />
+          {loginError && (
+            <p className="text-center text-sm text-destructive">{loginError}</p>
+          )}
+          <Button
+            type="submit"
+            disabled={submitting || !password}
+            className="h-11 text-base font-bold"
+          >
+            {submitting ? 'Entrando…' : 'Entrar'}
+          </Button>
         </form>
       </div>
     </div>
   )
+}
 
+/* ──────────────────────────────────────────────────────────────────── */
+/* Dashboard                                                             */
+/* ──────────────────────────────────────────────────────────────────── */
 
-  function renderFileValue(value: unknown): React.ReactNode {
-    if (!value) return null
+interface ProfileResponse {
+  name: string
+  photoUrl: string | null
+  jobTitle: string
+}
 
-    const renderFileCard = (f: { url: string; name: string; size?: number; type?: string }, i: number) => {
-      const isImage = f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
-      const hasUrl = f.url && f.url.startsWith('http')
-      const sizeLabel = f.size ? `${(f.size / 1024).toFixed(0)}kb` : ''
+function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
+  const { toasts, remove } = useToast()
+  const [briefings, setBriefings] = React.useState<Briefing[]>([])
+  const [activity, setActivity] = React.useState<ActivityLogEntry[]>([])
+  const [profile, setProfile] = React.useState<ProfileResponse | null>(null)
+  const [loading, setLoading] = React.useState(true)
 
-      if (isImage) {
-        if (hasUrl) return (
-          <div key={i}>
-            <a href={f.url} target="_blank" rel="noopener noreferrer" className="block">
-              <img src={f.url} alt={f.name} className="w-full max-h-[200px] rounded-lg object-contain bg-black/50 cursor-pointer" />
-            </a>
-            <div className="text-xs text-muted-foreground mt-1">{f.name}{sizeLabel ? ` · ${sizeLabel}` : ''}</div>
-          </div>
-        )
-        return (
-          <div key={i} className="flex items-center gap-2 px-3 py-2 bg-secondary border border-border rounded-lg opacity-60">
-            <ImageIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm truncate">{f.name}</div>
-              <div className="text-xs text-muted-foreground">{sizeLabel} · upload não concluído</div>
-            </div>
-          </div>
-        )
-      }
-
-      if (hasUrl) return (
-        <a key={i} href={f.url} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-2 px-3 py-2 bg-secondary border border-border rounded-lg no-underline text-foreground hover:border-border/60 transition-colors">
-          {f.type?.includes('pdf')
-            ? <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-            : <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />}
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold truncate">{f.name}</div>
-            {sizeLabel && <div className="text-xs text-muted-foreground">{sizeLabel}</div>}
-          </div>
-          <span className="inline-flex items-center gap-1 text-xs text-foreground shrink-0">
-            <ExternalLink size={12} /> Abrir
-          </span>
-        </a>
-      )
-
-      return (
-        <div key={i} className="flex items-center gap-2 px-3 py-2 bg-secondary border border-border rounded-lg opacity-60">
-          <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm truncate">{f.name}</div>
-            <div className="text-xs text-muted-foreground">{sizeLabel} · upload não concluído</div>
-          </div>
-        </div>
-      )
+  React.useEffect(() => {
+    let cancelled = false
+    Promise.all([
+      fetch('/api/briefings').then((r) => (r.ok ? r.json() : { briefings: [] })),
+      fetch('/api/admin/activity-log').then((r) => (r.ok ? r.json() : { logs: [] })),
+      fetch('/api/profile/me').then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([b, a, p]) => {
+        if (cancelled) return
+        setBriefings(b.briefings || [])
+        setActivity(a.logs || [])
+        setProfile(p)
+        setLoading(false)
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
     }
+  }, [])
 
-    if (Array.isArray(value)) {
-      return (
-        <div className="flex flex-col gap-2.5">
-          {(value as { url: string; name: string; size?: number; type?: string }[]).map((f, i) => renderFileCard(f, i))}
-        </div>
-      )
-    }
-
-    // Legacy: plain string
-    const str = String(value)
-    const isUrl = str.startsWith('http')
-    return isUrl
-      ? <a href={str} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all text-sm inline-flex items-center gap-1"><Paperclip size={12} /> {str.split('/').pop()}</a>
-      : <span className="text-muted-foreground text-sm inline-flex items-center gap-1"><Paperclip size={12} /> {str}</span>
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="spinner" />
+      </div>
+    )
   }
+
+  const greeting = greet(profile?.name)
+  const today = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+
+  // Derive widget data once
+  const now = Date.now()
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000
+  const recentlyConcluded = briefings
+    .filter(
+      (b) =>
+        b.status === 'concluido' &&
+        b.completed_at &&
+        now - new Date(b.completed_at).getTime() < SEVEN_DAYS,
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.completed_at!).getTime() -
+        new Date(a.completed_at!).getTime(),
+    )
+
+  const recentlyEdited = briefings
+    .filter((b) => (b.update_count || 0) > 0 && b.status === 'concluido')
+    .sort(
+      (a, b) =>
+        new Date(b.completed_at || b.created_at).getTime() -
+        new Date(a.completed_at || a.created_at).getTime(),
+    )
+
+  const awaitingYou = uniqueById([...recentlyConcluded, ...recentlyEdited]).slice(
+    0,
+    5,
+  )
+
+  const awaitingClient = briefings
+    .filter((b) => b.status !== 'concluido')
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    )
+    .slice(0, 5)
+
+  const sentThisWeek = briefings.filter(
+    (b) => now - new Date(b.created_at).getTime() < SEVEN_DAYS,
+  ).length
+  const concludedThisWeek = briefings.filter(
+    (b) =>
+      b.status === 'concluido' &&
+      b.completed_at &&
+      now - new Date(b.completed_at).getTime() < SEVEN_DAYS,
+  ).length
+  const conversionRate =
+    sentThisWeek === 0
+      ? 0
+      : Math.round((concludedThisWeek / sentThisWeek) * 100)
+
+  const timelineItems = buildTimeline(briefings, activity).slice(0, 8)
 
   return (
     <div className="min-h-screen bg-background">
-      <ToastContainer toasts={toasts} remove={removeToast} />
+      <ToastContainer toasts={toasts} remove={remove} />
 
-      <div className="px-6 py-6 max-w-5xl mx-auto">
+      <div className="mx-auto max-w-5xl p-6">
+        {/* Greeting */}
+        <div className="mb-7">
+          <h1 className="font-mono text-2xl font-bold tracking-tight">
+            {greeting}, {profile?.name?.split(' ')[0] || 'Bnny'}
+          </h1>
+          <p className="mt-1 text-sm capitalize text-muted-foreground">
+            {today}
+          </p>
+        </div>
 
-        {/* ── BRIEFINGS LIST ────────────────────────────────────────── */}
-        <>
-          {/* Page header */}
-          <div className="mb-6 flex items-center justify-between">
-            <h1 className="font-mono text-xl font-bold tracking-tight">
-              Briefings
-            </h1>
-            <Button onClick={() => router.push('/admin/novo')}>
-              <Plus size={14} />
-              Novo briefing
-              <ArrowRight size={14} className="opacity-70" />
-            </Button>
-          </div>
+        {/* Cards row */}
+        <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <DashCard
+            title="Aguardando você"
+            description="Briefings concluídos pra revisar"
+            count={awaitingYou.length}
+          >
+            {awaitingYou.length === 0 ? (
+              <EmptyMini text="Nada pendente — você está em dia." />
+            ) : (
+              <ul className="space-y-2">
+                {awaitingYou.map((b) => (
+                  <li key={b.id}>
+                    <Link
+                      href="/admin/briefings"
+                      className="flex items-start justify-between gap-2 rounded-md px-2 py-1.5 -mx-2 hover:bg-muted/60 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">
+                          {b.clients?.company || 'Cliente'}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {b.type_label}
+                          {(b.update_count || 0) > 0 && (
+                            <span className="ml-1 inline-flex items-center gap-0.5 text-foreground/70">
+                              · <Pencil size={9} /> {b.update_count}x
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Badge variant="success" className="shrink-0 text-[10px]">
+                        Concluído
+                      </Badge>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </DashCard>
 
-          {/* Stats grid */}
-            <div className="grid grid-cols-5 gap-2 mb-5">
-              {([
-                { label: 'Total',       value: briefings.length,                                          status: 'all' },
-                { label: 'Enviado',     value: briefings.filter(b => b.status === 'enviado').length,      status: 'enviado' },
-                { label: 'Visualizado', value: briefings.filter(b => b.status === 'visualizado').length,  status: 'visualizado' },
-                { label: 'Andamento',   value: briefings.filter(b => b.status === 'em_andamento').length, status: 'em_andamento' },
-                { label: 'Concluído',   value: briefings.filter(b => b.status === 'concluido').length,    status: 'concluido' },
-              ] as { label: string; value: number; status: string }[]).map(s => (
-                <button key={s.label} onClick={() => setStatusFilter(prev => prev === s.status ? 'all' : s.status)}
-                  className={`rounded-lg border p-3.5 text-left transition-colors duration-100 cursor-pointer ${statusFilter === s.status ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
-                  <div className="text-2xl font-bold tabular-nums leading-none font-mono text-foreground">{s.value}</div>
-                  <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-1.5">{s.label}</div>
-                </button>
-              ))}
-            </div>
+          <DashCard
+            title="Aguardando cliente"
+            description="Você enviou, ele ainda não respondeu"
+            count={awaitingClient.length}
+          >
+            {awaitingClient.length === 0 ? (
+              <EmptyMini text="Nenhum briefing pendente do lado deles." />
+            ) : (
+              <ul className="space-y-2">
+                {awaitingClient.map((b) => {
+                  const days = daysSince(b.created_at)
+                  const overdue = days >= 5
+                  return (
+                    <li key={b.id}>
+                      <Link
+                        href="/admin/briefings"
+                        className="flex items-start justify-between gap-2 rounded-md px-2 py-1.5 -mx-2 hover:bg-muted/60 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">
+                            {b.clients?.company || 'Cliente'}
+                          </div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {b.type_label}
+                          </div>
+                        </div>
+                        <span
+                          className={cn(
+                            'shrink-0 whitespace-nowrap text-xs tabular-nums',
+                            overdue
+                              ? 'font-medium text-destructive'
+                              : 'text-muted-foreground',
+                          )}
+                        >
+                          {formatDays(days)}
+                        </span>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </DashCard>
 
-            {/* Search + Filters */}
-            <div className="flex gap-2 items-center mb-3 flex-wrap">
-              <div className="flex-1 min-w-[180px] relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Buscar cliente, empresa ou tipo..." className="pl-9 bg-card" />
-              </div>
-              <DateRangePicker
-                value={
-                  dateFrom || dateTo
-                    ? {
-                        from: dateFrom ? new Date(dateFrom) : undefined,
-                        to: dateTo ? new Date(dateTo) : undefined,
-                      }
-                    : undefined
-                }
-                onChange={(range) => {
-                  setDateFrom(range?.from ? toIsoDay(range.from) : '')
-                  setDateTo(range?.to ? toIsoDay(range.to) : '')
-                }}
-                placeholder="Filtrar por período"
+          <DashCard
+            title="Esta semana"
+            description="Atividade dos últimos 7 dias"
+          >
+            <div className="space-y-3 py-1">
+              <Stat
+                icon={Send}
+                label="Enviados"
+                value={sentThisWeek}
+              />
+              <Stat
+                icon={CheckCircle2}
+                label="Concluídos"
+                value={concludedThisWeek}
+              />
+              <Stat
+                icon={TrendingUp}
+                label="Taxa de conclusão"
+                value={`${conversionRate}%`}
+                muted={sentThisWeek === 0}
               />
             </div>
+          </DashCard>
+        </div>
 
-            {/* Select all + bulk actions */}
-            {filtered.length > 1 && (
-              <div className="flex items-center gap-3 mb-3">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <Checkbox
-                    checked={selectedIds.size === filtered.length && filtered.length > 0}
-                    onCheckedChange={checked => setSelectedIds(checked ? new Set(filtered.map(b => b.id)) : new Set())}
-                  />
-                  <span className="text-xs text-muted-foreground">Selecionar todos ({filtered.length})</span>
-                </label>
-                {selectedIds.size > 0 && (
-                  <div className="flex items-center gap-2 ml-auto animate-in fade-in-0 duration-150">
-                    <span className="text-xs text-muted-foreground">{selectedIds.size} selecionado{selectedIds.size > 1 ? 's' : ''}</span>
-                    <Button variant="destructive" size="sm" onClick={() => setBatchDeleteConfirm(true)}>
-                      <Trash2 size={13} /> Excluir {selectedIds.size}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Cancelar</Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Briefings list */}
-            {loading ? (
-              <div className="flex flex-col gap-2">
-                {[1,2,3,4].map(i => (
-                  <div key={i} className="rounded-xl border border-border bg-card p-4 animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="w-4 h-4 rounded bg-muted shrink-0" />
-                      <div className="h-4 bg-muted rounded flex-1 max-w-[160px]" />
-                      <div className="flex gap-2 ml-auto">
-                        <div className="h-7 w-7 bg-muted rounded" /><div className="h-7 w-7 bg-muted rounded" /><div className="h-7 w-7 bg-muted rounded" /><div className="h-7 w-16 bg-muted rounded" />
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-3 ml-7">
-                      <div className="h-5 w-20 bg-muted rounded-full" /><div className="h-5 w-24 bg-muted rounded" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-20 text-muted-foreground">
-                <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-40" />
-                <div className="font-semibold text-foreground mb-1">
-                  {search || dateFrom || dateTo || statusFilter !== 'all' ? 'Nenhum resultado' : 'Nenhum briefing ainda'}
-                </div>
-                <div className="text-sm mb-5">
-                  {search || dateFrom || dateTo || statusFilter !== 'all' ? 'Tente ajustar os filtros' : 'Crie o primeiro briefing para começar'}
-                </div>
-                {search || dateFrom || dateTo || statusFilter !== 'all' ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSearch('')
-                      setDateFrom('')
-                      setDateTo('')
-                      setStatusFilter('all')
-                    }}
-                  >
-                    Limpar filtros
-                  </Button>
-                ) : (
-                  <Button onClick={() => router.push('/admin/novo')}>
-                    <Plus size={14} />
-                    Criar briefing
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {filtered.map(b => (
-                  <div key={b.id}
-                    className={`rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
-                    {/* Row: checkbox + name + actions */}
-                    <div className="flex items-center gap-2.5">
-                      <Checkbox checked={selectedIds.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} className="shrink-0" />
-                      <button onClick={() => viewClientHistory(b.clients)}
-                        className="font-bold text-[15px] text-left flex-1 min-w-0 truncate hover:text-foreground transition-colors bg-transparent border-none p-0 cursor-pointer tracking-tight">
-                        {b.clients?.company}
-                      </button>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <IconButton
-                          icon={<Pencil size={13} />}
-                          label="Editar cliente"
-                          onClick={() => openEdit(b)}
-                        />
-                        <IconButton
-                          icon={<FileText size={13} />}
-                          label={b.internal_notes ? 'Anotações (preenchidas)' : 'Anotações'}
-                          className={b.internal_notes ? 'text-foreground' : ''}
-                          onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }}
-                        />
-                        <IconButton
-                          icon={<Bell size={13} />}
-                          label="Histórico de envios"
-                          onClick={() => viewNotifications(b)}
-                        />
-                        <IconButton
-                          icon={<Copy size={13} />}
-                          label="Duplicar briefing"
-                          disabled={duplicating === b.id}
-                          onClick={() => duplicateBriefing(b)}
-                        />
-                        {b.status !== 'concluido' && b.clients?.email && (
-                          <IconButton
-                            icon={
-                              sendingResend === b.id ? <RefreshCw size={13} className="animate-spin" /> :
-                              reminderSent === b.id + '_resend' ? <Check size={13} /> :
-                              <Mail size={13} />
-                            }
-                            label="Reenviar email"
-                            className={reminderSent === b.id + '_resend' ? 'text-foreground' : ''}
-                            disabled={sendingResend === b.id}
-                            onClick={() => resendEmail(b)}
-                          />
-                        )}
-                        {b.status !== 'concluido' && (
-                          <IconButton
-                            icon={
-                              sendingReminder === b.id ? <RefreshCw size={13} className="animate-spin" /> :
-                              reminderSent === b.id ? <Check size={13} /> :
-                              <Bell size={13} />
-                            }
-                            label="Enviar lembrete"
-                            className={reminderSent === b.id ? 'text-foreground' : ''}
-                            disabled={sendingReminder === b.id}
-                            onClick={() => sendReminder(b)}
-                          />
-                        )}
-                        <IconButton
-                          icon={copiedId === b.slug ? <Check size={13} /> : <Link size={13} />}
-                          label="Copiar link"
-                          onClick={() => copyLink(b.slug)}
-                        />
-                        {b.status === 'concluido' && (
-                          <>
-                            <Button variant="secondary" size="sm" onClick={() => viewResponses(b)}>Ver respostas</Button>
-                            <IconButton
-                              icon={b.editing_locked ? <Unlock size={13} /> : <Lock size={13} />}
-                              label={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
-                              onClick={() => toggleEditingLock(b.slug, !!b.editing_locked)}
-                            />
-                          </>
-                        )}
-                        <IconButton
-                          icon={<Trash2 size={13} />}
-                          label="Excluir"
-                          className="text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setDeleteBriefing(b)}
-                        />
-                      </div>
-                    </div>
-                    {/* Meta row */}
-                    <div className="flex items-center gap-2 mt-2.5 ml-[26px] flex-wrap">
-                      <StatusBadge status={b.status} />
-                      <Badge variant="outline" className="text-[11px] font-medium">{b.type_label}</Badge>
-                      {b.language === 'en-US' && <Badge variant="outline" className="text-[10px] font-medium uppercase tracking-wider">EN</Badge>}
-                      {(b.update_count || 0) > 0 && (
-                        <button onClick={() => openDiffModal(b)} title="Ver alterações"
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-muted hover:bg-muted/70 px-2 py-0.5 rounded-full cursor-pointer border border-border transition-colors">
-                          <Pencil size={10} /> {b.update_count}x
-                        </button>
-                      )}
-                      <span className="text-[11px] text-muted-foreground">{b.clients?.name}</span>
-                      <span className="text-[11px] text-muted-foreground">· {timeAgo(b.created_at)} ({fmt(b.created_at)})</span>
-                      {b.completed_at && <span className="text-[11px] text-muted-foreground">· concluído {fmt(b.completed_at)}</span>}
-                      {b.expires_at && new Date(b.expires_at) > new Date() && <span className="text-[11px] text-warning">· expira {fmt(b.expires_at)}</span>}
-                      {b.expires_at && new Date(b.expires_at) < new Date() && <span className="text-[11px] text-destructive">· expirado</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-
-      </div>
-
-      {/* ── RESPONSES MODAL ──────────────────────────────────────────── */}
-      {responsesBriefing && (
-        <Modal onClose={() => { setResponsesBriefing(null); setResponses(null) }} wide>
-          <div className="flex items-start justify-between mb-5">
+        {/* Activity timeline */}
+        <Card className="mb-5 p-5">
+          <div className="mb-4 flex items-center justify-between">
             <div>
-              <div className="font-extrabold text-xl tracking-tight">{responsesBriefing.clients?.company}</div>
-              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                <Badge variant="default" className="text-[10px] uppercase tracking-wider">{responsesBriefing.type_label}</Badge>
-                <span className="text-sm text-muted-foreground">{responsesBriefing.clients?.name}</span>
-                {responsesBriefing.clients?.email && <span className="text-sm text-muted-foreground">· {responsesBriefing.clients.email}</span>}
+              <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
+                Atividade recente
               </div>
-              {responsesBriefing.completed_at && <div className="text-xs text-muted-foreground mt-1">Concluído em {fmt(responsesBriefing.completed_at)}</div>}
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Os últimos eventos do painel
+              </p>
             </div>
+            <Link
+              href="/admin/log"
+              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Ver tudo →
+            </Link>
           </div>
-          <div className="flex gap-2 mb-5">
-            <Button onClick={copyAll} variant="outline" className="flex-1"><Clipboard size={14} />{copied ? 'Copiado!' : 'Copiar tudo'}</Button>
-            <Button onClick={exportPDF} variant="outline" className="flex-1"><FileText size={14} /> Exportar PDF</Button>
-          </div>
-          {responseVersions > 1 && responseDiff && (
-            <div className="mb-4">
-              <div className="flex gap-2">
-                <button onClick={() => setShowDiffView(false)}
-                  className={`flex-1 text-xs py-2 rounded-lg border transition-colors inline-flex items-center justify-center gap-1.5 ${!showDiffView ? 'border-foreground/20 bg-muted text-foreground font-medium' : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}>
-                  <ClipboardList size={12} /> Respostas atuais
-                </button>
-                <button onClick={() => setShowDiffView(true)}
-                  className={`flex-1 text-xs py-2 rounded-lg border transition-colors inline-flex items-center justify-center gap-2 ${showDiffView ? 'border-foreground/20 bg-muted text-foreground font-medium' : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}>
-                  <Pencil size={12} /> Ver alterações
-                  <span className="bg-foreground/10 text-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">{Object.keys(responseDiff).length}</span>
-                </button>
-              </div>
-              {showDiffView && (
-                <div className="mt-3 flex flex-col gap-2">
-                  {Object.keys(responseDiff).length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">Nenhuma alteração detectada</div>
-                  ) : Object.entries(responseDiff).map(([key, { old: oldVal, new: newVal }]) => {
-                    const labelMap = responsesBriefing?.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
-                    const label = labelMap[key] || key.replace(/_/g, ' ')
-                    const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
-                    const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
-                    return (
-                      <div key={key} className="rounded-lg overflow-hidden border border-border">
-                        <div className="px-3.5 py-2 bg-muted/40 border-b border-border">
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-foreground uppercase tracking-wider"><Pencil size={10} /> {label}</span>
-                        </div>
-                        <div className="px-3.5 py-3 bg-card flex flex-col gap-2">
-                          <div className="text-xs text-muted-foreground line-through">{oldStr || '—'}</div>
-                          <div className="text-sm font-semibold text-foreground">{newStr}</div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-          {responses && !showDiffView && (
-            <ResponsesContent responses={responses} language={responsesBriefing?.language}
-              companyName={responsesBriefing?.clients?.company || 'briefing'}
-              renderFileValue={renderFileValue} labelMapPT={FIELD_LABELS_PT} labelMapEN={FIELD_LABELS_EN} />
-          )}
-          {!responses && <div className="flex justify-center py-10"><div className="spinner" /></div>}
-        </Modal>
-      )}
-
-      {/* ── DIFF MODAL ───────────────────────────────────────────────── */}
-      {diffModal && (
-        <Modal onClose={() => setDiffModal(null)} wide>
-          <div className="font-extrabold text-xl tracking-tight mb-1">{diffModal.briefing.clients?.company}</div>
-          <div className="flex items-center gap-2 mb-5">
-            <Badge variant="outline" className="text-[10px] font-medium gap-1"><Pencil size={10} /> {diffModal.briefing.update_count}x atualizado</Badge>
-            <span className="text-sm text-muted-foreground">{diffModal.briefing.type_label}</span>
-          </div>
-          {loadingDiff ? (
-            <div className="flex justify-center py-10"><div className="spinner" /></div>
-          ) : Object.keys(diffModal.diff).length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              <Search className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <div className="text-sm mb-4">Não foi possível comparar versões.</div>
-              <Button variant="outline" onClick={() => { setDiffModal(null); viewResponses(diffModal.briefing) }}>Ver respostas →</Button>
-            </div>
+          {timelineItems.length === 0 ? (
+            <EmptyMini text="Sem atividade ainda — crie um briefing para começar." />
           ) : (
-            <div className="flex flex-col gap-3">
-              <div className="text-xs text-muted-foreground mb-1">{Object.keys(diffModal.diff).length} campos alterados</div>
-              {Object.entries(diffModal.diff).map(([key, { old: oldVal, new: newVal }]) => {
-                const labelMap = diffModal.briefing.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
-                const label = labelMap[key] || key.replace(/_/g, ' ')
-                const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
-                const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
-                return (
-                  <div key={key} className="rounded-lg overflow-hidden border border-border">
-                    <div className="px-3.5 py-2 bg-muted/40 border-b border-border">
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-foreground uppercase tracking-wider"><Pencil size={10} /> {label}</span>
-                    </div>
-                    <div className="px-3.5 py-3 bg-card flex flex-col gap-2">
-                      <div className="text-xs text-muted-foreground line-through">{oldStr || '—'}</div>
-                      <div className="text-sm font-semibold text-foreground">{newStr}</div>
-                    </div>
+            <ol className="space-y-1">
+              {timelineItems.map((item) => (
+                <li
+                  key={`${item.kind}-${item.id}`}
+                  className="flex items-start gap-3 rounded-md py-1.5"
+                >
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <item.icon size={13} strokeWidth={1.75} />
+                  </span>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <div className="text-sm leading-snug">{item.text}</div>
                   </div>
-                )
-              })}
-              <Button variant="ghost" onClick={() => { setDiffModal(null); viewResponses(diffModal.briefing) }} className="mt-1">Ver todas as respostas →</Button>
-            </div>
-          )}
-        </Modal>
-      )}
-
-      {/* ── EDIT CLIENT ──────────────────────────────────────────────── */}
-      {editBriefing && (
-        <Modal onClose={() => setEditBriefing(null)}>
-          <div
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                e.preventDefault()
-                if (!savingEdit) saveEdit()
-              }
-            }}
-          >
-            <div className="mb-5">
-              <div className="font-bold text-lg tracking-tight">Editar cliente</div>
-              <div className="text-sm text-muted-foreground mt-0.5">Após salvar, copie o link e reenvie se necessário.</div>
-            </div>
-            <div className="flex flex-col gap-4">
-              {[{ label: 'Empresa', key: 'company' as const }, { label: 'Nome', key: 'name' as const }, { label: 'Email', key: 'email' as const }, { label: 'WhatsApp', key: 'phone' as const }].map((f, i) => (
-                <div key={f.key} className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">{f.label}</label>
-                  <Input autoFocus={i === 0} value={editForm[f.key]} onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
-                </div>
+                  <span className="shrink-0 whitespace-nowrap pt-1 text-xs tabular-nums text-muted-foreground">
+                    {timeAgo(item.timestamp)}
+                  </span>
+                </li>
               ))}
-              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground inline-flex items-center gap-1.5">
-                <Link size={12} /> Após salvar, copie o link e reenvie o briefing.
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setEditBriefing(null)} className="flex-1">Cancelar</Button>
-                <Button onClick={saveEdit} disabled={savingEdit} className="flex-1">{savingEdit ? 'Salvando…' : 'Salvar'}</Button>
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
+            </ol>
+          )}
+        </Card>
 
-      {/* ── NOTES ────────────────────────────────────────────────────── */}
-      {notesBriefing && (
-        <Modal onClose={() => setNotesBriefing(null)}>
-          <div
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                e.preventDefault()
-                if (!savingNotes) saveNotes()
-              }
-            }}
+        {/* Quick actions */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => router.push('/admin/novo')}>
+            <Plus size={14} />
+            Novo briefing
+            <ArrowRight size={14} className="opacity-70" />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => router.push('/admin/clientes')}
           >
-            <div className="mb-4">
-              <div className="font-bold text-lg tracking-tight">Anotações internas</div>
-              <div className="text-sm text-muted-foreground mt-0.5">Visível só para você — o cliente não vê.</div>
-            </div>
-            <textarea
-              autoFocus
-              value={notesText}
-              onChange={e => setNotesText(e.target.value)}
-              placeholder="Anote qualquer informação sobre este briefing..."
-              className="w-full min-h-[140px] bg-card border border-border rounded-md px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-4"
-            />
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setNotesBriefing(null)} className="flex-1">Cancelar</Button>
-              <Button onClick={saveNotes} disabled={savingNotes} className="flex-1">{savingNotes ? 'Salvando…' : 'Salvar'}</Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* ── NOTIFICATIONS ────────────────────────────────────────────── */}
-      {notifBriefing && (
-        <Modal onClose={() => { setNotifBriefing(null); setNotifHistory([]) }}>
-          <div className="mb-4">
-            <div className="font-bold text-lg tracking-tight">Histórico de envios</div>
-            <div className="text-sm text-muted-foreground mt-0.5">{notifBriefing.clients?.company} · {notifBriefing.type_label}</div>
-          </div>
-          {notifBriefing.clients?.email && (
-            <div className="rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm mb-4 inline-flex items-center gap-2">
-              <Mail size={14} className="text-muted-foreground" /> Email: <span className="font-semibold">{notifBriefing.clients.email}</span>
-            </div>
-          )}
-          {notifHistory.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">Nenhum envio registrado</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {notifHistory.map((n, i) => {
-                const lblMap: Record<string, { icon: React.ReactNode; label: string }> = {
-                  email_client: { icon: <Mail size={13} />, label: 'Email pro cliente' },
-                  email_admin:  { icon: <Mail size={13} />, label: 'Email pro admin' },
-                  reminder:     { icon: <Bell size={13} />, label: 'Lembrete' },
-                  resend:       { icon: <RefreshCw size={13} />, label: 'Reenvio' },
-                }
-                const entry = lblMap[n.type] || { icon: null, label: n.type }
-                return (
-                  <div key={i} className="rounded-lg border border-border bg-secondary px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1.5 text-sm font-medium">{entry.icon} {entry.label}</span>
-                      <span className={`inline-flex items-center gap-1 text-xs font-medium ${n.status === 'sent' ? 'text-success' : 'text-destructive'}`}>
-                        {n.status === 'sent' ? <><Check size={12} /> Enviado</> : <><Trash2 size={12} /> Falhou</>}
-                      </span>
-                    </div>
-                    {n.details?.to && <div className="text-xs text-muted-foreground mt-1">Para: {n.details.to}</div>}
-                    <div className="text-xs text-muted-foreground mt-0.5">{new Date(n.sent_at).toLocaleString('pt-BR')}</div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Modal>
-      )}
-
-      {/* ── DELETE ───────────────────────────────────────────────────── */}
-      {deleteBriefing && (
-        <Modal onClose={() => setDeleteBriefing(null)}>
-          <div className="text-center py-2">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mx-auto mb-4"><Trash2 size={22} className="text-destructive" /></div>
-            <div className="font-bold text-lg tracking-tight mb-1">Excluir briefing?</div>
-            <div className="text-sm text-muted-foreground mb-1"><span className="font-semibold text-foreground">{deleteBriefing.clients?.company}</span> — {deleteBriefing.type_label}</div>
-            <div className="text-sm text-muted-foreground mb-6">Esta ação não pode ser desfeita.</div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setDeleteBriefing(null)} className="flex-1">Cancelar</Button>
-              <Button variant="destructive" onClick={confirmDelete} disabled={deleting} className="flex-1">{deleting ? 'Excluindo…' : 'Sim, excluir'}</Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* ── BATCH DELETE ─────────────────────────────────────────────── */}
-      {batchDeleteConfirm && (
-        <Modal onClose={() => setBatchDeleteConfirm(false)}>
-          <div className="text-center py-2">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mx-auto mb-4"><Trash2 size={22} className="text-destructive" /></div>
-            <div className="font-bold text-lg tracking-tight mb-1">Excluir {selectedIds.size} briefings?</div>
-            <div className="text-sm text-muted-foreground mb-6">Esta ação não pode ser desfeita.</div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setBatchDeleteConfirm(false)} className="flex-1">Cancelar</Button>
-              <Button variant="destructive" onClick={confirmBatchDelete} disabled={batchDeleting} className="flex-1">{batchDeleting ? 'Excluindo…' : `Excluir ${selectedIds.size}`}</Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* ── CLIENT HISTORY ───────────────────────────────────────────── */}
-      {clientHistoryClient && (
-        <Modal onClose={() => setClientHistoryClient(null)} wide>
-          <div className="font-bold text-lg mb-0.5">{clientHistoryClient.company}</div>
-          <div className="text-xs text-muted-foreground mb-4">{clientHistoryClient.name} · {clientHistoryClient.email}</div>
-          <div className="flex flex-col gap-2">
-            {briefings.filter(b => b.clients?.company === clientHistoryClient.company).map(b => (
-              <div key={b.id} className="rounded-lg border border-border bg-secondary px-4 py-3 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-medium">{b.type_label}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{timeAgo(b.created_at)} · {fmt(b.created_at)}</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <StatusBadge status={b.status} />
-                  {b.status === 'concluido' && (
-                    <Button variant="accent" size="sm" onClick={() => { setClientHistoryClient(null); viewResponses(b) }}>Ver respostas</Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Modal>
-      )}
-
+            <Users size={14} />
+            Gerenciar clientes
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => router.push('/admin/briefings')}
+          >
+            <ClipboardList size={14} />
+            Ver todos os briefings
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
+
+/* ──────────────────────────────────────────────────────────────────── */
+/* UI bits                                                               */
+/* ──────────────────────────────────────────────────────────────────── */
+
+function DashCard({
+  title,
+  description,
+  count,
+  children,
+}: {
+  title: string
+  description: string
+  count?: number
+  children: React.ReactNode
+}) {
+  return (
+    <Card className="flex h-full flex-col p-5">
+      <div className="mb-4">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {title}
+          </h2>
+          {typeof count === 'number' && (
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              {count}
+            </span>
+          )}
+        </div>
+        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+      </div>
+      <div className="flex-1">{children}</div>
+    </Card>
+  )
+}
+
+function EmptyMini({ text }: { text: string }) {
+  return (
+    <div className="py-4 text-center text-xs text-muted-foreground">{text}</div>
+  )
+}
+
+function Stat({
+  icon: Icon,
+  label,
+  value,
+  muted = false,
+}: {
+  icon: LucideIcon
+  label: string
+  value: number | string
+  muted?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Icon size={13} strokeWidth={1.75} />
+        {label}
+      </span>
+      <span
+        className={cn(
+          'font-mono text-lg font-bold tabular-nums',
+          muted && 'text-muted-foreground',
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────────── */
+/* Helpers                                                               */
+/* ──────────────────────────────────────────────────────────────────── */
+
+function uniqueById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>()
+  return items.filter((b) => {
+    if (seen.has(b.id)) return false
+    seen.add(b.id)
+    return true
+  })
+}
+
+function greet(name?: string | null): string {
+  void name
+  const h = new Date().getHours()
+  if (h < 5) return 'Boa madrugada'
+  if (h < 12) return 'Bom dia'
+  if (h < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+
+function daysSince(iso: string): number {
+  const diff = Date.now() - new Date(iso).getTime()
+  return Math.floor(diff / (24 * 60 * 60 * 1000))
+}
+
+function formatDays(days: number): string {
+  if (days < 1) return 'hoje'
+  if (days === 1) return '1 dia'
+  return `${days} dias`
+}
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (mins < 1) return 'agora'
+  if (mins < 60) return `${mins}min`
+  if (hours < 24) return `${hours}h`
+  if (days === 1) return 'ontem'
+  if (days < 7) return `${days}d`
+  return new Date(iso).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+  })
+}
+
+interface TimelineItem {
+  id: string
+  kind: string
+  timestamp: string
+  text: React.ReactNode
+  icon: LucideIcon
+}
+
+const ACTION_META: Record<string, { label: string; icon: LucideIcon }> = {
+  delete_briefing: { label: 'Briefing excluído', icon: Trash2 },
+  bulk_delete_briefings: { label: 'Exclusão em lote', icon: Trash2 },
+  duplicate_briefing: { label: 'Briefing duplicado', icon: FileText },
+}
+
+function buildTimeline(
+  briefings: Briefing[],
+  activity: ActivityLogEntry[],
+): TimelineItem[] {
+  const items: TimelineItem[] = []
+
+  for (const b of briefings) {
+    const company = b.clients?.company || 'Cliente'
+    items.push({
+      id: `bcreate-${b.id}`,
+      kind: 'briefing-created',
+      timestamp: b.created_at,
+      icon: Send,
+      text: (
+        <>
+          <strong className="font-semibold">{company}</strong> recebeu um
+          briefing de {b.type_label.toLowerCase()}
+        </>
+      ),
+    })
+
+    if (b.completed_at) {
+      items.push({
+        id: `bdone-${b.id}`,
+        kind: 'briefing-completed',
+        timestamp: b.completed_at,
+        icon: CheckCircle2,
+        text: (
+          <>
+            <strong className="font-semibold">{company}</strong> completou o
+            briefing de {b.type_label.toLowerCase()}
+          </>
+        ),
+      })
+    }
+
+    if ((b.update_count || 0) > 0 && b.completed_at) {
+      items.push({
+        id: `bedit-${b.id}`,
+        kind: 'briefing-edited',
+        timestamp: b.completed_at,
+        icon: Pencil,
+        text: (
+          <>
+            <strong className="font-semibold">{company}</strong> editou o
+            briefing ({b.update_count} {b.update_count === 1 ? 'alteração' : 'alterações'})
+          </>
+        ),
+      })
+    }
+  }
+
+  for (const log of activity) {
+    const meta = ACTION_META[log.action]
+    const company = (log.details?.company as string) || ''
+    items.push({
+      id: `log-${log.id}`,
+      kind: 'log',
+      timestamp: log.created_at,
+      icon: meta?.icon || Bell,
+      text: (
+        <>
+          {meta?.label || log.action}
+          {company ? (
+            <>
+              {' · '}
+              <span className="text-muted-foreground">{company}</span>
+            </>
+          ) : null}
+        </>
+      ),
+    })
+  }
+
+  items.sort(
+    (a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+  )
+  return items
+}
+
+// suppress unused import warning — Bot/Clock are referenced in shared types
+void Bot
+void Clock

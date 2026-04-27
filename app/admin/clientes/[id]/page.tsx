@@ -104,20 +104,47 @@ function StatusIcon({ status }: { status: string }) {
   }
 }
 
-const AI_FIELDS = [
+type AiFieldKey =
+  | 'company_name'
+  | 'segment'
+  | 'description'
+  | 'key_features'
+  | 'differentials'
+  | 'unique_value_proposition'
+  | 'target_audience'
+  | 'brand_personality'
+  | 'price_positioning'
+  | 'geographic_focus'
+  | 'tone_of_voice'
+  | 'colors_hint'
+  | 'extra_notes'
+
+interface AiField {
+  key: AiFieldKey
+  label: string
+  /** Long-form fields render full-width with a paragraph treatment.
+   *  Short ones go in a 2-column grid, label-on-top compact. */
+  long?: boolean
+}
+
+const AI_FIELDS: AiField[] = [
   { key: 'company_name', label: 'Nome da empresa' },
   { key: 'segment', label: 'Segmento / Nicho' },
-  { key: 'description', label: 'Sobre a empresa' },
-  { key: 'key_features', label: 'Produtos / Serviços principais' },
-  { key: 'differentials', label: 'Diferenciais competitivos' },
-  { key: 'unique_value_proposition', label: 'Proposta de valor única' },
   { key: 'target_audience', label: 'Público-alvo' },
   { key: 'brand_personality', label: 'Personalidade da marca' },
   { key: 'price_positioning', label: 'Posicionamento de preço' },
   { key: 'geographic_focus', label: 'Foco geográfico' },
   { key: 'tone_of_voice', label: 'Tom de voz' },
   { key: 'colors_hint', label: 'Direção de cores' },
-  { key: 'extra_notes', label: 'Observações para design' },
+  { key: 'description', label: 'Sobre a empresa', long: true },
+  { key: 'key_features', label: 'Produtos / Serviços principais', long: true },
+  { key: 'differentials', label: 'Diferenciais competitivos', long: true },
+  {
+    key: 'unique_value_proposition',
+    label: 'Proposta de valor única',
+    long: true,
+  },
+  { key: 'extra_notes', label: 'Observações para design', long: true },
 ]
 
 function fmt(d: string | null) {
@@ -797,41 +824,83 @@ export default function ClientePerfilPage() {
                 )}
               </div>
 
-              {/* AI fields — view or edit */}
+              {/* AI fields — single card, 2-col grid for compact + full-width for long */}
               {hasAiProfile && (
-                <div className="flex flex-col gap-2">
-                  {AI_FIELDS.map((f) => {
-                    const val = aiProfile[f.key]
-                    if (!val && !editingAi) return null
+                <div className="overflow-hidden rounded-lg border border-border bg-card">
+                  {/* Compact section (2-col grid) */}
+                  {(() => {
+                    const shortFields = AI_FIELDS.filter((f) => !f.long).filter(
+                      (f) => editingAi || aiProfile[f.key],
+                    )
+                    if (shortFields.length === 0) return null
                     return (
-                      <div
-                        key={f.key}
-                        className="overflow-hidden rounded-lg border border-border"
-                      >
-                        <div className="bg-muted/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                          {f.label}
-                        </div>
-                        {editingAi ? (
-                          <textarea
-                            value={aiProfile[f.key] || ''}
-                            onChange={(e) =>
-                              setAiProfile((p) => ({
-                                ...p,
-                                [f.key]: e.target.value,
-                              }))
-                            }
-                            className="block min-h-[60px] w-full resize-y border-0 bg-card px-3 py-2.5 text-sm leading-relaxed text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          />
-                        ) : (
-                          <div className="bg-card px-3 py-2.5 text-sm leading-relaxed text-foreground">
-                            {String(val)}
+                      <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-b border-border/60 bg-muted/20 p-4 sm:grid-cols-2">
+                        {shortFields.map((f) => (
+                          <div key={f.key} className="min-w-0">
+                            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                              {f.label}
+                            </div>
+                            {editingAi ? (
+                              <input
+                                type="text"
+                                value={aiProfile[f.key] || ''}
+                                onChange={(e) =>
+                                  setAiProfile((p) => ({
+                                    ...p,
+                                    [f.key]: e.target.value,
+                                  }))
+                                }
+                                className="block w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              />
+                            ) : (
+                              <div className="break-words text-sm leading-relaxed text-foreground">
+                                {String(aiProfile[f.key] || '—')}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        ))}
                       </div>
                     )
-                  })}
+                  })()}
+
+                  {/* Long-form section */}
+                  {(() => {
+                    const longFields = AI_FIELDS.filter((f) => f.long).filter(
+                      (f) => editingAi || aiProfile[f.key],
+                    )
+                    if (longFields.length === 0) return null
+                    return (
+                      <div className="divide-y divide-border/60">
+                        {longFields.map((f) => (
+                          <div key={f.key} className="p-4">
+                            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                              {f.label}
+                            </div>
+                            {editingAi ? (
+                              <textarea
+                                value={aiProfile[f.key] || ''}
+                                onChange={(e) =>
+                                  setAiProfile((p) => ({
+                                    ...p,
+                                    [f.key]: e.target.value,
+                                  }))
+                                }
+                                className="block min-h-[72px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              />
+                            ) : (
+                              <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+                                {String(aiProfile[f.key])}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
+
+                  {/* Edit footer */}
                   {editingAi && (
-                    <div className="mt-1 flex gap-2">
+                    <div className="flex gap-2 border-t border-border/60 bg-muted/20 px-4 py-3">
                       <Button
                         variant="outline"
                         onClick={() => {
@@ -848,14 +917,14 @@ export default function ClientePerfilPage() {
                       <Button
                         onClick={saveAiProfile}
                         disabled={savingAi}
-                        className="flex-[2]"
+                        className="flex-1"
                       >
                         {savingAi ? (
-                          'Salvando...'
+                          'Salvando…'
                         ) : (
                           <>
                             <Save className="mr-1.5 h-4 w-4" />
-                            Salvar perfil
+                            Salvar
                           </>
                         )}
                       </Button>
