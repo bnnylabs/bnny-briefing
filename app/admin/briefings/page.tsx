@@ -514,7 +514,7 @@ export default function AdminPage() {
           </div>
 
           {/* Stats grid */}
-            <div className="grid grid-cols-5 gap-2 mb-5">
+            <div className="-mx-6 mb-5 flex gap-2 overflow-x-auto px-6 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0">
               {([
                 { label: 'Total',       value: briefings.length,                                          status: 'all' },
                 { label: 'Enviado',     value: briefings.filter(b => b.status === 'enviado').length,      status: 'enviado' },
@@ -523,7 +523,7 @@ export default function AdminPage() {
                 { label: 'Concluído',   value: briefings.filter(b => b.status === 'concluido').length,    status: 'concluido' },
               ] as { label: string; value: number; status: string }[]).map(s => (
                 <button key={s.label} onClick={() => setStatusFilter(prev => prev === s.status ? 'all' : s.status)}
-                  className={`rounded-lg border p-3.5 text-left transition-colors duration-100 cursor-pointer ${statusFilter === s.status ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
+                  className={`min-w-[120px] shrink-0 sm:min-w-0 rounded-lg border p-3.5 text-left transition-colors duration-100 cursor-pointer ${statusFilter === s.status ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
                   <div className="text-2xl font-bold tabular-nums leading-none font-mono text-foreground">{s.value}</div>
                   <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-1.5">{s.label}</div>
                 </button>

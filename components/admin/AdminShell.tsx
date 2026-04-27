@@ -15,9 +15,11 @@ import {
 
 import {
   Sidebar,
+  MobileSidebar,
   SidebarLayout,
   type SidebarSection,
 } from '@/components/ui/sidebar'
+import { MobileHeader } from '@/components/admin/MobileHeader'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import {
   DropdownMenu,
@@ -66,23 +68,43 @@ const SECTIONS: SidebarSection[] = [
 ]
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
+  const [mobileOpen, setMobileOpen] = React.useState(false)
+
+  const sidebarLogo = (
+    <Link
+      href="/admin"
+      className="block w-full"
+      aria-label="Bnny Labs — voltar ao início"
+    >
+      {/* +20% size vs phase 2.2 (h-6 → h-7) */}
+      <BrandLogo className="h-7 w-auto" />
+    </Link>
+  )
+
+  const sidebarFooter = <UserProfileFooter />
+
   return (
     <>
+      {/* Desktop fixed sidebar (lg+) */}
       <Sidebar
         sections={SECTIONS}
-        logo={
-          <Link
-            href="/admin"
-            className="block w-full"
-            aria-label="Bnny Labs — voltar ao início"
-          >
-            {/* +20% size vs phase 2.2 (h-6 → h-7) */}
-            <BrandLogo className="h-7 w-auto" />
-          </Link>
-        }
-        footer={<UserProfileFooter />}
+        logo={sidebarLogo}
+        footer={sidebarFooter}
       />
-      <SidebarLayout>{children}</SidebarLayout>
+
+      {/* Mobile drawer (below lg) — same content, dialog container */}
+      <MobileSidebar
+        sections={SECTIONS}
+        logo={sidebarLogo}
+        footer={sidebarFooter}
+        open={mobileOpen}
+        onOpenChange={setMobileOpen}
+      />
+
+      <SidebarLayout>
+        <MobileHeader onMenuClick={() => setMobileOpen(true)} />
+        {children}
+      </SidebarLayout>
     </>
   )
 }

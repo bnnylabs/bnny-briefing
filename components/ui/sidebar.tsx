@@ -3,6 +3,8 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface SidebarItem {
@@ -28,15 +30,24 @@ interface SidebarProps {
   footer?: React.ReactNode
 }
 
-export function Sidebar({ sections, logo, footer }: SidebarProps) {
+/**
+ * Renders just the inside of a sidebar — logo, nav, footer — with no
+ * outer container. Reused by both the desktop fixed aside and the
+ * mobile dialog drawer below, so the markup stays in sync between the
+ * two surfaces.
+ */
+function SidebarContent({
+  sections,
+  logo,
+  footer,
+  onNavigate,
+}: SidebarProps & { onNavigate?: () => void }) {
   const pathname = usePathname()
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 z-40 flex w-[240px] flex-col border-r border-border bg-sidebar">
-      {/* Logo */}
-      <div className="flex h-16 items-center px-5">{logo}</div>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-16 shrink-0 items-center px-5">{logo}</div>
 
-      {/* Nav sections */}
       <nav className="flex-1 overflow-y-auto px-3 pb-3">
         {sections.map((section, sectionIdx) => (
           <div
@@ -59,6 +70,7 @@ export function Sidebar({ sections, logo, footer }: SidebarProps) {
                   <li key={item.href}>
                     <Link
                       href={item.href}
+                      onClick={onNavigate}
                       className={cn(
                         'group flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
                         active
@@ -98,18 +110,78 @@ export function Sidebar({ sections, logo, footer }: SidebarProps) {
         ))}
       </nav>
 
-      {/* User profile / footer */}
       {footer && (
-        <div className="border-t border-border p-3">{footer}</div>
+        <div className="shrink-0 border-t border-border p-3">{footer}</div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Desktop fixed sidebar — visible from `lg` (1024px) up. Below that,
+ * the MobileSidebar drawer takes over.
+ */
+export function Sidebar({ sections, logo, footer }: SidebarProps) {
+  return (
+    <aside className="fixed left-0 top-0 bottom-0 z-40 hidden w-[240px] flex-col border-r border-border bg-sidebar lg:flex">
+      <SidebarContent sections={sections} logo={logo} footer={footer} />
     </aside>
   )
 }
 
+/**
+ * Mobile slide-in drawer — same content, rendered through Radix Dialog
+ * so it gets focus trap, ESC to close, and overlay click to close for
+ * free. Closes itself when a nav link is followed (onNavigate).
+ */
+export function MobileSidebar({
+  sections,
+  logo,
+  footer,
+  open,
+  onOpenChange,
+}: SidebarProps & {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 lg:hidden" />
+        <DialogPrimitive.Content
+          className="fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-border bg-sidebar shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left lg:hidden"
+          aria-describedby={undefined}
+        >
+          <DialogPrimitive.Title className="sr-only">
+            Menu de navegação
+          </DialogPrimitive.Title>
+          <DialogPrimitive.Close
+            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Fechar menu"
+          >
+            <X size={16} strokeWidth={2} />
+          </DialogPrimitive.Close>
+          <SidebarContent
+            sections={sections}
+            logo={logo}
+            footer={footer}
+            onNavigate={() => onOpenChange(false)}
+          />
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  )
+}
+
+/**
+ * Page wrapper that pairs with Sidebar — adds a 240px spacer column
+ * on desktop so the fixed sidebar doesn't overlap content. On mobile
+ * the spacer collapses (sidebar isn't there).
+ */
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
-      <div className="w-[240px] shrink-0" /> {/* Spacer */}
+      <div className="hidden w-[240px] shrink-0 lg:block" />
       <main className="min-w-0 flex-1">{children}</main>
     </div>
   )

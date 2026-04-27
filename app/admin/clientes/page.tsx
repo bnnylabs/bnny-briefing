@@ -260,7 +260,7 @@ export default function ClientesPage() {
         </div>
 
         {/* Stats grid — clickable filters, same visual as /admin/briefings */}
-        <div className="mb-5 grid grid-cols-4 gap-2">
+        <div className="-mx-6 mb-5 flex gap-2 overflow-x-auto px-6 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0">
           {filterLabels.map((s) => (
             <button
               key={s.key}
@@ -268,7 +268,7 @@ export default function ClientesPage() {
                 setFilter((prev) => (prev === s.key ? 'all' : s.key))
               }
               className={cn(
-                'rounded-lg border p-3.5 text-left transition-colors duration-100',
+                'min-w-[120px] shrink-0 sm:min-w-0 rounded-lg border p-3.5 text-left transition-colors duration-100',
                 filter === s.key
                   ? 'border-foreground/20 bg-muted'
                   : 'border-border bg-card hover:border-border/70 hover:bg-muted/30',
