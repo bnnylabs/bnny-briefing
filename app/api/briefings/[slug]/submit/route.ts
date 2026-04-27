@@ -20,11 +20,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     }
   }
 
-  // Get previous answers for diff (on update)
+  // Get previous answers for diff (on update).
+  // Order by submitted_at, not id — id is a random UUID so it gives
+  // unstable ordering. submitted_at is monotonic at insert time.
   let previousAnswers: Record<string, unknown> = {}
   if (isUpdate) {
     const { data: prevResponse } = await supabaseAdmin
-      .from('responses').select('answers').eq('briefing_id', briefing.id).order('id', { ascending: false }).limit(1).single()
+      .from('responses').select('answers').eq('briefing_id', briefing.id).order('submitted_at', { ascending: false }).limit(1).single()
     if (prevResponse) previousAnswers = prevResponse.answers as Record<string, unknown>
   }
 
