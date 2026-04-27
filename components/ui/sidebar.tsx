@@ -176,18 +176,14 @@ export function MobileSidebar({
 /**
  * Page wrapper that pairs with Sidebar — adds a 240px spacer column
  * on desktop so the fixed sidebar doesn't overlap content. On mobile
- * the spacer collapses (sidebar isn't there) and a 56px top
- * placeholder gets added to the main column so the floating burger
- * doesn't sit on top of the page heading.
+ * the spacer collapses (sidebar isn't there). Vertical spacing for
+ * the mobile top bar is handled by the bar itself (sticky positioned).
  */
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <div className="hidden w-[240px] shrink-0 lg:block" />
-      <main className="min-w-0 flex-1">
-        <div className="h-14 lg:hidden" aria-hidden="true" />
-        {children}
-      </main>
+      <main className="min-w-0 flex-1">{children}</main>
     </div>
   )
 }
