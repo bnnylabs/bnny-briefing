@@ -5,10 +5,11 @@ import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft, ArrowRight, Bot, Briefcase, Check, CheckCircle2, ChevronDown,
   Clipboard, ClipboardCheck, ClipboardList, Clock, Download, ExternalLink,
-  Eye, FileText, Globe, Image as ImageIcon, Link as LinkIcon,
+  Eye, FileText, Image as ImageIcon, Link as LinkIcon,
   Lock, Paperclip, Pencil, Plus, RefreshCw, Save, Send,
   Sparkles, Star, Unlock, X,
 } from 'lucide-react'
+import { SOCIAL_NETWORKS } from './SocialIcons'
 
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
@@ -96,21 +97,6 @@ const AI_FIELDS = [
   { key: 'differentials', label: 'Diferenciais competitivos', long: true },
   { key: 'unique_value_proposition', label: 'Proposta de valor única', long: true },
   { key: 'extra_notes', label: 'Observações para design', long: true },
-]
-
-const SOCIAL_DISPLAY: Array<{
-  key: keyof SocialLinks
-  label: string
-  Icon: React.ComponentType<{ size?: number; className?: string }>
-}> = [
-  { key: 'instagram', label: 'Instagram', Icon: Globe },
-  { key: 'linkedin', label: 'LinkedIn', Icon: Globe },
-  { key: 'facebook', label: 'Facebook', Icon: Globe },
-  { key: 'youtube', label: 'YouTube', Icon: Globe },
-  { key: 'tiktok', label: 'TikTok', Icon: Globe },
-  { key: 'twitter', label: 'X / Twitter', Icon: Globe },
-  { key: 'pinterest', label: 'Pinterest', Icon: Globe },
-  { key: 'other', label: 'Outro', Icon: Globe },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -382,7 +368,6 @@ export default function ClientePerfilPage() {
 
   async function saveAiProfile() {
     setSavingAi(true)
-    // Save analysis + any newly-detected social links
     const socialPatch = Object.keys(detectedSocials).length > 0 ? {
       social_instagram: detectedSocials.instagram || client?.social_instagram || null,
       social_linkedin: detectedSocials.linkedin || client?.social_linkedin || null,
@@ -393,9 +378,25 @@ export default function ClientePerfilPage() {
       social_pinterest: detectedSocials.pinterest || client?.social_pinterest || null,
       social_other: detectedSocials.other || client?.social_other || null,
     } : {}
+
+    // Auto-add segment from AI profile to client tags if not already present.
+    // Normalises "Software House / Desenvolvimento de Produtos Digitais" →
+    // ["Software House", "Desenvolvimento de Produtos Digitais"]
+    const rawSegment = aiProfile.segment as string | undefined
+    let tagsPatch: { tags?: string[] } = {}
+    if (rawSegment && client) {
+      const newSegments = rawSegment
+        .split(/[/,·|]/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0 && s.length < 40)
+      const existing = client.tags ?? []
+      const toAdd = newSegments.filter(s => !existing.some(e => e.toLowerCase() === s.toLowerCase()))
+      if (toAdd.length > 0) tagsPatch = { tags: [...existing, ...toAdd] }
+    }
+
     await fetch(`/api/admin/clients/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ analysis: aiProfile, website: analyzeUrl || client?.website, ...socialPatch }),
+      body: JSON.stringify({ analysis: aiProfile, website: analyzeUrl || client?.website, ...socialPatch, ...tagsPatch }),
     })
     setSavingAi(false)
     setEditingAi(false)
@@ -528,7 +529,7 @@ export default function ClientePerfilPage() {
 
   // ── Social links from client ──────────────────────────────────────────
 
-  const clientSocials: Array<{ key: keyof SocialLinks; label: string; Icon: React.ComponentType<{ size?: number; className?: string }>; url: string }> = SOCIAL_DISPLAY
+  const clientSocials = SOCIAL_NETWORKS
     .map(s => ({ ...s, url: (client as Record<string, unknown> | null)?.[`social_${s.key}`] as string ?? '' }))
     .filter(s => s.url)
 
@@ -585,32 +586,6 @@ export default function ClientePerfilPage() {
           </Button>
         </div>
 
-        {/* ── Tags row ────────────────────────────────────────────────── */}
-        <div className="mb-5 flex flex-wrap items-center gap-2">
-          {client.tags.map(tag => (
-            <span key={tag} className="group inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs">
-              {tag}
-              <button type="button" onClick={() => removeTag(tag)} className="opacity-0 transition-opacity group-hover:opacity-100">
-                <X size={10} />
-              </button>
-            </span>
-          ))}
-          {editingTags ? (
-            <div className="flex items-center gap-1.5">
-              <Input value={newTag} onChange={e => setNewTag(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setEditingTags(false) }}
-                placeholder="Nova tag…" className="h-6 w-32 px-2 text-xs" autoFocus />
-              <button type="button" onClick={addTag} className="rounded p-0.5 text-muted-foreground hover:text-foreground"><Check size={12} /></button>
-              <button type="button" onClick={() => setEditingTags(false)} className="rounded p-0.5 text-muted-foreground hover:text-foreground"><X size={12} /></button>
-            </div>
-          ) : (
-            <button type="button" onClick={() => setEditingTags(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground">
-              <Plus size={10} /> Tag
-            </button>
-          )}
-        </div>
-
         {/* ── 2-column layout ─────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px] lg:items-start">
 
@@ -642,7 +617,7 @@ export default function ClientePerfilPage() {
                   <div>
                     <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Redes sociais</div>
                     <div className="grid grid-cols-2 gap-2">
-                      {SOCIAL_DISPLAY.map(s => (
+                      {SOCIAL_NETWORKS.map(s => (
                         <div key={s.key} className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">{s.label}</Label>
                           <Input value={editSocials[s.key] ?? ''} onChange={e => setEditSocials(p => ({ ...p, [s.key]: e.target.value }))}
@@ -657,19 +632,49 @@ export default function ClientePerfilPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-                    {[
-                      { label: 'Site', value: client.website || '—', link: client.website ?? undefined },
-                    ].map(f => (
-                      <div key={f.label}>
-                        <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{f.label}</div>
-                        {f.link
-                          ? <a href={f.link} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-foreground underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-foreground">{f.value}</a>
-                          : <div className="break-all text-sm text-foreground">{f.value}</div>}
-                      </div>
-                    ))}
+                  {/* Segmentos */}
+                  <div>
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Segmentos</div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {client.tags.map(tag => (
+                        <span key={tag} className="group inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs">
+                          {tag}
+                          <button type="button" onClick={() => removeTag(tag)} className="opacity-0 transition-opacity group-hover:opacity-100">
+                            <X size={10} />
+                          </button>
+                        </span>
+                      ))}
+                      {editingTags ? (
+                        <div className="flex items-center gap-1.5">
+                          <Input value={newTag} onChange={e => setNewTag(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setEditingTags(false) }}
+                            placeholder="Novo segmento…" className="h-6 w-36 px-2 text-xs" autoFocus />
+                          <button type="button" onClick={addTag} className="rounded p-0.5 text-muted-foreground hover:text-foreground"><Check size={12} /></button>
+                          <button type="button" onClick={() => setEditingTags(false)} className="rounded p-0.5 text-muted-foreground hover:text-foreground"><X size={12} /></button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => setEditingTags(true)}
+                          className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground">
+                          <Plus size={10} /> Segmento
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {/* Social links display */}
+
+                  {/* Site */}
+                  {client.website && (
+                    <div>
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Site</div>
+                      <a href={client.website} target="_blank" rel="noopener noreferrer"
+                        title={client.website}
+                        className="inline-flex max-w-full items-center gap-1 truncate text-sm text-foreground underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-foreground">
+                        <span className="truncate">{client.website}</span>
+                        <ExternalLink size={11} className="shrink-0 text-muted-foreground/60" />
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Social links */}
                   {clientSocials.length > 0 && (
                     <div>
                       <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redes sociais</div>
@@ -677,7 +682,8 @@ export default function ClientePerfilPage() {
                         {clientSocials.map(s => (
                           <a key={s.key} href={s.url} target="_blank" rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-foreground transition-colors hover:bg-muted">
-                            <s.Icon size={12} className="text-muted-foreground" />{s.label}
+                            <s.Icon size={12} />
+                            {s.label}
                             <ExternalLink size={10} className="text-muted-foreground/60" />
                           </a>
                         ))}
@@ -701,32 +707,16 @@ export default function ClientePerfilPage() {
             {/* AI Profile card */}
             <Card className={cn('p-5', hasAiProfile && 'border-primary/30')}>
               <div
-                className={cn('flex items-center justify-between gap-3', hasAiProfile && !aiExpanded ? 'mb-0' : 'mb-4', hasAiProfile && 'cursor-pointer')}
+                className={cn('flex items-center justify-between gap-3', hasAiProfile && 'cursor-pointer')}
                 onClick={() => hasAiProfile && setAiExpanded(e => !e)}
               >
-                <div>
-                  <div className="flex items-center gap-2 text-[15px] font-bold">
-                    <Bot className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
-                    Perfil de IA
-                    {hasAiProfile && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
-                        <Check size={10} /> Salvo
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {hasAiProfile ? (aiExpanded ? 'Clique para recolher' : 'Clique para expandir e editar') : 'Analise o site ou preencha manualmente'}
-                  </div>
-                  {/* Mini-summary when collapsed */}
-                  {hasAiProfile && !aiExpanded && (
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                      {['segment', 'tone_of_voice', 'brand_personality', 'price_positioning'].map(k => aiProfile[k] ? (
-                        <div key={k} className="text-xs">
-                          <span className="text-muted-foreground">{AI_FIELDS.find(f => f.key === k)?.label}: </span>
-                          <span className="text-foreground">{String(aiProfile[k]).slice(0, 50)}</span>
-                        </div>
-                      ) : null)}
-                    </div>
+                <div className="flex items-center gap-2 text-[15px] font-bold">
+                  <Bot className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                  Perfil de IA
+                  {hasAiProfile && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+                      <Check size={10} /> Salvo
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -739,6 +729,29 @@ export default function ClientePerfilPage() {
                 </div>
               </div>
 
+              {/* Mini-summary — only when collapsed */}
+              {hasAiProfile && !aiExpanded && (
+                <div className="mt-2 space-y-0.5">
+                  {['segment', 'tone_of_voice', 'brand_personality', 'price_positioning']
+                    .filter(k => aiProfile[k])
+                    .map(k => (
+                      <div key={k} className="flex items-baseline gap-1.5 text-xs">
+                        <span className="shrink-0 text-muted-foreground">{AI_FIELDS.find(f => f.key === k)?.label}:</span>
+                        <span className="truncate text-foreground">{String(aiProfile[k])}</span>
+                      </div>
+                    ))}
+                </div>
+              )}
+
+              {/* Subtitle */}
+              {!hasAiProfile && (
+                <p className="mt-1 text-xs text-muted-foreground">Analise o site ou preencha manualmente</p>
+              )}
+              {hasAiProfile && aiExpanded && (
+                <p className="mt-1 text-xs text-muted-foreground">Clique para recolher</p>
+              )}
+
+              <div className={cn(hasAiProfile && 'mt-4')}>
               {(!hasAiProfile || aiExpanded) && (
                 <div>
                   <div className={cn('rounded-lg bg-muted/40 p-4', hasAiProfile && 'mb-4')}>
@@ -815,6 +828,7 @@ export default function ClientePerfilPage() {
                   )}
                 </div>
               )}
+              </div>
             </Card>
 
             {/* Briefings */}
