@@ -114,16 +114,16 @@ export function RecipientPickerModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md rounded-xl bg-card p-5 shadow-2xl animate-in zoom-in-95 duration-150"
+        className="relative w-full max-w-md rounded-xl bg-card border border-border p-6 shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1 duration-200 max-h-[88vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button onClick={onClose}
-          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          className="absolute right-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
           <X size={15} />
         </button>
 
-        <div className="mb-4 pr-8">
-          <h2 className="text-lg font-bold tracking-tight">{cfg.title}</h2>
+        <div className="mb-5 pr-8">
+          <h2 className="font-bold text-lg tracking-tight">{cfg.title}</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">{briefingCompany} · {briefingLabel}</p>
         </div>
 
@@ -150,12 +150,12 @@ export function RecipientPickerModal({
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-sm font-medium">{c.name}</span>
                       {c.is_primary && (
-                        <span className="inline-flex items-center gap-0.5 rounded-md border border-lime-300 bg-lime-50 px-1 py-0 text-[9px] font-semibold uppercase tracking-wide text-lime-700">
+                        <span className="inline-flex items-center gap-0.5 rounded-md border border-lime-300 bg-lime-50 px-1 py-0 text-[10px] font-semibold uppercase tracking-wide text-lime-700">
                           <Star size={8} className="fill-lime-600 text-lime-600" /> Principal
                         </span>
                       )}
                       {!c.is_primary && c.receives_copies && (
-                        <span className="rounded-md border border-border bg-muted/60 px-1 py-0 text-[9px] font-medium text-muted-foreground">CC</span>
+                        <span className="rounded-md border border-border bg-muted/60 px-1 py-0 text-[10px] font-medium text-muted-foreground">CC</span>
                       )}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">{c.email}</div>
@@ -172,7 +172,7 @@ export function RecipientPickerModal({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-sm font-medium">{r.name}</span>
-                      <span className="rounded-md border border-border bg-muted/60 px-1 py-0 text-[9px] font-medium text-muted-foreground">AVULSO</span>
+                      <span className="rounded-md border border-border bg-muted/60 px-1 py-0 text-[10px] font-medium text-muted-foreground">AVULSO</span>
                     </div>
                     <div className="truncate text-xs text-muted-foreground">{r.email}</div>
                   </div>
@@ -208,7 +208,7 @@ export function RecipientPickerModal({
               )}
             </div>
 
-            <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-5">
               <span className="text-xs text-muted-foreground">
                 {totalSelected === 0
                   ? 'Selecione ao menos um destinatário'

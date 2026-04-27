@@ -940,19 +940,24 @@ export default function ClientePerfilPage() {
                                       {b.recipients!.length}
                                     </span>
                                   </TooltipTrigger>
-                                  <TooltipContent side="bottom" className="p-0">
-                                    <div className="min-w-44 p-2.5">
-                                      <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-foreground/50">Enviado para</div>
-                                      <div className="flex flex-col gap-1.5">
+                                  <TooltipContent
+                                    side="bottom"
+                                    className="bg-popover text-popover-foreground border border-border p-0 shadow-md"
+                                  >
+                                    <div className="min-w-44 p-3">
+                                      <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Enviado para</div>
+                                      <div className="flex flex-col gap-2">
                                         {b.recipients!.map((r, i) => (
                                           <div key={i} className="flex items-center gap-2">
                                             <div className="min-w-0 flex-1">
-                                              <div className="truncate text-xs font-medium text-background">{r.name}</div>
-                                              <div className="truncate text-[10px] text-background/60">{r.email}</div>
+                                              <div className="truncate text-xs font-medium text-foreground">{r.name}</div>
+                                              <div className="truncate text-[10px] text-muted-foreground">{r.email}</div>
                                             </div>
                                             <span className={cn(
-                                              'shrink-0 rounded px-1 py-0 text-[9px] font-semibold uppercase',
-                                              r.role === 'primary' ? 'bg-lime-400/20 text-lime-300' : 'bg-white/10 text-background/70'
+                                              'shrink-0 rounded-md border px-1.5 py-0 text-[10px] font-medium',
+                                              r.role === 'primary'
+                                                ? 'border-lime-300 bg-lime-50 text-lime-700'
+                                                : 'border-border bg-muted/60 text-muted-foreground'
                                             )}>
                                               {r.role === 'primary' ? 'Principal' : 'CC'}
                                             </span>

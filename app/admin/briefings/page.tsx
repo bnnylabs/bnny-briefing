@@ -704,26 +704,31 @@ export default function AdminPage() {
                                     {b.recipients!.length}
                                   </button>
                                 </TooltipTrigger>
-                                <TooltipContent side="bottom" className="p-0">
-                                  <div className="min-w-48 p-2.5">
-                                    <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-foreground/50">Enviado para</div>
-                                    <div className="flex flex-col gap-1.5">
+                                <TooltipContent
+                                  side="bottom"
+                                  className="bg-popover text-popover-foreground border border-border p-0 shadow-md"
+                                >
+                                  <div className="min-w-48 p-3">
+                                    <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Enviado para</div>
+                                    <div className="flex flex-col gap-2">
                                       {b.recipients!.map((r, i) => (
                                         <div key={i} className="flex items-center gap-2">
                                           <div className="min-w-0 flex-1">
-                                            <div className="truncate text-xs font-medium text-background">{r.name}</div>
-                                            <div className="truncate text-[10px] text-background/60">{r.email}</div>
+                                            <div className="truncate text-xs font-medium text-foreground">{r.name}</div>
+                                            <div className="truncate text-[10px] text-muted-foreground">{r.email}</div>
                                           </div>
                                           <span className={cn(
-                                            'shrink-0 rounded px-1 py-0 text-[9px] font-semibold uppercase',
-                                            r.role === 'primary' ? 'bg-lime-400/20 text-lime-300' : 'bg-white/10 text-background/70'
+                                            'shrink-0 rounded-md border px-1.5 py-0 text-[10px] font-medium',
+                                            r.role === 'primary'
+                                              ? 'border-lime-300 bg-lime-50 text-lime-700'
+                                              : 'border-border bg-muted/60 text-muted-foreground'
                                           )}>
                                             {r.role === 'primary' ? 'Principal' : 'CC'}
                                           </span>
                                         </div>
                                       ))}
                                     </div>
-                                    <div className="mt-2 border-t border-white/10 pt-1.5 text-[10px] text-background/50">
+                                    <div className="mt-2.5 border-t border-border pt-2 text-[10px] text-muted-foreground">
                                       Clique para ver histórico completo
                                     </div>
                                   </div>
@@ -830,7 +835,7 @@ export default function AdminPage() {
       {responsesBriefing && (
         <Modal onClose={() => { setResponsesBriefing(null); setResponses(null) }} wide>
           <div className="mb-5 pb-4 border-b border-border/60">
-            <div className="font-bold text-xl tracking-tight">{responsesBriefing.clients?.company}</div>
+            <div className="font-bold text-lg tracking-tight">{responsesBriefing.clients?.company}</div>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <Badge variant="default" className="text-[10px] uppercase tracking-wider">{responsesBriefing.type_label}</Badge>
               <span className="text-sm text-muted-foreground">{responsesBriefing.clients?.name}</span>
@@ -893,7 +898,7 @@ export default function AdminPage() {
       {diffModal && (
         <Modal onClose={() => setDiffModal(null)} wide>
           <div className="mb-5 pb-4 border-b border-border/60">
-            <div className="font-bold text-xl tracking-tight">{diffModal.briefing.clients?.company}</div>
+            <div className="font-bold text-lg tracking-tight">{diffModal.briefing.clients?.company}</div>
             <div className="flex items-center gap-2 mt-1.5">
               <Badge variant="outline" className="text-[10px] font-medium gap-1"><Pencil size={10} /> {diffModal.briefing.update_count}x atualizado</Badge>
               <span className="text-sm text-muted-foreground">{diffModal.briefing.type_label}</span>
@@ -1000,15 +1005,10 @@ export default function AdminPage() {
       {/* ── NOTIFICATIONS ────────────────────────────────────────────── */}
       {notifBriefing && (
         <Modal onClose={() => { setNotifBriefing(null); setNotifHistory([]) }}>
-          <div className="mb-4">
+          <div className="mb-5">
             <div className="font-bold text-lg tracking-tight">Histórico de envios</div>
             <div className="text-sm text-muted-foreground mt-0.5">{notifBriefing.clients?.company} · {notifBriefing.type_label}</div>
           </div>
-          {notifBriefing.clients?.email && (
-            <div className="rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm mb-4 inline-flex items-center gap-2">
-              <Mail size={14} className="text-muted-foreground" /> Email: <span className="font-semibold">{notifBriefing.clients.email}</span>
-            </div>
-          )}
           {notifHistory.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">Nenhum envio registrado</div>
           ) : (
@@ -1022,7 +1022,7 @@ export default function AdminPage() {
                 }
                 const entry = lblMap[n.type] || { icon: null, label: n.type }
                 return (
-                  <div key={i} className="rounded-lg border border-border bg-secondary px-4 py-3">
+                  <div key={i} className="rounded-lg border border-border bg-muted/30 px-4 py-3">
                     <div className="flex items-center justify-between">
                       <span className="inline-flex items-center gap-1.5 text-sm font-medium">{entry.icon} {entry.label}</span>
                       <span className={`inline-flex items-center gap-1 text-xs font-medium ${n.status === 'sent' ? 'text-success' : 'text-destructive'}`}>
@@ -1030,16 +1030,19 @@ export default function AdminPage() {
                       </span>
                     </div>
                     {n.details?.to && (
-                      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                         {n.details.role === 'cc' && (
                           <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">CC</span>
                         )}
+                        {n.details.role === 'primary' && (
+                          <span className="rounded-md border border-lime-300 bg-lime-50 px-1.5 py-0.5 text-[10px] font-medium text-lime-700">Principal</span>
+                        )}
                         {n.details.name && <span className="font-medium text-foreground">{n.details.name}</span>}
-                        {n.details.name && <span>·</span>}
+                        {n.details.name && <span className="text-muted-foreground/50">·</span>}
                         <span>{n.details.to}</span>
                       </div>
                     )}
-                    <div className="text-xs text-muted-foreground mt-0.5">{new Date(n.sent_at).toLocaleString('pt-BR')}</div>
+                    <div className="text-[10px] text-muted-foreground/60 mt-1">{new Date(n.sent_at).toLocaleString('pt-BR')}</div>
                   </div>
                 )
               })}
