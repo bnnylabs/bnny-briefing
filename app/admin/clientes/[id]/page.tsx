@@ -3,32 +3,11 @@
 import { useState, useEffect, useCallback, ReactNode } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
-  ArrowLeft,
-  ArrowRight,
-  Bot,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  Clipboard,
-  ClipboardCheck,
-  ClipboardList,
-  Clock,
-  Download,
-  ExternalLink,
-  Eye,
-  FileText,
-  Image as ImageIcon,
-  Link as LinkIcon,
-  Lock,
-  Paperclip,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Save,
-  Send,
-  Sparkles,
-  Unlock,
-  X,
+  ArrowLeft, ArrowRight, Bot, Briefcase, Check, CheckCircle2, ChevronDown,
+  Clipboard, ClipboardCheck, ClipboardList, Clock, Download, ExternalLink,
+  Eye, FileText, Globe, Image as ImageIcon, Link as LinkIcon,
+  Lock, Paperclip, Pencil, Plus, RefreshCw, Save, Send,
+  Sparkles, Star, Unlock, X,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -38,24 +17,18 @@ import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
-
 import { useToast, ToastContainer } from '@/components/toast'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 import { cn } from '@/lib/utils'
+import { ContactsSection, type ClientContact } from './ContactsSection'
+import { NotesSection, type ClientNote } from './NotesSection'
 
-interface Contact {
-  name: string
-  email: string
-  phone?: string
-  role?: string
-  is_primary?: boolean
-}
+// ─── Types ────────────────────────────────────────────────────────────────
+
+type ClientStatus = 'lead' | 'active' | 'recurring' | 'paused' | 'archived'
+
 interface Client {
   id: string
   name: string
@@ -64,71 +37,52 @@ interface Client {
   phone: string
   website: string | null
   analysis: Record<string, unknown> | null
+  status: ClientStatus
+  tags: string[]
+  is_starred: boolean
+  archived_at: string | null
+  last_activity_at: string | null
+  preferred_channel: 'email' | 'whatsapp' | 'both'
+  social_instagram: string | null
+  social_linkedin: string | null
+  social_facebook: string | null
+  social_youtube: string | null
+  social_tiktok: string | null
+  social_twitter: string | null
+  social_pinterest: string | null
+  social_other: string | null
   created_at: string
-  contacts?: Contact[]
 }
+
 interface Briefing {
-  id: string
-  slug: string
-  type: string
-  type_label: string
-  status: string
-  language?: string
-  created_at: string
-  completed_at: string | null
-  internal_notes: string | null
-  editing_locked?: boolean
-  editing_expires_at?: string | null
-  update_count?: number
+  id: string; slug: string; type: string; type_label: string
+  status: string; language?: string; created_at: string
+  completed_at: string | null; internal_notes: string | null
+  editing_locked?: boolean; editing_expires_at?: string | null; update_count?: number
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  enviado: 'Enviado',
-  visualizado: 'Visualizado',
-  em_andamento: 'Em andamento',
-  concluido: 'Concluído',
+interface SocialLinks {
+  instagram?: string; linkedin?: string; facebook?: string; youtube?: string
+  tiktok?: string; twitter?: string; pinterest?: string; other?: string
 }
 
-function StatusIcon({ status }: { status: string }) {
-  const className = 'h-3 w-3'
-  switch (status) {
-    case 'enviado':
-      return <Send className={className} />
-    case 'visualizado':
-      return <Eye className={className} />
-    case 'em_andamento':
-      return <Clock className={className} />
-    case 'concluido':
-      return <CheckCircle2 className={className} />
-    default:
-      return null
-  }
+// ─── Constants ────────────────────────────────────────────────────────────
+
+const STATUS_LABELS: Record<ClientStatus, string> = {
+  lead: 'Lead', active: 'Ativo', recurring: 'Recorrente', paused: 'Pausado', archived: 'Arquivado',
+}
+const STATUS_COLORS: Record<ClientStatus, string> = {
+  lead: 'border-blue-200 bg-blue-50 text-blue-700',
+  active: 'border-success/30 bg-success/10 text-success',
+  recurring: 'border-lime-300 bg-lime-50 text-lime-700',
+  paused: 'border-warning/30 bg-warning/10 text-warning',
+  archived: 'border-border bg-muted text-muted-foreground',
+}
+const BRIEFING_STATUS_LABELS: Record<string, string> = {
+  enviado: 'Enviado', visualizado: 'Visualizado', em_andamento: 'Em andamento', concluido: 'Concluído',
 }
 
-type AiFieldKey =
-  | 'company_name'
-  | 'segment'
-  | 'description'
-  | 'key_features'
-  | 'differentials'
-  | 'unique_value_proposition'
-  | 'target_audience'
-  | 'brand_personality'
-  | 'price_positioning'
-  | 'geographic_focus'
-  | 'tone_of_voice'
-  | 'colors_hint'
-  | 'extra_notes'
-
-interface AiField {
-  key: AiFieldKey
-  label: string
-  /** Long-form fields render full-width with a paragraph treatment.
-   *  Short ones go in a 2-column grid, label-on-top compact. */
-  long?: boolean
-}
-
-const AI_FIELDS: AiField[] = [
+const AI_FIELDS = [
   { key: 'company_name', label: 'Nome da empresa' },
   { key: 'segment', label: 'Segmento / Nicho' },
   { key: 'target_audience', label: 'Público-alvo' },
@@ -140,65 +94,74 @@ const AI_FIELDS: AiField[] = [
   { key: 'description', label: 'Sobre a empresa', long: true },
   { key: 'key_features', label: 'Produtos / Serviços principais', long: true },
   { key: 'differentials', label: 'Diferenciais competitivos', long: true },
-  {
-    key: 'unique_value_proposition',
-    label: 'Proposta de valor única',
-    long: true,
-  },
+  { key: 'unique_value_proposition', label: 'Proposta de valor única', long: true },
   { key: 'extra_notes', label: 'Observações para design', long: true },
 ]
 
+const SOCIAL_DISPLAY: Array<{
+  key: keyof SocialLinks
+  label: string
+  Icon: React.ComponentType<{ size?: number; className?: string }>
+}> = [
+  { key: 'instagram', label: 'Instagram', Icon: Globe },
+  { key: 'linkedin', label: 'LinkedIn', Icon: Globe },
+  { key: 'facebook', label: 'Facebook', Icon: Globe },
+  { key: 'youtube', label: 'YouTube', Icon: Globe },
+  { key: 'tiktok', label: 'TikTok', Icon: Globe },
+  { key: 'twitter', label: 'X / Twitter', Icon: Globe },
+  { key: 'pinterest', label: 'Pinterest', Icon: Globe },
+  { key: 'other', label: 'Outro', Icon: Globe },
+]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
 function fmt(d: string | null) {
   if (!d) return '—'
-  return new Date(d).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-interface FileEntry3 {
-  url: string
-  name: string
-  type?: string
-  size?: number
+function relativeTime(iso: string | null): string {
+  if (!iso) return 'nunca'
+  const diff = Date.now() - new Date(iso).getTime()
+  const days = Math.floor(diff / 86400000)
+  if (days === 0) return 'hoje'
+  if (days === 1) return 'ontem'
+  if (days < 7) return `${days} dias atrás`
+  if (days < 30) return `${Math.floor(days / 7)} sem. atrás`
+  if (days < 365) return `${Math.floor(days / 30)} meses atrás`
+  return `${Math.floor(days / 365)} ano(s) atrás`
 }
 
-function ResponsesContent2({
-  responses,
-  language,
-  companyName,
-  renderFileValue,
-  labelMapPT,
-  labelMapEN,
+function BriefingStatusIcon({ status }: { status: string }) {
+  const cls = 'h-3 w-3'
+  switch (status) {
+    case 'enviado': return <Send className={cls} />
+    case 'visualizado': return <Eye className={cls} />
+    case 'em_andamento': return <Clock className={cls} />
+    case 'concluido': return <CheckCircle2 className={cls} />
+    default: return null
+  }
+}
+
+interface FileEntry { url: string; name: string; type?: string; size?: number }
+
+// ─── ResponsesContent (preserved exactly) ────────────────────────────────
+
+function ResponsesContent({
+  responses, language, companyName, renderFileValue, labelMapPT, labelMapEN,
 }: {
-  responses: Record<string, unknown>
-  language?: string
-  companyName: string
-  renderFileValue: (v: unknown) => React.ReactNode
-  labelMapPT: Record<string, string>
-  labelMapEN: Record<string, string>
+  responses: Record<string, unknown>; language?: string; companyName: string
+  renderFileValue: (v: unknown) => ReactNode
+  labelMapPT: Record<string, string>; labelMapEN: Record<string, string>
 }) {
-  const allFiles: FileEntry3[] = []
-  Object.entries(responses).forEach(([, value]) => {
+  const allFiles: FileEntry[] = []
+  Object.values(responses).forEach(value => {
     if (Array.isArray(value)) {
-      ;(value as FileEntry3[]).forEach((f) => {
-        if (f && f.name && f.url?.startsWith('http')) allFiles.push(f)
-      })
+      ;(value as FileEntry[]).forEach(f => { if (f?.name && f.url?.startsWith('http')) allFiles.push(f) })
     }
   })
-  const imageFiles = allFiles.filter(
-    (f) =>
-      f.type?.startsWith('image/') ||
-      /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || ''),
-  )
-  const otherFiles = allFiles.filter(
-    (f) =>
-      !f.type?.startsWith('image/') &&
-      !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || ''),
-  )
+  const imageFiles = allFiles.filter(f => f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name))
+  const otherFiles = allFiles.filter(f => !f.type?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name))
   const labelMap = language === 'en-US' ? labelMapEN : labelMapPT
 
   async function handleDownloadAll() {
@@ -213,83 +176,49 @@ function ResponsesContent2({
           <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold">
-              {allFiles.length}{' '}
-              {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
+              {allFiles.length} {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
               {imageFiles.length > 0 && (
                 <span className="ml-2 text-xs font-normal text-muted-foreground">
-                  · {imageFiles.length}{' '}
-                  {imageFiles.length === 1 ? 'imagem' : 'imagens'}
-                  {otherFiles.length > 0 &&
-                    `, ${otherFiles.length} ${otherFiles.length === 1 ? 'documento' : 'documentos'}`}
+                  · {imageFiles.length} {imageFiles.length === 1 ? 'imagem' : 'imagens'}
+                  {otherFiles.length > 0 && `, ${otherFiles.length} ${otherFiles.length === 1 ? 'documento' : 'documentos'}`}
                 </span>
               )}
             </div>
-            <div className="mt-0.5 truncate text-xs text-muted-foreground">
-              {allFiles.map((f) => f.name).join(', ')}
-            </div>
           </div>
           <Button size="sm" onClick={handleDownloadAll} className="shrink-0">
-            <Download className="mr-1.5 h-3.5 w-3.5" />
-            Baixar ZIP
+            <Download className="mr-1.5 h-3.5 w-3.5" /> Baixar ZIP
           </Button>
         </Card>
       )}
       <div className="flex flex-col gap-2">
-        {Object.entries(responses)
-          .filter(([, v]) => v)
-          .map(([key, value]) => {
-            const isFileField =
-              /arquivo|logo|referencia|anexo|upload|files/i.test(key) ||
-              (Array.isArray(value) &&
-                value.length > 0 &&
-                typeof value[0] === 'object' &&
-                value[0] !== null &&
-                'url' in (value[0] as object))
-            const displayValue = isFileField
-              ? ''
-              : Array.isArray(value)
-                ? (value as string[]).join(', ')
-                : String(value)
-            const isShort = !isFileField && displayValue.length < 60
-            return (
-              <div
-                key={key}
-                className="overflow-hidden rounded-lg border border-border"
-              >
-                <div
-                  className={cn(
-                    'flex items-center justify-between gap-2 bg-muted/40 px-3.5 py-2',
-                    !(isShort && !isFileField) && 'border-b border-border',
-                  )}
-                >
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    {isFileField && <Paperclip className="h-3 w-3" />}
-                    {labelMap[key] || key.replace(/_/g, ' ')}
-                  </span>
-                  {isShort && !isFileField && (
-                    <span className="text-sm font-semibold text-foreground">
-                      {displayValue}
-                    </span>
-                  )}
-                </div>
-                {(!isShort || isFileField) && (
-                  <div className="bg-card px-3.5 py-3 text-sm leading-relaxed text-foreground">
-                    {isFileField ? (
-                      renderFileValue(value)
-                    ) : (
-                      <span className="whitespace-pre-wrap">
-                        {displayValue}
-                      </span>
-                    )}
-                  </div>
-                )}
+        {Object.entries(responses).filter(([, v]) => v).map(([key, value]) => {
+          const isFileField = /arquivo|logo|referencia|anexo|upload|files/i.test(key) ||
+            (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'url' in (value[0] as object))
+          const displayValue = isFileField ? '' : Array.isArray(value) ? (value as string[]).join(', ') : String(value)
+          const isShort = !isFileField && displayValue.length < 60
+          return (
+            <div key={key} className="overflow-hidden rounded-lg border border-border">
+              <div className={cn('flex items-center justify-between gap-2 bg-muted/40 px-3.5 py-2', !(isShort && !isFileField) && 'border-b border-border')}>
+                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {isFileField && <Paperclip className="h-3 w-3" />}
+                  {labelMap[key] || key.replace(/_/g, ' ')}
+                </span>
+                {isShort && !isFileField && <span className="text-sm font-semibold text-foreground">{displayValue}</span>}
               </div>
-            )
-          })}
+              {(!isShort || isFileField) && (
+                <div className="bg-card px-3.5 py-3 text-sm leading-relaxed text-foreground">
+                  {isFileField ? renderFileValue(value) : <span className="whitespace-pre-wrap">{displayValue}</span>}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </>
   )
 }
+
+// ─── Main page ────────────────────────────────────────────────────────────
 
 export default function ClientePerfilPage() {
   const router = useRouter()
@@ -298,38 +227,43 @@ export default function ClientePerfilPage() {
 
   const [client, setClient] = useState<Client | null>(null)
   const [briefings, setBriefings] = useState<Briefing[]>([])
+  const [contacts, setContacts] = useState<ClientContact[]>([])
+  const [notes, setNotes] = useState<ClientNote[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Client info edit
   const [editMode, setEditMode] = useState(false)
-  const [editForm, setEditForm] = useState({
-    name: '',
-    company: '',
-    email: '',
-    phone: '',
-    website: '',
-  })
+  const [editForm, setEditForm] = useState({ name: '', company: '', email: '', phone: '', website: '' })
+  const [editSocials, setEditSocials] = useState<SocialLinks>({})
   const [savingEdit, setSavingEdit] = useState(false)
 
-  // AI Analysis
+  // Status / tags / starred
+  const [editingStatus, setEditingStatus] = useState(false)
+  const [editingTags, setEditingTags] = useState(false)
+  const [newTag, setNewTag] = useState('')
+
+  // AI
   const [analyzing, setAnalyzing] = useState(false)
   const [aiProfile, setAiProfile] = useState<Record<string, string>>({})
   const [editingAi, setEditingAi] = useState(false)
   const [savingAi, setSavingAi] = useState(false)
-  const [viewingResponses, setViewingResponses] = useState<string | null>(null)
-  const [responses, setResponses] = useState<Record<string, unknown> | null>(
-    null,
-  )
-  const [responseDiff2, setResponseDiff2] = useState<Record<
-    string,
-    { old: unknown; new: unknown }
-  > | null>(null)
-  const [responseVersions2, setResponseVersions2] = useState(0)
-  const [showDiff2, setShowDiff2] = useState(false)
-  const [loadingResponses, setLoadingResponses] = useState(false)
-  const [copiedResponses, setCopiedResponses] = useState(false)
-  const { toasts, toast, remove } = useToast()
   const [aiExpanded, setAiExpanded] = useState(false)
   const [analyzeUrl, setAnalyzeUrl] = useState('')
   const [extraText, setExtraText] = useState('')
+  const [detectedSocials, setDetectedSocials] = useState<SocialLinks>({})
+
+  // Responses modal
+  const [viewingResponses, setViewingResponses] = useState<string | null>(null)
+  const [responses, setResponses] = useState<Record<string, unknown> | null>(null)
+  const [responseDiff, setResponseDiff] = useState<Record<string, { old: unknown; new: unknown }> | null>(null)
+  const [responseVersions, setResponseVersions] = useState(0)
+  const [showDiff, setShowDiff] = useState(false)
+  const [loadingResponses, setLoadingResponses] = useState(false)
+  const [copiedResponses, setCopiedResponses] = useState(false)
+
+  const { toasts, toast, remove } = useToast()
+
+  // ── Load ──────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -337,15 +271,25 @@ export default function ClientePerfilPage() {
     if (res.ok) {
       const d = await res.json()
       setClient(d.client)
-      setBriefings(d.briefings || [])
+      setBriefings(d.briefings ?? [])
+      setContacts(d.contacts ?? [])
+      setNotes(d.notes ?? [])
       if (d.client.analysis) setAiProfile(d.client.analysis)
       if (d.client.website) setAnalyzeUrl(d.client.website)
       setEditForm({
-        name: d.client.name || '',
-        company: d.client.company || '',
-        email: d.client.email || '',
-        phone: d.client.phone || '',
-        website: d.client.website || '',
+        name: d.client.name ?? '', company: d.client.company ?? '',
+        email: d.client.email ?? '', phone: d.client.phone ?? '',
+        website: d.client.website ?? '',
+      })
+      setEditSocials({
+        instagram: d.client.social_instagram ?? '',
+        linkedin: d.client.social_linkedin ?? '',
+        facebook: d.client.social_facebook ?? '',
+        youtube: d.client.social_youtube ?? '',
+        tiktok: d.client.social_tiktok ?? '',
+        twitter: d.client.social_twitter ?? '',
+        pinterest: d.client.social_pinterest ?? '',
+        other: d.client.social_other ?? '',
       })
     } else if (res.status === 401) {
       router.push('/admin')
@@ -353,218 +297,159 @@ export default function ClientePerfilPage() {
     setLoading(false)
   }, [id, router])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useEffect(() => { load() }, [load])
+
+  // ── Client info ───────────────────────────────────────────────────────
 
   async function saveEdit() {
     setSavingEdit(true)
     await fetch(`/api/admin/clients/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
+      body: JSON.stringify({
+        ...editForm,
+        social_instagram: editSocials.instagram || null,
+        social_linkedin: editSocials.linkedin || null,
+        social_facebook: editSocials.facebook || null,
+        social_youtube: editSocials.youtube || null,
+        social_tiktok: editSocials.tiktok || null,
+        social_twitter: editSocials.twitter || null,
+        social_pinterest: editSocials.pinterest || null,
+        social_other: editSocials.other || null,
+      }),
     })
     setSavingEdit(false)
     setEditMode(false)
     load()
   }
 
+  async function patchClient(patch: Partial<Client>) {
+    setClient(c => c ? { ...c, ...patch } : c)
+    await fetch(`/api/admin/clients/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+  }
+
+  async function toggleStarred() {
+    if (!client) return
+    await patchClient({ is_starred: !client.is_starred })
+    toast(client.is_starred ? 'Removido dos favoritos' : 'Adicionado aos favoritos', 'success', 1500)
+  }
+
+  async function setStatus(status: ClientStatus) {
+    await patchClient({ status })
+    setEditingStatus(false)
+    toast(`Status: ${STATUS_LABELS[status]}`, 'success', 1500)
+  }
+
+  async function addTag() {
+    const tag = newTag.trim()
+    if (!tag || !client) return
+    if (client.tags.includes(tag)) { setNewTag(''); return }
+    const next = [...client.tags, tag]
+    await patchClient({ tags: next })
+    setNewTag('')
+  }
+
+  async function removeTag(tag: string) {
+    if (!client) return
+    await patchClient({ tags: client.tags.filter(t => t !== tag) })
+  }
+
+  // ── AI ────────────────────────────────────────────────────────────────
+
   async function analyzeWithAI() {
     if (!analyzeUrl && !extraText && !client?.company) return
     setAnalyzing(true)
     try {
       const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          website: analyzeUrl || client?.website,
-          text: extraText,
-          company: client?.company,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ website: analyzeUrl || client?.website, text: extraText, company: client?.company }),
       })
       const data = await res.json()
       if (data.analysis) {
         setAiProfile(data.analysis)
         setEditingAi(true)
+        setAiExpanded(true)
       }
-    } catch (e) {
-      console.error(e)
-    }
+      if (data.social_links) {
+        setDetectedSocials(data.social_links)
+      }
+    } catch (e) { console.error(e) }
     setAnalyzing(false)
   }
 
   async function saveAiProfile() {
     setSavingAi(true)
+    // Save analysis + any newly-detected social links
+    const socialPatch = Object.keys(detectedSocials).length > 0 ? {
+      social_instagram: detectedSocials.instagram || client?.social_instagram || null,
+      social_linkedin: detectedSocials.linkedin || client?.social_linkedin || null,
+      social_facebook: detectedSocials.facebook || client?.social_facebook || null,
+      social_youtube: detectedSocials.youtube || client?.social_youtube || null,
+      social_tiktok: detectedSocials.tiktok || client?.social_tiktok || null,
+      social_twitter: detectedSocials.twitter || client?.social_twitter || null,
+      social_pinterest: detectedSocials.pinterest || client?.social_pinterest || null,
+      social_other: detectedSocials.other || client?.social_other || null,
+    } : {}
     await fetch(`/api/admin/clients/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        analysis: aiProfile,
-        website: analyzeUrl || client?.website,
-      }),
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ analysis: aiProfile, website: analyzeUrl || client?.website, ...socialPatch }),
     })
     setSavingAi(false)
     setEditingAi(false)
+    setDetectedSocials({})
     load()
   }
 
-  function renderFileValue(value: unknown): ReactNode {
-    if (!value) return null
-
-    const renderCard = (
-      f: { url: string; name: string; size?: number; type?: string },
-      i: number,
-    ) => {
-      const isImage =
-        f.type?.startsWith('image/') ||
-        /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
-      const hasUrl = f.url && f.url.startsWith('http')
-      const sizeLabel = f.size ? `${(f.size / 1024).toFixed(0)}kb` : ''
-      if (isImage && hasUrl)
-        return (
-          <div key={i}>
-            <a
-              href={f.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={f.url}
-                alt={f.name}
-                className="max-h-52 w-full max-w-full cursor-pointer rounded-lg bg-muted object-contain"
-              />
-            </a>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {f.name}
-              {sizeLabel ? ` · ${sizeLabel}` : ''}
-            </div>
-          </div>
-        )
-      if (hasUrl)
-        return (
-          <a
-            key={i}
-            href={f.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-foreground no-underline transition-colors hover:bg-muted"
-          >
-            {f.type?.includes('pdf') ? (
-              <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-            ) : (
-              <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold">{f.name}</div>
-              {sizeLabel && (
-                <div className="text-xs text-muted-foreground">
-                  {sizeLabel}
-                </div>
-              )}
-            </div>
-            <span className="flex shrink-0 items-center gap-1 text-xs text-primary">
-              <ExternalLink className="h-3 w-3" /> Abrir
-            </span>
-          </a>
-        )
-      return (
-        <div
-          key={i}
-          className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 opacity-60"
-        >
-          {isImage ? (
-            <ImageIcon className="h-5 w-5 shrink-0" />
-          ) : (
-            <Paperclip className="h-5 w-5 shrink-0" />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm">{f.name}</div>
-            <div className="text-xs text-muted-foreground">
-              {sizeLabel} · upload não concluído
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-    if (Array.isArray(value))
-      return (
-        <div className="flex flex-col gap-2.5">
-          {(
-            value as { url: string; name: string; size?: number; type?: string }[]
-          ).map((f, i) => renderCard(f, i))}
-        </div>
-      )
-
-    const str = String(value)
-    const isUrl = str.startsWith('http')
-    return isUrl ? (
-      <a
-        href={str}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="break-all text-primary underline inline-flex items-center gap-1"
-      >
-        <Paperclip className="h-3.5 w-3.5" />
-        {str.split('/').pop()}
-      </a>
-    ) : (
-      <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
-        <Paperclip className="h-3.5 w-3.5" />
-        {str}
-      </span>
-    )
-  }
+  // ── Briefings ─────────────────────────────────────────────────────────
 
   async function viewResponses(slug: string) {
     setViewingResponses(slug)
     setLoadingResponses(true)
-    setShowDiff2(false)
+    setShowDiff(false)
     const res = await fetch(`/api/briefings/${slug}/responses`)
     if (res.ok) {
       const d = await res.json()
-      setResponses(d.answers || {})
-      setResponseDiff2(d.diff || null)
-      setResponseVersions2(d.versions || 1)
+      setResponses(d.answers ?? {})
+      setResponseDiff(d.diff ?? null)
+      setResponseVersions(d.versions ?? 1)
     }
     setLoadingResponses(false)
   }
 
-  /**
-   * Build a plain-text dump of a briefing's responses for copy-paste.
-   * Header includes type, company, contact, email, whatsapp, completion
-   * date — same shape as the one on /admin/briefings, but pulls contact
-   * info from the page-level `client` state since this page is already
-   * scoped to a single client.
-   */
+  async function toggleLock(slug: string, currentLocked: boolean) {
+    await fetch(`/api/briefings/${slug}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ editing_locked: !currentLocked }),
+    })
+    setBriefings(prev => prev.map(b => b.slug === slug ? { ...b, editing_locked: !currentLocked } : b))
+    toast(!currentLocked ? 'Edição bloqueada' : 'Edição liberada', 'success')
+  }
+
   function buildText(b: Briefing, resp: Record<string, unknown>) {
     const labelMap = b.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
     const lines = [
       `BRIEFING — ${b.type_label.toUpperCase()}`,
-      `Empresa: ${client?.company || '—'}`,
-      `Contato: ${client?.name || '—'}`,
-      `Email: ${client?.email || '—'}`,
-      `WhatsApp: ${client?.phone || '—'}`,
+      `Empresa: ${client?.company ?? '—'}`,
+      `Contato: ${client?.name ?? '—'}`,
+      `Email: ${client?.email ?? '—'}`,
+      `WhatsApp: ${client?.phone ?? '—'}`,
       `Concluído: ${fmt(b.completed_at)}`,
-      '',
-      '─────────────────────────────────',
-      '',
+      '', '─────────────────────────────────', '',
     ]
     Object.entries(resp).forEach(([k, v]) => {
       if (!v) return
       const label = labelMap[k] || k.replace(/_/g, ' ').toUpperCase()
-      lines.push(label.toUpperCase())
-      lines.push(Array.isArray(v) ? (v as string[]).join(', ') : String(v))
-      lines.push('')
+      lines.push(label.toUpperCase(), Array.isArray(v) ? (v as string[]).join(', ') : String(v), '')
     })
     return lines.join('\n')
   }
 
   async function copyResponses() {
     if (!responses || !viewingResponses) return
-    const b = briefings.find((br) => br.slug === viewingResponses)
+    const b = briefings.find(br => br.slug === viewingResponses)
     if (!b) return
     await navigator.clipboard.writeText(buildText(b, responses))
     setCopiedResponses(true)
@@ -572,60 +457,85 @@ export default function ClientePerfilPage() {
     setTimeout(() => setCopiedResponses(false), 2000)
   }
 
-  /**
-   * Open a print-ready HTML document in a new tab. Mirrors the
-   * /admin/briefings export so a briefing exported from either entry
-   * point produces an identical PDF.
-   */
   function exportPDF() {
     if (!responses || !viewingResponses) return
-    const b = briefings.find((br) => br.slug === viewingResponses)
+    const b = briefings.find(br => br.slug === viewingResponses)
     if (!b) return
     const fields = Object.entries(responses).filter(([, v]) => v)
-    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111;padding:48px;max-width:800px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #c8ff00;margin-bottom:32px}.logo{font-size:22px;font-weight:800;letter-spacing:-0.04em}.logo span{color:#c8ff00;background:#111;padding:2px 8px;border-radius:4px}.badge{background:#111;color:#c8ff00;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:inline-block}.cb{background:#f8f8f8;border-radius:12px;padding:20px 24px;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.cf label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;display:block;margin-bottom:3px}.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}.f{margin-bottom:18px}.fl{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}.fv{font-size:14px;color:#111;line-height:1.6;background:#f8f8f8;padding:10px 14px;border-radius:8px;border-left:3px solid #c8ff00}.footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="hdr"><div><div class="logo"><span>Bnny</span> Labs</div><div style="font-size:12px;color:#555;margin-top:4px">Sistema de Briefings</div></div><div style="text-align:right"><div style="font-size:17px;font-weight:700">${b.type_label}</div><div class="badge">${STATUS_LABELS[b.status] || b.status}</div></div></div><div class="cb"><div class="cf"><label>Empresa</label><span style="font-size:15px;font-weight:700">${client?.company || '—'}</span></div><div class="cf"><label>Contato</label><span>${client?.name || '—'}</span></div><div class="cf"><label>Email</label><span>${client?.email || '—'}</span></div><div class="cf"><label>WhatsApp</label><span>${client?.phone || '—'}</span></div><div class="cf"><label>Concluído em</label><span>${fmt(b.completed_at)}</span></div><div class="cf"><label>Tipo</label><span>${b.type_label}</span></div></div><div class="st">Respostas do briefing</div>${fields.map(([k, v]) => `<div class="f"><div class="fl">${k.replace(/_/g, ' ')}</div><div class="fv">${Array.isArray(v) ? (v as string[]).join(', ') : String(v)}</div></div>`).join('')}<div class="footer">Gerado por Bnny Labs · briefing.bnnylabs.com · ${new Date().toLocaleDateString('pt-BR')}</div></body></html>`
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111;padding:48px;max-width:800px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #c8ff00;margin-bottom:32px}.logo{font-size:22px;font-weight:800;letter-spacing:-0.04em}.logo span{color:#c8ff00;background:#111;padding:2px 8px;border-radius:4px}.badge{background:#111;color:#c8ff00;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:inline-block}.cb{background:#f8f8f8;border-radius:12px;padding:20px 24px;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.cf label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;display:block;margin-bottom:3px}.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}.f{margin-bottom:18px}.fl{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}.fv{font-size:14px;color:#111;line-height:1.6;background:#f8f8f8;padding:10px 14px;border-radius:8px;border-left:3px solid #c8ff00}.footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="hdr"><div><div class="logo"><span>Bnny</span> Labs</div></div><div style="text-align:right"><div style="font-size:17px;font-weight:700">${b.type_label}</div><div class="badge">${BRIEFING_STATUS_LABELS[b.status] ?? b.status}</div></div></div><div class="cb"><div class="cf"><label>Empresa</label><span style="font-size:15px;font-weight:700">${client?.company ?? '—'}</span></div><div class="cf"><label>Contato</label><span>${client?.name ?? '—'}</span></div><div class="cf"><label>Email</label><span>${client?.email ?? '—'}</span></div><div class="cf"><label>WhatsApp</label><span>${client?.phone ?? '—'}</span></div><div class="cf"><label>Concluído em</label><span>${fmt(b.completed_at)}</span></div></div><div class="st">Respostas do briefing</div>${fields.map(([k, v]) => `<div class="f"><div class="fl">${k.replace(/_/g, ' ')}</div><div class="fv">${Array.isArray(v) ? (v as string[]).join(', ') : String(v)}</div></div>`).join('')}<div class="footer">Gerado por Bnny Labs · briefing.bnnylabs.com · ${new Date().toLocaleDateString('pt-BR')}</div></body></html>`
     const win = window.open('', '_blank')
-    if (win) {
-      win.document.write(html)
-      win.document.close()
-      setTimeout(() => win.print(), 500)
+    if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
+  }
+
+  function renderFileValue(value: unknown): ReactNode {
+    if (!value) return null
+    const renderCard = (f: FileEntry, i: number) => {
+      const isImage = f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name ?? '')
+      const hasUrl = f.url?.startsWith('http')
+      const sizeLabel = f.size ? `${(f.size / 1024).toFixed(0)}kb` : ''
+      if (isImage && hasUrl) return (
+        <div key={i}>
+          <a href={f.url} target="_blank" rel="noopener noreferrer" className="block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={f.url} alt={f.name} className="max-h-52 w-full max-w-full cursor-pointer rounded-lg bg-muted object-contain" />
+          </a>
+          <div className="mt-1 text-xs text-muted-foreground">{f.name}{sizeLabel ? ` · ${sizeLabel}` : ''}</div>
+        </div>
+      )
+      if (hasUrl) return (
+        <a key={i} href={f.url} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-foreground no-underline transition-colors hover:bg-muted">
+          {f.type?.includes('pdf') ? <FileText className="h-5 w-5 shrink-0 text-muted-foreground" /> : <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">{f.name}</div>
+            {sizeLabel && <div className="text-xs text-muted-foreground">{sizeLabel}</div>}
+          </div>
+          <span className="flex shrink-0 items-center gap-1 text-xs text-primary"><ExternalLink className="h-3 w-3" /> Abrir</span>
+        </a>
+      )
+      return (
+        <div key={i} className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 opacity-60">
+          {isImage ? <ImageIcon className="h-5 w-5 shrink-0" /> : <Paperclip className="h-5 w-5 shrink-0" />}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm">{f.name}</div>
+            <div className="text-xs text-muted-foreground">{sizeLabel} · upload não concluído</div>
+          </div>
+        </div>
+      )
     }
+    if (Array.isArray(value)) return <div className="flex flex-col gap-2.5">{(value as FileEntry[]).map((f, i) => renderCard(f, i))}</div>
+    const str = String(value)
+    const isUrl = str.startsWith('http')
+    return isUrl ? (
+      <a href={str} target="_blank" rel="noopener noreferrer" className="break-all text-primary underline inline-flex items-center gap-1">
+        <Paperclip className="h-3.5 w-3.5" />{str.split('/').pop()}
+      </a>
+    ) : <span className="text-sm text-muted-foreground inline-flex items-center gap-1"><Paperclip className="h-3.5 w-3.5" />{str}</span>
   }
 
-  async function toggleLock(briefingSlug: string, currentLocked: boolean) {
-    await fetch(`/api/briefings/${briefingSlug}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ editing_locked: !currentLocked }),
-    })
-    setBriefings((prev) =>
-      prev.map((b) =>
-        b.slug === briefingSlug
-          ? { ...b, editing_locked: !currentLocked }
-          : b,
-      ),
-    )
-    toast(
-      !currentLocked ? 'Edição bloqueada' : 'Edição liberada',
-      'success',
-    )
-  }
+  // ── Derived metrics ───────────────────────────────────────────────────
 
-  function newBriefing() {
-    router.push(`/admin/novo?client_id=${id}`)
-  }
+  const totalBriefings = briefings.length
+  const concluded = briefings.filter(b => b.status === 'concluido')
+  const completionRate = totalBriefings > 0 ? Math.round((concluded.length / totalBriefings) * 100) : 0
+  const avgDays = concluded.length > 0
+    ? Math.round(concluded.reduce((sum, b) => {
+        if (!b.completed_at) return sum
+        return sum + (new Date(b.completed_at).getTime() - new Date(b.created_at).getTime()) / 86400000
+      }, 0) / concluded.length)
+    : null
+  const lastActivity = client?.last_activity_at ?? briefings[0]?.created_at ?? null
 
-  if (loading)
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="spinner" />
-      </div>
-    )
-  if (!client)
-    return (
-      <div className="p-10 text-center text-muted-foreground">
-        Cliente não encontrado
-      </div>
-    )
+  // ── Social links from client ──────────────────────────────────────────
+
+  const clientSocials: Array<{ key: keyof SocialLinks; label: string; Icon: React.ComponentType<{ size?: number; className?: string }>; url: string }> = SOCIAL_DISPLAY
+    .map(s => ({ ...s, url: (client as Record<string, unknown> | null)?.[`social_${s.key}`] as string ?? '' }))
+    .filter(s => s.url)
+
+  // ── Guards ────────────────────────────────────────────────────────────
+
+  if (loading) return <div className="flex h-screen items-center justify-center"><div className="spinner" /></div>
+  if (!client) return <div className="p-10 text-center text-muted-foreground">Cliente não encontrado</div>
 
   const hasAiProfile = Object.keys(aiProfile).length > 0
 
@@ -633,627 +543,466 @@ export default function ClientePerfilPage() {
     <div className="min-h-screen bg-background">
       <ToastContainer toasts={toasts} remove={remove} />
 
-      <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
-        {/* Page header */}
-        <div className="flex items-center justify-between gap-3">
+      <div className="mx-auto max-w-5xl p-6">
+        {/* ── Page header ─────────────────────────────────────────────── */}
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <IconButton
-              icon={<ArrowLeft className="h-4 w-4" />}
-              label="Voltar"
-              size="icon"
-              onClick={() => router.push('/admin/clientes')}
-            />
-            <h1 className="truncate font-mono text-xl font-bold tracking-tight">
-              {client.company}
-            </h1>
+            <IconButton icon={<ArrowLeft className="h-4 w-4" />} label="Voltar" size="icon" onClick={() => router.push('/admin/clientes')} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate font-mono text-xl font-bold tracking-tight">{client.company}</h1>
+                {/* Starred toggle */}
+                <button type="button" onClick={toggleStarred} title={client.is_starred ? 'Remover dos favoritos' : 'Favoritar'}
+                  className="rounded p-1 text-muted-foreground hover:text-foreground">
+                  <Star size={16} className={cn(client.is_starred && 'fill-lime-400 text-lime-500')} />
+                </button>
+                {/* Status badge — click to change */}
+                <div className="relative">
+                  <button type="button" onClick={() => setEditingStatus(e => !e)}
+                    className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80', STATUS_COLORS[client.status])}>
+                    {STATUS_LABELS[client.status]}
+                    <ChevronDown size={10} className={cn('transition-transform', editingStatus && 'rotate-180')} />
+                  </button>
+                  {editingStatus && (
+                    <div className="absolute left-0 top-full z-10 mt-1 w-36 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                      {(Object.keys(STATUS_LABELS) as ClientStatus[]).map(s => (
+                        <button key={s} type="button" onClick={() => setStatus(s)}
+                          className={cn('flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-muted', client.status === s && 'font-semibold')}>
+                          <span className={cn('h-1.5 w-1.5 rounded-full border', STATUS_COLORS[s])} />
+                          {STATUS_LABELS[s]}
+                          {client.status === s && <Check size={10} className="ml-auto" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">cliente desde {fmt(client.created_at).split(',')[0]}</p>
+            </div>
           </div>
-          <Button onClick={newBriefing} className="shrink-0">
-            <Plus className="h-4 w-4" />
-            Novo briefing
-            <ArrowRight className="h-3.5 w-3.5 opacity-70" />
+          <Button onClick={() => router.push(`/admin/novo?client_id=${id}`)} className="shrink-0">
+            <Plus className="h-4 w-4" /> Novo briefing <ArrowRight className="h-3.5 w-3.5 opacity-70" />
           </Button>
         </div>
 
-        {/* Client data card */}
-        <Card className="p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <div className="font-mono text-base font-bold tracking-tight">{client.company}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                cliente desde {fmt(client.created_at).split(',')[0]}
-              </div>
-            </div>
-            <Button
-              variant={editMode ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={() => setEditMode(!editMode)}
-            >
-              {editMode ? (
-                <>
-                  <X className="mr-1 h-3.5 w-3.5" />
-                  Cancelar
-                </>
-              ) : (
-                <>
-                  <Pencil className="mr-1 h-3.5 w-3.5" />
-                  Editar
-                </>
-              )}
-            </Button>
-          </div>
-
-          {editMode ? (
-            <div className="flex flex-col gap-3">
-              {[
-                { label: 'Empresa', key: 'company' },
-                { label: 'Nome do contato', key: 'name' },
-                { label: 'Email', key: 'email' },
-                { label: 'WhatsApp', key: 'phone' },
-                { label: 'Site', key: 'website' },
-              ].map((f) => (
-                <div key={f.key} className="space-y-1.5">
-                  <Label
-                    htmlFor={`edit-${f.key}`}
-                    className="text-xs uppercase tracking-wider text-muted-foreground"
-                  >
-                    {f.label}
-                  </Label>
-                  <Input
-                    id={`edit-${f.key}`}
-                    value={editForm[f.key as keyof typeof editForm]}
-                    onChange={(e) =>
-                      setEditForm((p) => ({ ...p, [f.key]: e.target.value }))
-                    }
-                  />
-                </div>
-              ))}
-              <Button onClick={saveEdit} disabled={savingEdit} className="mt-1">
-                {savingEdit ? (
-                  'Salvando...'
-                ) : (
-                  <>
-                    <Save className="mr-1.5 h-4 w-4" />
-                    Salvar alterações
-                  </>
-                )}
-              </Button>
+        {/* ── Tags row ────────────────────────────────────────────────── */}
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          {client.tags.map(tag => (
+            <span key={tag} className="group inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs">
+              {tag}
+              <button type="button" onClick={() => removeTag(tag)} className="opacity-0 transition-opacity group-hover:opacity-100">
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+          {editingTags ? (
+            <div className="flex items-center gap-1.5">
+              <Input value={newTag} onChange={e => setNewTag(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setEditingTags(false) }}
+                placeholder="Nova tag…" className="h-6 w-32 px-2 text-xs" autoFocus />
+              <button type="button" onClick={addTag} className="rounded p-0.5 text-muted-foreground hover:text-foreground"><Check size={12} /></button>
+              <button type="button" onClick={() => setEditingTags(false)} className="rounded p-0.5 text-muted-foreground hover:text-foreground"><X size={12} /></button>
             </div>
           ) : (
-            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
-              {[
-                { label: 'Contato', value: client.name },
-                { label: 'Email', value: client.email || '—' },
-                { label: 'WhatsApp', value: client.phone || '—' },
-                {
-                  label: 'Site',
-                  value: client.website || '—',
-                  link: client.website || undefined,
-                },
-              ].map((f) => (
-                <div key={f.label}>
-                  <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    {f.label}
-                  </div>
-                  {f.link ? (
-                    <a
-                      href={f.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="break-all text-sm text-foreground underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-foreground"
-                    >
-                      {f.value}
-                    </a>
-                  ) : (
-                    <div className="break-all text-sm text-foreground">
-                      {f.value}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            <button type="button" onClick={() => setEditingTags(true)}
+              className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground">
+              <Plus size={10} /> Tag
+            </button>
           )}
-        </Card>
+        </div>
 
-        {/* AI Profile card */}
-        <Card className={cn('p-5', hasAiProfile && 'border-primary/30')}>
-          <div
-            className={cn(
-              'flex items-center justify-between gap-3',
-              hasAiProfile && !aiExpanded ? 'mb-0' : 'mb-4',
-              hasAiProfile && 'cursor-pointer',
-            )}
-            onClick={() => hasAiProfile && setAiExpanded((e) => !e)}
-          >
-            <div>
-              <div className="flex items-center gap-2 text-[15px] font-bold">
-                <Bot className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
-                Perfil de IA
-                {hasAiProfile && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
-                    <Check size={10} />
-                    Salvo
-                  </span>
-                )}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {hasAiProfile
-                  ? aiExpanded
-                    ? 'Clique para recolher'
-                    : 'Clique para expandir e editar'
-                  : 'Sem perfil ainda — analise o site ou preencha manualmente'}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {hasAiProfile && !editingAi && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setEditingAi(true)
-                    setAiExpanded(true)
-                  }}
-                >
-                  <Pencil className="mr-1 h-3.5 w-3.5" />
-                  Editar
+        {/* ── 2-column layout ─────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px] lg:items-start">
+
+          {/* ── Left column ───────────────────────────────────────────── */}
+          <div className="flex flex-col gap-4">
+
+            {/* Client info card */}
+            <Card className="p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">Informações</span>
+                <Button variant={editMode ? 'secondary' : 'outline'} size="sm" onClick={() => setEditMode(!editMode)}>
+                  {editMode ? <><X className="mr-1 h-3.5 w-3.5" />Cancelar</> : <><Pencil className="mr-1 h-3.5 w-3.5" />Editar</>}
                 </Button>
-              )}
-              {hasAiProfile && (
-                <ChevronDown
-                  className={cn(
-                    'h-5 w-5 text-muted-foreground transition-transform',
-                    aiExpanded && 'rotate-180',
-                  )}
-                />
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* Collapsible content */}
-          {(!hasAiProfile || aiExpanded) && (
-            <div>
-              {/* Analyze section */}
-              <div
-                className={cn(
-                  'rounded-lg bg-muted/40 p-4',
-                  hasAiProfile && 'mb-4',
-                )}
-              >
-                <div className="flex flex-col gap-2">
-                  <Input
-                    value={analyzeUrl}
-                    onChange={(e) => setAnalyzeUrl(e.target.value)}
-                    placeholder="URL do site (opcional)"
-                  />
-                  <textarea
-                    value={extraText}
-                    onChange={(e) => setExtraText(e.target.value)}
-                    placeholder="Informações extras sobre o cliente (opcional) — descreva o negócio, nicho, produtos, público..."
-                    className="min-h-[72px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  />
-                  <Button onClick={analyzeWithAI} disabled={analyzing}>
-                    {analyzing ? (
-                      <>
-                        <Clock className="mr-1.5 h-4 w-4 animate-spin" />
-                        Analisando com IA...
-                      </>
-                    ) : hasAiProfile ? (
-                      <>
-                        <RefreshCw className="mr-1.5 h-4 w-4" />
-                        Re-analisar com IA
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-1.5 h-4 w-4" />
-                        Analisar com IA
-                      </>
-                    )}
+              {editMode ? (
+                <div className="flex flex-col gap-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    {[{ label: 'Empresa', key: 'company' }, { label: 'Nome do contato', key: 'name' },
+                      { label: 'Email', key: 'email' }, { label: 'WhatsApp', key: 'phone' },
+                      { label: 'Site', key: 'website' }].map(f => (
+                      <div key={f.key} className={cn('space-y-1.5', (f.key === 'website') && 'col-span-2')}>
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{f.label}</Label>
+                        <Input value={editForm[f.key as keyof typeof editForm]}
+                          onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Social links in edit mode */}
+                  <div>
+                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Redes sociais</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {SOCIAL_DISPLAY.map(s => (
+                        <div key={s.key} className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">{s.label}</Label>
+                          <Input value={editSocials[s.key] ?? ''} onChange={e => setEditSocials(p => ({ ...p, [s.key]: e.target.value }))}
+                            placeholder="https://..." className="h-7 text-xs" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Button onClick={saveEdit} disabled={savingEdit}>
+                    {savingEdit ? 'Salvando...' : <><Save className="mr-1.5 h-4 w-4" />Salvar alterações</>}
                   </Button>
                 </div>
-                {!analyzeUrl && !client.website && (
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    Sem site? Use o campo de informações extras para descrever
-                    o negócio.
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
+                    {[
+                      { label: 'Contato', value: client.name },
+                      { label: 'Email', value: client.email || '—' },
+                      { label: 'WhatsApp', value: client.phone || '—' },
+                      { label: 'Site', value: client.website || '—', link: client.website ?? undefined },
+                    ].map(f => (
+                      <div key={f.label}>
+                        <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{f.label}</div>
+                        {f.link
+                          ? <a href={f.link} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-foreground underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-foreground">{f.value}</a>
+                          : <div className="break-all text-sm text-foreground">{f.value}</div>}
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-
-              {/* AI fields — single card, 2-col grid for compact + full-width for long */}
-              {hasAiProfile && (
-                <div className="overflow-hidden rounded-lg border border-border bg-card">
-                  {/* Compact section (2-col grid) */}
-                  {(() => {
-                    const shortFields = AI_FIELDS.filter((f) => !f.long).filter(
-                      (f) => editingAi || aiProfile[f.key],
-                    )
-                    if (shortFields.length === 0) return null
-                    return (
-                      <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-b border-border/60 bg-muted/20 p-4 sm:grid-cols-2">
-                        {shortFields.map((f) => (
-                          <div key={f.key} className="min-w-0">
-                            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                              {f.label}
-                            </div>
-                            {editingAi ? (
-                              <input
-                                type="text"
-                                value={aiProfile[f.key] || ''}
-                                onChange={(e) =>
-                                  setAiProfile((p) => ({
-                                    ...p,
-                                    [f.key]: e.target.value,
-                                  }))
-                                }
-                                className="block w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              />
-                            ) : (
-                              <div className="break-words text-sm leading-relaxed text-foreground">
-                                {String(aiProfile[f.key] || '—')}
-                              </div>
-                            )}
-                          </div>
+                  {/* Social links display */}
+                  {clientSocials.length > 0 && (
+                    <div>
+                      <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redes sociais</div>
+                      <div className="flex flex-wrap gap-2">
+                        {clientSocials.map(s => (
+                          <a key={s.key} href={s.url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-foreground transition-colors hover:bg-muted">
+                            <s.Icon size={12} className="text-muted-foreground" />{s.label}
+                            <ExternalLink size={10} className="text-muted-foreground/60" />
+                          </a>
                         ))}
                       </div>
-                    )
-                  })()}
-
-                  {/* Long-form section */}
-                  {(() => {
-                    const longFields = AI_FIELDS.filter((f) => f.long).filter(
-                      (f) => editingAi || aiProfile[f.key],
-                    )
-                    if (longFields.length === 0) return null
-                    return (
-                      <div className="divide-y divide-border/60">
-                        {longFields.map((f) => (
-                          <div key={f.key} className="p-4">
-                            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                              {f.label}
-                            </div>
-                            {editingAi ? (
-                              <textarea
-                                value={aiProfile[f.key] || ''}
-                                onChange={(e) =>
-                                  setAiProfile((p) => ({
-                                    ...p,
-                                    [f.key]: e.target.value,
-                                  }))
-                                }
-                                className="block min-h-[72px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              />
-                            ) : (
-                              <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
-                                {String(aiProfile[f.key])}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  })()}
-
-                  {/* Edit footer */}
-                  {editingAi && (
-                    <div className="flex gap-2 border-t border-border/60 bg-muted/20 px-4 py-3">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setEditingAi(false)
-                          if (client.analysis)
-                            setAiProfile(
-                              client.analysis as Record<string, string>,
-                            )
-                        }}
-                        className="flex-1"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        onClick={saveAiProfile}
-                        disabled={savingAi}
-                        className="flex-1"
-                      >
-                        {savingAi ? (
-                          'Salvando…'
-                        ) : (
-                          <>
-                            <Save className="mr-1.5 h-4 w-4" />
-                            Salvar
-                          </>
-                        )}
-                      </Button>
                     </div>
                   )}
                 </div>
               )}
-            </div>
-          )}
-        </Card>
+            </Card>
 
-        {/* Briefings history */}
-        <Card className="p-5">
-          <div className="mb-4">
-            <div className="flex items-center gap-1.5 text-[15px] font-bold">
-              <ClipboardList className="h-4 w-4" />
-              Briefings
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {briefings.length} no histórico
-            </div>
-          </div>
+            {/* Contacts card */}
+            <Card className="p-5">
+              <div className="mb-3 text-sm font-semibold">Contatos</div>
+              <ContactsSection
+                clientId={id} contacts={contacts} onUpdate={load}
+                onError={msg => toast(msg, 'error')}
+                onSuccess={msg => toast(msg, 'success', 2000)}
+              />
+            </Card>
 
-          {briefings.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-8 text-center">
-              <ClipboardList className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
-              <div className="text-sm text-muted-foreground">
-                Nenhum briefing ainda
-              </div>
-              <Button variant="outline" size="sm" onClick={newBriefing}>
-                <Plus size={13} />
-                Criar o primeiro
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {briefings.map((b) => (
-                <div
-                  key={b.id}
-                  className="rounded-lg border border-border bg-muted/30 px-3.5 py-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1.5 text-sm font-semibold">
-                        {b.type_label}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium',
-                            b.status === 'concluido' &&
-                              'border-success/30 bg-success/10 text-success',
-                            b.status === 'em_andamento' &&
-                              'border-warning/30 bg-warning/10 text-warning',
-                            b.status === 'visualizado' &&
-                              'border-info/30 bg-info/10 text-info',
-                            b.status === 'enviado' &&
-                              'border-border bg-muted text-muted-foreground',
-                          )}
-                        >
-                          <StatusIcon status={b.status} />
-                          {STATUS_LABELS[b.status]}
-                        </span>
-                        <span className="whitespace-nowrap text-xs text-muted-foreground">
-                          {fmt(b.created_at)}
-                        </span>
-                        {b.completed_at && (
-                          <span className="whitespace-nowrap text-xs text-muted-foreground">
-                            · concluído {fmt(b.completed_at)}
-                          </span>
-                        )}
-                      </div>
+            {/* AI Profile card */}
+            <Card className={cn('p-5', hasAiProfile && 'border-primary/30')}>
+              <div
+                className={cn('flex items-center justify-between gap-3', hasAiProfile && !aiExpanded ? 'mb-0' : 'mb-4', hasAiProfile && 'cursor-pointer')}
+                onClick={() => hasAiProfile && setAiExpanded(e => !e)}
+              >
+                <div>
+                  <div className="flex items-center gap-2 text-[15px] font-bold">
+                    <Bot className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                    Perfil de IA
+                    {hasAiProfile && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+                        <Check size={10} /> Salvo
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {hasAiProfile ? (aiExpanded ? 'Clique para recolher' : 'Clique para expandir e editar') : 'Analise o site ou preencha manualmente'}
+                  </div>
+                  {/* Mini-summary when collapsed */}
+                  {hasAiProfile && !aiExpanded && (
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                      {['segment', 'tone_of_voice', 'brand_personality', 'price_positioning'].map(k => aiProfile[k] ? (
+                        <div key={k} className="text-xs">
+                          <span className="text-muted-foreground">{AI_FIELDS.find(f => f.key === k)?.label}: </span>
+                          <span className="text-foreground">{String(aiProfile[k]).slice(0, 50)}</span>
+                        </div>
+                      ) : null)}
                     </div>
-                    <div className="flex gap-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          navigator.clipboard.writeText(
-                            `${window.location.origin}/${b.slug}`,
-                          )
-                        }
-                      >
-                        <LinkIcon className="mr-1 h-3.5 w-3.5" />
-                        Link
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {hasAiProfile && !editingAi && (
+                    <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); setEditingAi(true); setAiExpanded(true) }}>
+                      <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
+                    </Button>
+                  )}
+                  {hasAiProfile && <ChevronDown className={cn('h-5 w-5 text-muted-foreground transition-transform', aiExpanded && 'rotate-180')} />}
+                </div>
+              </div>
+
+              {(!hasAiProfile || aiExpanded) && (
+                <div>
+                  <div className={cn('rounded-lg bg-muted/40 p-4', hasAiProfile && 'mb-4')}>
+                    <div className="flex flex-col gap-2">
+                      <Input value={analyzeUrl} onChange={e => setAnalyzeUrl(e.target.value)} placeholder="URL do site (opcional)" />
+                      <textarea value={extraText} onChange={e => setExtraText(e.target.value)}
+                        placeholder="Informações extras sobre o cliente (opcional)"
+                        className="min-h-[64px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                      <Button onClick={analyzeWithAI} disabled={analyzing}>
+                        {analyzing ? <><Clock className="mr-1.5 h-4 w-4 animate-spin" />Analisando com IA...</>
+                          : hasAiProfile ? <><RefreshCw className="mr-1.5 h-4 w-4" />Re-analisar com IA</>
+                          : <><Sparkles className="mr-1.5 h-4 w-4" />Analisar com IA</>}
                       </Button>
-                      {b.status === 'concluido' && (
-                        <>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => viewResponses(b.slug)}
-                          >
-                            Ver respostas
-                          </Button>
-                          <IconButton
-                            icon={
-                              b.editing_locked ? (
-                                <Unlock className="h-4 w-4" />
-                              ) : (
-                                <Lock className="h-4 w-4" />
-                              )
-                            }
-                            label={
-                              b.editing_locked
-                                ? 'Liberar edição'
-                                : 'Bloquear edição'
-                            }
-                            size="icon"
-                            onClick={() =>
-                              toggleLock(b.slug, !!b.editing_locked)
-                            }
-                          />
-                        </>
-                      )}
                     </div>
                   </div>
+
+                  {/* Detected socials banner */}
+                  {Object.keys(detectedSocials).length > 0 && (
+                    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-lime-300/60 bg-lime-50/40 px-3 py-2">
+                      <span className="text-xs font-medium text-lime-700">Redes detectadas:</span>
+                      {Object.entries(detectedSocials).map(([k, v]) => v ? (
+                        <a key={k} href={v} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-lime-600 underline underline-offset-2 hover:text-lime-800 capitalize">{k}</a>
+                      ) : null)}
+                      <span className="text-[11px] text-muted-foreground ml-auto">Serão salvas ao salvar o perfil</span>
+                    </div>
+                  )}
+
+                  {hasAiProfile && (
+                    <div className="overflow-hidden rounded-lg border border-border bg-card">
+                      {(() => {
+                        const short = AI_FIELDS.filter(f => !f.long && (editingAi || aiProfile[f.key]))
+                        return short.length > 0 ? (
+                          <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-b border-border/60 bg-muted/20 p-4 sm:grid-cols-2">
+                            {short.map(f => (
+                              <div key={f.key} className="min-w-0">
+                                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{f.label}</div>
+                                {editingAi
+                                  ? <input type="text" value={aiProfile[f.key] ?? ''} onChange={e => setAiProfile(p => ({ ...p, [f.key]: e.target.value }))}
+                                      className="block w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                                  : <div className="break-words text-sm leading-relaxed">{String(aiProfile[f.key] ?? '—')}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null
+                      })()}
+                      {(() => {
+                        const long = AI_FIELDS.filter(f => f.long && (editingAi || aiProfile[f.key]))
+                        return long.length > 0 ? (
+                          <div className="divide-y divide-border/60">
+                            {long.map(f => (
+                              <div key={f.key} className="p-4">
+                                <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{f.label}</div>
+                                {editingAi
+                                  ? <textarea value={aiProfile[f.key] ?? ''} onChange={e => setAiProfile(p => ({ ...p, [f.key]: e.target.value }))}
+                                      className="block min-h-[72px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                                  : <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{String(aiProfile[f.key])}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null
+                      })()}
+                      {editingAi && (
+                        <div className="flex gap-2 border-t border-border/60 bg-muted/20 px-4 py-3">
+                          <Button variant="outline" onClick={() => { setEditingAi(false); if (client.analysis) setAiProfile(client.analysis as Record<string, string>) }} className="flex-1">
+                            Cancelar
+                          </Button>
+                          <Button onClick={saveAiProfile} disabled={savingAi} className="flex-1">
+                            {savingAi ? 'Salvando…' : <><Save className="mr-1.5 h-4 w-4" />Salvar</>}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </Card>
+              )}
+            </Card>
+
+            {/* Briefings */}
+            <Card className="p-5">
+              <div className="mb-4 flex items-center gap-1.5 text-[15px] font-bold">
+                <ClipboardList className="h-4 w-4" /> Briefings
+                <span className="ml-1 text-xs font-normal text-muted-foreground">{briefings.length} no histórico</span>
+              </div>
+              {briefings.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-8 text-center">
+                  <ClipboardList className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
+                  <div className="text-sm text-muted-foreground">Nenhum briefing ainda</div>
+                  <Button variant="outline" size="sm" onClick={() => router.push(`/admin/novo?client_id=${id}`)}>
+                    <Plus size={13} /> Criar o primeiro
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {briefings.map(b => (
+                    <div key={b.id} className="rounded-lg border border-border bg-muted/30 px-3.5 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1.5 text-sm font-semibold">{b.type_label}</div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                              b.status === 'concluido' && 'border-success/30 bg-success/10 text-success',
+                              b.status === 'em_andamento' && 'border-warning/30 bg-warning/10 text-warning',
+                              b.status === 'visualizado' && 'border-info/30 bg-info/10 text-info',
+                              b.status === 'enviado' && 'border-border bg-muted text-muted-foreground',
+                            )}>
+                              <BriefingStatusIcon status={b.status} />
+                              {BRIEFING_STATUS_LABELS[b.status]}
+                            </span>
+                            <span className="whitespace-nowrap text-xs text-muted-foreground">{fmt(b.created_at)}</span>
+                            {b.completed_at && <span className="whitespace-nowrap text-xs text-muted-foreground">· concluído {fmt(b.completed_at)}</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button variant="outline" size="sm"
+                            onClick={() => navigator.clipboard.writeText(`${window.location.origin}/${b.slug}`).then(() => toast('Link copiado!', 'success', 1500))}>
+                            <LinkIcon className="mr-1 h-3.5 w-3.5" /> Link
+                          </Button>
+                          {b.status === 'concluido' && (
+                            <>
+                              <Button variant="secondary" size="sm" onClick={() => viewResponses(b.slug)}>Ver respostas</Button>
+                              <IconButton
+                                icon={b.editing_locked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                                label={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
+                                size="icon" onClick={() => toggleLock(b.slug, !!b.editing_locked)}
+                              />
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* Orçamentos — placeholder */}
+            <Card className="p-5">
+              <div className="mb-1 flex items-center gap-1.5 text-[15px] font-bold">
+                <Briefcase className="h-4 w-4" /> Orçamentos
+              </div>
+              <div className="flex flex-col items-start gap-3 py-6">
+                <p className="text-sm text-muted-foreground">
+                  Crie e gerencie propostas comerciais para <span className="font-medium text-foreground">{client.company}</span>.
+                </p>
+                <button disabled
+                  className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground opacity-50">
+                  <Plus size={12} /> Novo orçamento — em breve
+                </button>
+              </div>
+            </Card>
+          </div>
+
+          {/* ── Right sidebar ─────────────────────────────────────────── */}
+          <div className="flex flex-col gap-4 lg:sticky lg:top-6">
+
+            {/* Metrics */}
+            <Card className="p-4">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Métricas</div>
+              <div className="space-y-2">
+                {[
+                  { label: 'Briefings', value: String(totalBriefings) },
+                  { label: 'Concluídos', value: `${concluded.length} (${completionRate}%)` },
+                  { label: 'Tempo médio', value: avgDays !== null ? `${avgDays} dias` : '—' },
+                  { label: 'Última atividade', value: lastActivity ? relativeTime(lastActivity) : '—' },
+                ].map(m => (
+                  <div key={m.label} className="flex items-center justify-between border-b border-border/50 py-1.5 last:border-0">
+                    <span className="text-xs text-muted-foreground">{m.label}</span>
+                    <span className="text-xs font-medium text-foreground">{m.value}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Notes */}
+            <Card className="p-4">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notas internas</div>
+              <NotesSection
+                clientId={id} notes={notes} onUpdate={load}
+                onError={msg => toast(msg, 'error')}
+              />
+            </Card>
+          </div>
+        </div>
       </div>
 
-      {/* RESPONSES MODAL — mirrors the one on /admin/briefings */}
-      <Dialog
-        open={!!viewingResponses}
-        onOpenChange={(open) => {
-          if (!open) {
-            setViewingResponses(null)
-            setResponses(null)
-          }
-        }}
-      >
-        <DialogContent
-          wide
-          className="max-h-[90vh] gap-0 overflow-y-auto p-6"
-        >
+      {/* ── Responses modal (preserved exactly) ──────────────────────── */}
+      <Dialog open={!!viewingResponses} onOpenChange={open => { if (!open) { setViewingResponses(null); setResponses(null) } }}>
+        <DialogContent wide className="max-h-[90vh] gap-0 overflow-y-auto p-6">
           {(() => {
-            const b = briefings.find((br) => br.slug === viewingResponses)
+            const b = briefings.find(br => br.slug === viewingResponses)
             if (!b) return null
             return (
               <>
                 <DialogHeader className="mb-5 border-b border-border/60 p-0 pb-4">
-                  <DialogTitle className="text-xl">
-                    {client?.company}
-                  </DialogTitle>
+                  <DialogTitle className="text-xl">{client?.company}</DialogTitle>
                   <DialogDescription asChild>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                      <Badge
-                        variant="default"
-                        className="text-[10px] uppercase tracking-wider"
-                      >
-                        {b.type_label}
-                      </Badge>
-                      {client?.name && (
-                        <span className="text-sm text-muted-foreground">
-                          {client.name}
-                        </span>
-                      )}
-                      {client?.email && (
-                        <span className="text-sm text-muted-foreground">
-                          · {client.email}
-                        </span>
-                      )}
+                      <Badge variant="default" className="text-[10px] uppercase tracking-wider">{b.type_label}</Badge>
+                      {client?.name && <span className="text-sm text-muted-foreground">{client.name}</span>}
+                      {client?.email && <span className="text-sm text-muted-foreground">· {client.email}</span>}
                     </div>
                   </DialogDescription>
-                  {b.completed_at && (
-                    <div className="mt-1.5 text-xs text-muted-foreground">
-                      Concluído em {fmt(b.completed_at)}
-                    </div>
-                  )}
+                  {b.completed_at && <div className="mt-1.5 text-xs text-muted-foreground">Concluído em {fmt(b.completed_at)}</div>}
                 </DialogHeader>
-
                 <div className="mb-5 flex gap-2">
-                  <Button
-                    onClick={copyResponses}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    {copiedResponses ? (
-                      <>
-                        <ClipboardCheck size={14} />
-                        Copiado!
-                      </>
-                    ) : (
-                      <>
-                        <Clipboard size={14} />
-                        Copiar tudo
-                      </>
-                    )}
+                  <Button onClick={copyResponses} variant="outline" className="flex-1">
+                    {copiedResponses ? <><ClipboardCheck size={14} />Copiado!</> : <><Clipboard size={14} />Copiar tudo</>}
                   </Button>
-                  <Button
-                    onClick={exportPDF}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <FileText size={14} />
-                    Exportar PDF
+                  <Button onClick={exportPDF} variant="outline" className="flex-1">
+                    <FileText size={14} /> Exportar PDF
                   </Button>
                 </div>
-
-                {responseVersions2 > 1 && responseDiff2 && (
+                {responseVersions > 1 && responseDiff && (
                   <div className="mb-4">
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowDiff2(false)}
-                        className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs transition-colors ${
-                          !showDiff2
-                            ? 'border-foreground/20 bg-muted font-medium text-foreground'
-                            : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'
-                        }`}
-                      >
+                      <button onClick={() => setShowDiff(false)}
+                        className={cn('inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs transition-colors',
+                          !showDiff ? 'border-foreground/20 bg-muted font-medium text-foreground' : 'border-border text-muted-foreground hover:bg-muted/40')}>
                         <ClipboardList size={12} /> Respostas atuais
                       </button>
-                      <button
-                        onClick={() => setShowDiff2(true)}
-                        className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg border py-2 text-xs transition-colors ${
-                          showDiff2
-                            ? 'border-foreground/20 bg-muted font-medium text-foreground'
-                            : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'
-                        }`}
-                      >
+                      <button onClick={() => setShowDiff(true)}
+                        className={cn('inline-flex flex-1 items-center justify-center gap-2 rounded-lg border py-2 text-xs transition-colors',
+                          showDiff ? 'border-foreground/20 bg-muted font-medium text-foreground' : 'border-border text-muted-foreground hover:bg-muted/40')}>
                         <Pencil size={12} /> Ver alterações
-                        <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] font-bold text-foreground">
-                          {Object.keys(responseDiff2).length}
-                        </span>
+                        <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] font-bold">{Object.keys(responseDiff).length}</span>
                       </button>
                     </div>
-                    {showDiff2 && (
+                    {showDiff && (
                       <div className="mt-3 flex flex-col gap-2">
-                        {Object.keys(responseDiff2).length === 0 ? (
-                          <div className="py-8 text-center text-sm text-muted-foreground">
-                            Nenhuma alteração detectada
-                          </div>
-                        ) : (
-                          Object.entries(responseDiff2).map(
-                            ([key, { old: oldVal, new: newVal }]) => {
-                              const labelMap =
-                                b.language === 'en-US'
-                                  ? FIELD_LABELS_EN
-                                  : FIELD_LABELS_PT
-                              const label =
-                                labelMap[key] || key.replace(/_/g, ' ')
-                              const oldStr = Array.isArray(oldVal)
-                                ? (oldVal as string[]).join(', ')
-                                : String(oldVal || '')
-                              const newStr = Array.isArray(newVal)
-                                ? (newVal as string[]).join(', ')
-                                : String(newVal || '')
+                        {Object.keys(responseDiff).length === 0
+                          ? <div className="py-8 text-center text-sm text-muted-foreground">Nenhuma alteração detectada</div>
+                          : Object.entries(responseDiff).map(([key, { old: oldVal, new: newVal }]) => {
+                              const labelMap = b.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
+                              const label = labelMap[key] || key.replace(/_/g, ' ')
+                              const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal ?? '')
+                              const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal)
                               return (
-                                <div
-                                  key={key}
-                                  className="overflow-hidden rounded-lg border border-border"
-                                >
+                                <div key={key} className="overflow-hidden rounded-lg border border-border">
                                   <div className="border-b border-border bg-muted/40 px-3.5 py-2">
-                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-foreground">
-                                      <Pencil size={10} /> {label}
-                                    </span>
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"><Pencil size={10} /> {label}</span>
                                   </div>
                                   <div className="flex flex-col gap-2 bg-card px-3.5 py-3">
-                                    <div className="text-xs text-muted-foreground line-through">
-                                      {oldStr || '—'}
-                                    </div>
-                                    <div className="text-sm font-semibold text-foreground">
-                                      {newStr}
-                                    </div>
+                                    <div className="text-xs text-muted-foreground line-through">{oldStr || '—'}</div>
+                                    <div className="text-sm font-semibold text-foreground">{newStr}</div>
                                   </div>
                                 </div>
                               )
-                            },
-                          )
-                        )}
+                            })}
                       </div>
                     )}
                   </div>
                 )}
-
                 {loadingResponses ? (
-                  <div className="py-10 text-center">
-                    <div className="spinner" />
-                  </div>
-                ) : responses && !showDiff2 ? (
-                  <ResponsesContent2
-                    responses={responses}
-                    language={b.language}
-                    companyName={client?.company || 'briefing'}
-                    renderFileValue={renderFileValue}
-                    labelMapPT={FIELD_LABELS_PT}
-                    labelMapEN={FIELD_LABELS_EN}
-                  />
-                ) : !responses && !showDiff2 ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    Sem respostas ainda
-                  </div>
+                  <div className="py-10 text-center"><div className="spinner" /></div>
+                ) : responses && !showDiff ? (
+                  <ResponsesContent responses={responses} language={b.language} companyName={client?.company ?? 'briefing'}
+                    renderFileValue={renderFileValue} labelMapPT={FIELD_LABELS_PT} labelMapEN={FIELD_LABELS_EN} />
+                ) : !responses && !showDiff ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">Sem respostas ainda</div>
                 ) : null}
               </>
             )
