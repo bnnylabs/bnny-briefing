@@ -52,6 +52,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       completed_at: now.toISOString(),
       editing_expires_at: editingExpiresAt,
     }).eq('id', briefing.id)
+
+    // Log form_submitted event to activity timeline
+    try { await supabaseAdmin.from('notifications').insert({
+      briefing_id: briefing.id,
+      type: 'form_submitted',
+      status: 'sent',
+      details: { event: 'form_submitted', timestamp: now.toISOString(), label: 'Briefing concluído pelo cliente' },
+    }) } catch (_e) {}
   }
 
   // Load settings

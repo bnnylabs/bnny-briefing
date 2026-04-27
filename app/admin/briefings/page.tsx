@@ -789,7 +789,7 @@ export default function AdminPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => viewNotifications(b)}>
                               <ScrollText size={14} />
-                              Histórico de envios
+                              Histórico de atividades
                             </DropdownMenuItem>
                             <DropdownMenuItem disabled={duplicating === b.id} onClick={() => duplicateBriefing(b)}>
                               <Copy size={14} />
@@ -1003,28 +1003,41 @@ export default function AdminPage() {
       {notifBriefing && (
         <Modal onClose={() => { setNotifBriefing(null); setNotifHistory([]) }}>
           <div className="mb-5">
-            <div className="font-bold text-lg tracking-tight">Histórico de envios</div>
+            <div className="font-bold text-lg tracking-tight">Histórico de atividades</div>
             <div className="text-sm text-muted-foreground mt-0.5">{notifBriefing.clients?.company} · {notifBriefing.type_label}</div>
           </div>
           {notifHistory.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">Nenhum envio registrado</div>
+            <div className="text-center py-8 text-muted-foreground text-sm">Nenhuma atividade registrada</div>
           ) : (
             <div className="flex flex-col gap-2">
               {notifHistory.map((n, i) => {
-                const lblMap: Record<string, { icon: React.ReactNode; label: string }> = {
-                  email_client: { icon: <Mail size={13} />, label: 'Email pro cliente' },
-                  email_admin:  { icon: <Mail size={13} />, label: 'Email pro admin' },
-                  reminder:     { icon: <Bell size={13} />, label: 'Lembrete' },
-                  resend:       { icon: <RefreshCw size={13} />, label: 'Reenvio' },
+                // Client activity events — different visual treatment
+                const isClientEvent = ['link_opened', 'form_started', 'form_submitted'].includes(n.type)
+
+                const lblMap: Record<string, { icon: React.ReactNode; label: string; clientEvent?: boolean }> = {
+                  // Admin sends
+                  email_client: { icon: <Send size={13} />,       label: 'Email enviado' },
+                  email_admin:  { icon: <Mail size={13} />,       label: 'Notificação ao admin' },
+                  reminder:     { icon: <Bell size={13} />,       label: 'Lembrete enviado' },
+                  resend:       { icon: <RefreshCw size={13} />,  label: 'Reenvio' },
+                  // Client activity
+                  link_opened:    { icon: <Eye size={13} className="text-info" />,         label: 'Link acessado', clientEvent: true },
+                  form_started:   { icon: <Clock size={13} className="text-warning" />,    label: 'Preenchimento iniciado', clientEvent: true },
+                  form_submitted: { icon: <CheckCircle2 size={13} className="text-success" />, label: 'Briefing concluído', clientEvent: true },
                 }
-                const entry = lblMap[n.type] || { icon: null, label: n.type }
+                const entry = lblMap[n.type] || { icon: <Bell size={13} />, label: n.type }
+
                 return (
-                  <div key={i} className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+                  <div key={i} className={`rounded-lg border px-4 py-3 ${isClientEvent ? 'border-border bg-card' : 'border-border bg-muted/30'}`}>
                     <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1.5 text-sm font-medium">{entry.icon} {entry.label}</span>
-                      <span className={`inline-flex items-center gap-1 text-xs font-medium ${n.status === 'sent' ? 'text-success' : 'text-destructive'}`}>
-                        {n.status === 'sent' ? <><Check size={12} /> Enviado</> : <><Trash2 size={12} /> Falhou</>}
+                      <span className="inline-flex items-center gap-1.5 text-sm font-medium">
+                        {entry.icon} {entry.label}
                       </span>
+                      {!isClientEvent && (
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium ${n.status === 'sent' ? 'text-success' : 'text-destructive'}`}>
+                          {n.status === 'sent' ? <><Check size={12} /> Entregue</> : <><Trash2 size={12} /> Falhou</>}
+                        </span>
+                      )}
                     </div>
                     {n.details?.to && (
                       <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">

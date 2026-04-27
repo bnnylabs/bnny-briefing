@@ -145,10 +145,25 @@ export default function BriefingFormPage() {
 
   useEffect(() => { loadBriefing() }, [loadBriefing])
 
+  // Track link_opened when briefing is first loaded in 'enviado' state
+  useEffect(() => {
+    if (briefing && briefing.status === 'enviado') {
+      fetch(`/api/briefings/${slug}/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: 'link_opened' }),
+      }).catch(() => {})
+    }
+  }, [briefing, slug])
+
   useEffect(() => {
     if (briefing && Object.keys(answers).length > 0 && !submitted && !started) {
       setStarted(true)
-      fetch(`/api/briefings/${slug}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'em_andamento', started_at: new Date().toISOString() }) }).catch(() => {})
+      fetch(`/api/briefings/${slug}/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: 'form_started' }),
+      }).catch(() => {})
     }
   }, [answers, briefing, slug, submitted, started])
 
