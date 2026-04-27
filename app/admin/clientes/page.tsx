@@ -38,6 +38,7 @@ import {
 
 import { useToast, ToastContainer } from '@/components/toast'
 import { cn } from '@/lib/utils'
+import { AvatarUpload } from '@/components/admin/AvatarUpload'
 
 interface ClientStats {
   total: number
@@ -52,6 +53,7 @@ interface Client {
   phone: string
   website: string | null
   analysis: Record<string, unknown> | null
+  avatar_url: string | null
   status: string
   tags: string[]
   is_starred: boolean
@@ -419,41 +421,52 @@ export default function ClientesPage() {
                     onClick={() => router.push(`/admin/clientes/${c.id}`)}
                   >
                     {/* Row 1: company + icons */}
-                    <div className="flex items-center gap-1.5">
-                      <span className="truncate text-sm font-semibold">{c.company}</span>
-                      {c.is_starred && <Star size={12} className="shrink-0 fill-lime-400 text-lime-500" />}
-                      {c.analysis && Object.keys(c.analysis).length > 0 && (
-                        <Bot size={12} className="shrink-0 text-muted-foreground" />
-                      )}
-                    </div>
-                    {/* Row 2: contact name + email */}
-                    <div className="truncate text-xs text-muted-foreground">
-                      {c.name}{c.email && ` · ${c.email}`}
-                    </div>
-                    {/* Row 3: status + segments + activity */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                      {c.status && c.status !== 'active' && (
-                        <span className={cn(
-                          'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
-                          STATUS_COLORS[c.status] ?? STATUS_COLORS.active,
-                        )}>
-                          {STATUS_LABELS[c.status] ?? c.status}
-                        </span>
-                      )}
-                      {(c.tags ?? []).slice(0, 2).map(tag => (
-                        <span key={tag} className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                          {tag}
-                        </span>
-                      ))}
-                      {(() => {
-                        const t = c.last_activity_at ?? c.stats.last_at
-                        return t ? (
-                          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
-                            <Activity size={9} />
-                            {relativeTime(t)}
-                          </span>
-                        ) : null
-                      })()}
+                    <div className="flex items-center gap-2">
+                      <AvatarUpload
+                        url={c.avatar_url}
+                        name={c.company}
+                        size={36}
+                        shape="rounded"
+                        editable={false}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-sm font-semibold">{c.company}</span>
+                          {c.is_starred && <Star size={12} className="shrink-0 fill-lime-400 text-lime-500" />}
+                          {c.analysis && Object.keys(c.analysis).length > 0 && (
+                            <Bot size={12} className="shrink-0 text-muted-foreground" />
+                          )}
+                        </div>
+                        {/* Row 2: contact name + email */}
+                        <div className="truncate text-xs text-muted-foreground">
+                          {c.name}{c.email && ` · ${c.email}`}
+                        </div>
+                        {/* Row 3: status + segments + activity */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                          {c.status && c.status !== 'active' && (
+                            <span className={cn(
+                              'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                              STATUS_COLORS[c.status] ?? STATUS_COLORS.active,
+                            )}>
+                              {STATUS_LABELS[c.status] ?? c.status}
+                            </span>
+                          )}
+                          {(c.tags ?? []).slice(0, 2).map(tag => (
+                            <span key={tag} className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              {tag}
+                            </span>
+                          ))}
+                          {(() => {
+                            const t = c.last_activity_at ?? c.stats.last_at
+                            return t ? (
+                              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
+                                <Activity size={9} />
+                                {relativeTime(t)}
+                              </span>
+                            ) : null
+                          })()}
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">

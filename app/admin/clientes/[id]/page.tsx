@@ -11,6 +11,7 @@ import {
   Sparkles, Star, StickyNote, Unlock, Users, X,
 } from 'lucide-react'
 import { SOCIAL_NETWORKS } from './SocialIcons'
+import { AvatarUpload } from '@/components/admin/AvatarUpload'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -43,6 +44,7 @@ interface Client {
   phone: string
   website: string | null
   analysis: Record<string, unknown> | null
+  avatar_url: string | null
   status: ClientStatus
   tags: string[]
   is_starred: boolean
@@ -589,8 +591,18 @@ export default function ClientePerfilPage() {
       <div className="mx-auto max-w-5xl p-6">
         {/* ── Page header ─────────────────────────────────────────────── */}
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-3">
             <IconButton icon={<ArrowLeft className="h-4 w-4" />} label="Voltar" size="icon" onClick={() => router.push('/admin/clientes')} />
+            <AvatarUpload
+              url={client.avatar_url}
+              name={client.company}
+              size={48}
+              shape="rounded"
+              uploadUrl={`/api/admin/clients/${id}/avatar`}
+              deleteUrl={`/api/admin/clients/${id}/avatar`}
+              onUploaded={(url) => setClient(c => c ? { ...c, avatar_url: url } : c)}
+              onDeleted={() => setClient(c => c ? { ...c, avatar_url: null } : c)}
+            />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="truncate font-mono text-xl font-bold tracking-tight">{client.company}</h1>

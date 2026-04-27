@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { AvatarUpload } from '@/components/admin/AvatarUpload'
 
 export interface ClientContact {
   id: string
@@ -18,6 +19,7 @@ export interface ClientContact {
   receives_copies: boolean
   whatsapp: string | null
   linkedin_url: string | null
+  avatar_url: string | null
   created_at: string
 }
 
@@ -123,9 +125,20 @@ export function ContactsSection({ clientId, contacts, onUpdate, onError, onSucce
             />
           ) : (
             <div className="group flex items-start justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3.5 py-3 transition-colors hover:bg-muted/40">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold">{c.name}</span>
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <AvatarUpload
+                  url={c.avatar_url}
+                  name={c.name}
+                  size={36}
+                  shape="circle"
+                  uploadUrl={`/api/admin/clients/${clientId}/contacts/${c.id}/avatar`}
+                  deleteUrl={`/api/admin/clients/${clientId}/contacts/${c.id}/avatar`}
+                  onUploaded={() => onUpdate()}
+                  onDeleted={() => onUpdate()}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold">{c.name}</span>
                   {c.is_primary && (
                     <span className="inline-flex items-center gap-0.5 rounded-full border border-lime-300 bg-lime-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-lime-700">
                       <Star size={9} className="fill-lime-600 text-lime-600" /> Principal
@@ -159,7 +172,8 @@ export function ContactsSection({ clientId, contacts, onUpdate, onError, onSucce
                     </a>
                   )}
                 </div>
-              </div>
+                </div>  {/* end inner info div */}
+              </div>  {/* end flex gap-3 wrapper */}
               <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                 {!c.is_primary && contacts.length > 1 && (
                   <button
