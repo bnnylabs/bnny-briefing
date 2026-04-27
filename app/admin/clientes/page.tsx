@@ -445,7 +445,7 @@ export default function ClientesPage() {
                         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                           {c.status && c.status !== 'active' && (
                             <span className={cn(
-                              'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                              'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium',
                               STATUS_COLORS[c.status] ?? STATUS_COLORS.active,
                             )}>
                               {STATUS_LABELS[c.status] ?? c.status}

@@ -615,7 +615,7 @@ export default function ClientePerfilPage() {
                 {/* Status badge — click to change */}
                 <div className="relative">
                   <button type="button" onClick={() => setEditingStatus(e => !e)}
-                    className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80', STATUS_COLORS[client.status])}>
+                    className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80', STATUS_COLORS[client.status])}>
                     {STATUS_LABELS[client.status]}
                     <ChevronDown size={10} className={cn('transition-transform', editingStatus && 'rotate-180')} />
                   </button>
@@ -712,7 +712,7 @@ export default function ClientePerfilPage() {
                         </div>
                       ) : (
                         <button type="button" onClick={() => setEditingTags(true)}
-                          className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground">
+                          className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground">
                           <Plus size={10} /> Segmento
                         </button>
                       )}
@@ -775,7 +775,7 @@ export default function ClientePerfilPage() {
                   <Bot className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
                   Perfil de IA
                   {hasAiProfile && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+                    <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
                       <Check size={10} /> Salvo
                     </span>
                   )}
@@ -914,7 +914,7 @@ export default function ClientePerfilPage() {
                         <div className="min-w-0 flex-1">
                           <div className="mb-1.5 text-sm font-semibold">{b.type_label}</div>
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                            <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium',
                               b.status === 'concluido' && 'border-success/30 bg-success/10 text-success',
                               b.status === 'em_andamento' && 'border-warning/30 bg-warning/10 text-warning',
                               b.status === 'visualizado' && 'border-info/30 bg-info/10 text-info',

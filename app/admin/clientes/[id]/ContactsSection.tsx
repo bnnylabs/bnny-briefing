@@ -140,11 +140,11 @@ export function ContactsSection({ clientId, contacts, onUpdate, onError, onSucce
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-semibold">{c.name}</span>
                   {c.is_primary && (
-                    <span className="inline-flex items-center gap-0.5 rounded-full border border-lime-300 bg-lime-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-lime-700">
+                    <span className="inline-flex items-center gap-0.5 rounded-md border border-lime-300 bg-lime-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-lime-700">
                       <Star size={9} className="fill-lime-600 text-lime-600" /> Principal
                     </span>
                   )}
-                  <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  <span className="rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
                     {c.language}
                   </span>
                   {c.receives_copies && (

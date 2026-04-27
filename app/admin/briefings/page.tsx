@@ -764,7 +764,7 @@ export default function AdminPage() {
                       {b.language === 'en-US' && <Badge variant="outline" className="text-[10px] font-medium uppercase tracking-wider">EN</Badge>}
                       {(b.update_count || 0) > 0 && (
                         <button onClick={() => openDiffModal(b)} title="Ver alterações"
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-muted hover:bg-muted/70 px-2 py-0.5 rounded-full cursor-pointer border border-border transition-colors">
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-muted hover:bg-muted/70 px-2 py-0.5 rounded-md cursor-pointer border border-border transition-colors">
                           <Pencil size={10} /> {b.update_count}x
                         </button>
                       )}
