@@ -15,10 +15,12 @@ const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp'])
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   if (!isAuthed(req))
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
 
   try {
     const formData = await req.formData()
@@ -31,7 +33,7 @@ export async function POST(
       return NextResponse.json({ error: 'Use PNG, JPG ou WebP.' }, { status: 400 })
 
     const ext = (file.name.split('.').pop() || 'png').toLowerCase()
-    const path = `clients/${params.id}/avatar-${Date.now()}.${ext}`
+    const path = `clients/${id}/avatar-${Date.now()}.${ext}`
 
     const buffer = Buffer.from(await file.arrayBuffer())
     const { error: uploadError } = await supabaseAdmin.storage
@@ -46,7 +48,7 @@ export async function POST(
     await supabaseAdmin
       .from('clients')
       .update({ avatar_url: urlData.publicUrl })
-      .eq('id', params.id)
+      .eq('id', id)
 
     return NextResponse.json({ url: urlData.publicUrl })
   } catch (e) {
@@ -57,15 +59,17 @@ export async function POST(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   if (!isAuthed(req))
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { id } = await params
+
   await supabaseAdmin
     .from('clients')
     .update({ avatar_url: null })
-    .eq('id', params.id)
+    .eq('id', id)
 
   return NextResponse.json({ ok: true })
 }
