@@ -92,8 +92,7 @@ CREATE INDEX IF NOT EXISTS idx_clients_archived_at ON clients(archived_at);
 
 ALTER TABLE client_contacts
   ADD CONSTRAINT uq_client_contacts_client_email
-  UNIQUE (client_id, email)
-  DEFERRABLE INITIALLY DEFERRED;
+  UNIQUE (client_id, email);
 
 -- Cria o contato primário a partir dos dados legados
 INSERT INTO client_contacts (client_id, name, email, whatsapp, is_primary, language)
