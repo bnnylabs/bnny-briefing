@@ -814,7 +814,7 @@ export default function AdminPage() {
                 <button onClick={() => setShowDiffView(true)}
                   className={`flex-1 text-xs py-2 rounded-lg border transition-colors inline-flex items-center justify-center gap-2 ${showDiffView ? 'border-foreground/20 bg-muted text-foreground font-medium' : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}>
                   <Pencil size={12} /> Ver alterações
-                  <span className="bg-foreground/10 text-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">{Object.keys(responseDiff).length}</span>
+                  <span className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-bold text-foreground">{Object.keys(responseDiff).length}</span>
                 </button>
               </div>
               {showDiffView && (
@@ -994,7 +994,7 @@ export default function AdminPage() {
                     {n.details?.to && (
                       <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                         {n.details.role === 'cc' && (
-                          <span className="rounded border border-border px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide">CC</span>
+                          <span className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">CC</span>
                         )}
                         {n.details.name && <span className="font-medium text-foreground">{n.details.name}</span>}
                         {n.details.name && <span>·</span>}

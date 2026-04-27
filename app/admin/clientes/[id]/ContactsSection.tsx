@@ -144,11 +144,11 @@ export function ContactsSection({ clientId, contacts, onUpdate, onError, onSucce
                       <Star size={9} className="fill-lime-600 text-lime-600" /> Principal
                     </span>
                   )}
-                  <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
                     {c.language}
                   </span>
                   {c.receives_copies && (
-                    <span className="text-[10px] text-muted-foreground" title="Recebe cópias das notificações">
+                    <span className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground" title="Recebe cópias das notificações">
                       CC
                     </span>
                   )}
