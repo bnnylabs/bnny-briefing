@@ -77,8 +77,8 @@ function StatusIcon({ status, size = 11 }: { status: string; size?: number }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, 'info' | 'muted' | 'warning' | 'success'> = {
-    enviado: 'info', visualizado: 'muted', em_andamento: 'warning', concluido: 'success'
+  const variants: Record<string, 'muted' | 'warning' | 'success'> = {
+    enviado: 'warning', visualizado: 'muted', em_andamento: 'warning', concluido: 'success'
   }
   return (
     <Badge variant={variants[status] || 'muted'} className="text-[11px] font-medium whitespace-nowrap">
@@ -747,7 +747,8 @@ export default function AdminPage() {
                       {/* ── Actions ─────────────────────────────────── */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         {b.status === 'concluido' && (
-                          <Button variant="secondary" size="sm" onClick={() => viewResponses(b)}>
+                          <Button size="sm" onClick={() => viewResponses(b)}>
+                            <Eye size={13} />
                             Ver respostas
                           </Button>
                         )}

@@ -924,7 +924,7 @@ export default function ClientePerfilPage() {
                               b.status === 'concluido' && 'border-success/30 bg-success/10 text-success',
                               b.status === 'em_andamento' && 'border-warning/30 bg-warning/10 text-warning',
                               b.status === 'visualizado' && 'border-info/30 bg-info/10 text-info',
-                              b.status === 'enviado' && 'border-info/30 bg-info/10 text-info',
+                              b.status === 'enviado' && 'border-warning/30 bg-warning/10 text-warning',
                             )}>
                               <BriefingStatusIcon status={b.status} />
                               {BRIEFING_STATUS_LABELS[b.status]}
@@ -975,7 +975,8 @@ export default function ClientePerfilPage() {
                         {/* Actions */}
                         <div className="flex items-center gap-1.5">
                           {b.status === 'concluido' && (
-                            <Button variant="secondary" size="sm" onClick={() => viewResponses(b.slug)}>
+                            <Button size="sm" onClick={() => viewResponses(b.slug)}>
+                              <Eye size={13} />
                               Ver respostas
                             </Button>
                           )}
