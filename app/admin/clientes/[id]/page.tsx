@@ -386,9 +386,9 @@ export default function ClientePerfilPage() {
     let tagsPatch: { tags?: string[] } = {}
     if (rawSegment && client) {
       const newSegments = rawSegment
-        .split(/[/,·|]/)
+        .split(',')
         .map(s => s.trim())
-        .filter(s => s.length > 0 && s.length < 40)
+        .filter(s => s.length > 0 && s.length < 30)
       const existing = client.tags ?? []
       const toAdd = newSegments.filter(s => !existing.some(e => e.toLowerCase() === s.toLowerCase()))
       if (toAdd.length > 0) tagsPatch = { tags: [...existing, ...toAdd] }

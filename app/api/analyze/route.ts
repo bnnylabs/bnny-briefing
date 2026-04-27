@@ -141,7 +141,7 @@ const SOCIAL_SCHEMA_FRAGMENT_EN = `
 const JSON_SCHEMA_PT = (includeSocial: boolean) => `{
 ${includeSocial ? SOCIAL_SCHEMA_FRAGMENT_PT : ''}
   "company_name": "nome oficial da empresa",
-  "segment": "segmento/nicho (ex: 'Fintech B2B', 'Clinica odontologica', 'E-commerce de moda')",
+  "segment": "array de 1 a 3 palavras-chave curtas (max 2 palavras cada) que classificam o nicho da empresa — sem artigos, sem verbos, sem descricao. Ex: ['SaaS', 'B2B', 'RH'] ou ['E-commerce', 'Moda'] ou ['Clinica', 'Odontologia']. Retornar como string separada por virgula: 'SaaS, B2B, RH'",
   "description": "descricao clara do que a empresa faz — 3 a 4 frases",
   "key_features": "principais produtos ou servicos em texto corrido",
   "differentials": "diferenciais competitivos unicos no mercado",
@@ -158,7 +158,7 @@ ${includeSocial ? SOCIAL_SCHEMA_FRAGMENT_PT : ''}
 const JSON_SCHEMA_EN = (includeSocial: boolean) => `{
 ${includeSocial ? SOCIAL_SCHEMA_FRAGMENT_EN : ''}
   "company_name": "official company name",
-  "segment": "industry/niche (e.g. 'B2B Fintech', 'Dental Clinic', 'Fashion E-commerce')",
+  "segment": "array of 1 to 3 short keywords (max 2 words each) classifying the company niche — no articles, no verbs, no descriptions. E.g. ['SaaS', 'B2B', 'HR'] or ['E-commerce', 'Fashion']. Return as comma-separated string: 'SaaS, B2B, HR'",
   "description": "clear description of what the company does — 3 to 4 sentences",
   "key_features": "main products or services in prose",
   "differentials": "unique competitive differentials",
