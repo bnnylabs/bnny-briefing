@@ -739,7 +739,7 @@ export default function ClientePerfilPage() {
                       <div className="flex flex-wrap gap-2">
                         {clientSocials.map(s => (
                           <a key={s.key} href={s.url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-foreground transition-colors hover:bg-muted">
+                            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-muted">
                             <s.Icon size={12} />
                             {s.label}
                             <ExternalLink size={10} className="text-muted-foreground/60" />
