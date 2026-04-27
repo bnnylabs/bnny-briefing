@@ -537,7 +537,7 @@ export default function AdminPage() {
                 { label: 'Concluído',   value: briefings.filter(b => b.status === 'concluido').length,    status: 'concluido' },
               ] as { label: string; value: number; status: string }[]).map(s => (
                 <button key={s.label} onClick={() => setStatusFilter(prev => prev === s.status ? 'all' : s.status)}
-                  className={`min-w-[120px] shrink-0 sm:min-w-0 rounded-lg border p-3.5 text-left transition-colors duration-100 cursor-pointer ${statusFilter === s.status ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
+                  className={`min-w-[120px] shrink-0 sm:min-w-0 rounded-lg border p-3.5 text-left transition-colors duration-100 cursor-pointer ${statusFilter === s.status ? 'border-foreground/15 bg-muted/50' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
                   <div className="text-2xl font-bold tabular-nums leading-none font-mono text-foreground">{s.value}</div>
                   <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-1.5">{s.label}</div>
                 </button>
@@ -584,6 +584,7 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="select-all-briefings"
+                    className="data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background"
                     checked={selectedIds.size === filtered.length && filtered.length > 0}
                     onCheckedChange={checked =>
                       setSelectedIds(checked ? new Set(filtered.map(b => b.id)) : new Set())
@@ -615,7 +616,7 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={() => setBatchDeleteConfirm(true)}
-                    className="inline-flex items-center gap-1 rounded-md bg-destructive px-2.5 py-1 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+                    className="inline-flex items-center gap-1 rounded-md border border-destructive/40 px-2.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
                   >
                     <Trash2 size={11} />
                     Excluir {selectedIds.size}
@@ -674,9 +675,9 @@ export default function AdminPage() {
               <div className="flex flex-col gap-2">
                 {filtered.map(b => (
                   <div key={b.id}
-                    className={`group rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
+                    className={`group rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/15 bg-muted/50' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
                     <div className="flex items-center gap-3">
-                      <Checkbox checked={selectedIds.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} className="shrink-0" />
+                      <Checkbox checked={selectedIds.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} className="shrink-0 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background" />
                       <AvatarUpload
                         url={b.clients?.avatar_url}
                         name={b.clients?.company || '?'}

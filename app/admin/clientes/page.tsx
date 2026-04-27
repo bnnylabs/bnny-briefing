@@ -344,6 +344,7 @@ export default function ClientesPage() {
             <div className="flex items-center gap-2">
               <Checkbox
                 id="select-all"
+              className="data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background"
                 checked={selectedIds.size === filtered.length}
                 onCheckedChange={(checked) =>
                   checked === true
@@ -376,7 +377,7 @@ export default function ClientesPage() {
               <button
                 type="button"
                 onClick={() => setBatchDeleteConfirm(true)}
-                className="inline-flex items-center gap-1 rounded-md bg-destructive px-2.5 py-1 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+                className="inline-flex items-center gap-1 rounded-md border border-destructive/40 px-2.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
               >
                 <Trash2 size={11} />
                 Excluir {selectedIds.size}
@@ -421,7 +422,7 @@ export default function ClientesPage() {
                 key={c.id}
                 className={cn(
                   'group overflow-hidden p-0 transition-colors cursor-pointer hover:border-border/70 hover:bg-muted/30',
-                  selectedIds.has(c.id) && 'border-primary/40 bg-primary/5',
+                  selectedIds.has(c.id) && 'border-foreground/15 bg-muted/50',
                 )}
                 onClick={() => router.push(`/admin/clientes/${c.id}`)}
               >
@@ -432,7 +433,7 @@ export default function ClientesPage() {
                       checked={selectedIds.has(c.id)}
                       onCheckedChange={() => toggleSelect(c.id)}
                       onClick={(e) => e.stopPropagation()}
-                      className="shrink-0"
+                      className="shrink-0 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background"
                     />
                     <AvatarUpload
                       url={c.avatar_url}
