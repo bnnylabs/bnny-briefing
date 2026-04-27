@@ -20,7 +20,7 @@
  */
 
 import * as React from 'react'
-import { ArrowLeft, FileEdit, Mail, RotateCcw, Save } from 'lucide-react'
+import { ArrowLeft, FileEdit, Mail, RotateCcw, Save, SendHorizonal } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -135,6 +135,7 @@ export function EmailsTab({ toast }: { toast: ToastFn }) {
         onSaved={(t) => { applyToCache(t); toast('Template salvo', 'success', 2000) }}
         onReset={(t) => { applyToCache(t); toast('Restaurado para o padrão', 'success', 2000) }}
         onError={(msg) => toast(msg, 'error')}
+        onTestSent={(to) => toast(`Teste enviado para ${to}`, 'success', 4000)}
       />
     )
   }
@@ -192,13 +193,14 @@ export function EmailsTab({ toast }: { toast: ToastFn }) {
 /* ───────────────────────────────────────────────────────────────────── */
 
 function EmailTemplateEditor({
-  template, onBack, onSaved, onReset, onError,
+  template, onBack, onSaved, onReset, onError, onTestSent,
 }: {
   template: ResolvedTemplate
   onBack: () => void
   onSaved: (t: ResolvedTemplate) => void
   onReset: (t: ResolvedTemplate) => void
   onError: (msg: string) => void
+  onTestSent: (to: string) => void
 }) {
   const editorKey = `${template.type}:${template.language}`
   const [draft, setDraft] = React.useState<EmailTemplateContent>({
@@ -229,6 +231,7 @@ function EmailTemplateEditor({
 
   const [saving, setSaving] = React.useState(false)
   const [resetting, setResetting] = React.useState(false)
+  const [sending, setSending] = React.useState(false)
 
   // Live preview
   const [previewHtml, setPreviewHtml] = React.useState('')
@@ -278,6 +281,29 @@ function EmailTemplateEditor({
   }
 
   // Actions
+  async function sendTest() {
+    setSending(true)
+    const res = await fetch('/api/admin/email-templates/test-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: template.type, language: template.language, override: draft }),
+    })
+    setSending(false)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      if (err.error === 'no_notification_email') {
+        onError('Configure um email de notificação em Configurações → Geral primeiro')
+      } else {
+        onError('Falha ao enviar email de teste')
+      }
+      return
+    }
+    const { to } = await res.json()
+    onSaved({ ...template }) // refresh is_default badge without losing draft
+    // Use onError with success styling via toast — pass through parent
+    onTestSent(to)
+  }
+
   async function save() {
     setSaving(true)
     const res = await fetch('/api/admin/email-templates', {
@@ -348,6 +374,23 @@ function EmailTemplateEditor({
             >
               <RotateCcw size={12} />
               {resetting ? 'Restaurando…' : 'Restaurar padrão'}
+            </button>
+
+            {/* Test-send — fires real email to notification_email using draft + sample data */}
+            <button
+              type="button"
+              onClick={sendTest}
+              disabled={sending}
+              title="Envia um email de teste para o seu endereço de notificação"
+              className={[
+                'inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors',
+                sending
+                  ? 'cursor-not-allowed text-muted-foreground/50'
+                  : 'text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+              ].join(' ')}
+            >
+              <SendHorizonal size={12} />
+              {sending ? 'Enviando…' : 'Enviar teste'}
             </button>
 
             {/* Fix #4 + #5 — Save icon (not Check), full lime CTA */}
