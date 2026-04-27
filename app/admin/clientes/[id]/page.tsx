@@ -5,12 +5,16 @@ import { useRouter, useParams } from 'next/navigation'
 import {
   Activity, ArrowLeft, ArrowRight, BarChart2, BellRing, Bot, Briefcase, Building2,
   Check, CheckCircle2, ChevronDown,
-  Clipboard, ClipboardCheck, ClipboardList, Clock, Download, ExternalLink,
+  Clipboard, ClipboardCheck, ClipboardList, Clock, Copy, Download, ExternalLink,
   Eye, FileText, Image as ImageIcon, Link as LinkIcon,
-  Lock, Mail, Paperclip, Pencil, Plus, RefreshCw, Save, Send,
+  Lock, Mail, MoreHorizontal, Paperclip, Pencil, Plus, RefreshCw, Save, Send,
   Sparkles, Star, StickyNote, Unlock, Users, X,
 } from 'lucide-react'
 import { SOCIAL_NETWORKS } from './SocialIcons'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
@@ -217,6 +221,12 @@ export default function ClientePerfilPage() {
   const [contacts, setContacts] = useState<ClientContact[]>([])
   const [notes, setNotes] = useState<ClientNote[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Briefing quick-action state
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null)
+  const [sendingResend, setSendingResend] = useState<string | null>(null)
+  const [actionDone, setActionDone] = useState<string | null>(null)
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
 
   // Client info edit
   const [editMode, setEditMode] = useState(false)
@@ -431,19 +441,34 @@ export default function ClientePerfilPage() {
   }
 
   async function sendReminder(slug: string) {
+    setSendingReminder(slug)
     const res = await fetch('/api/admin/notify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug, type: 'reminder' }),
     })
+    setSendingReminder(null)
+    if (res.ok) { setActionDone(slug + '_reminder'); setTimeout(() => setActionDone(null), 2000) }
     toast(res.ok ? 'Lembrete enviado' : 'Erro ao enviar lembrete', res.ok ? 'success' : 'error', 2000)
   }
 
   async function resendEmail(slug: string) {
+    setSendingResend(slug)
     const res = await fetch('/api/admin/notify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug, type: 'resend' }),
     })
+    setSendingResend(null)
+    if (res.ok) { setActionDone(slug + '_resend'); setTimeout(() => setActionDone(null), 2000) }
     toast(res.ok ? 'Email reenviado' : 'Erro ao reenviar', res.ok ? 'success' : 'error', 2000)
+  }
+
+  function copyBriefingLink(slug: string) {
+    navigator.clipboard.writeText(`${window.location.origin}/${slug}`)
+      .then(() => {
+        setCopiedSlug(slug)
+        toast('Link copiado!', 'success', 1500)
+        setTimeout(() => setCopiedSlug(null), 2000)
+      })
   }
 
   function buildText(b: Briefing, resp: Record<string, unknown>) {
@@ -871,7 +896,7 @@ export default function ClientePerfilPage() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {briefings.map(b => (
-                    <div key={b.id} className="group rounded-lg border border-border bg-muted/30 px-3.5 py-3">
+                    <div key={b.id} className="rounded-lg border border-border bg-muted/30 px-3.5 py-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="mb-1.5 text-sm font-semibold">{b.type_label}</div>
@@ -889,36 +914,65 @@ export default function ClientePerfilPage() {
                             {b.completed_at && <span className="whitespace-nowrap text-xs text-muted-foreground">· concluído {fmt(b.completed_at)}</span>}
                           </div>
                         </div>
+
+                        {/* Actions */}
                         <div className="flex items-center gap-1.5">
-                          {/* Primary — always visible */}
                           {b.status === 'concluido' && (
                             <Button variant="secondary" size="sm" onClick={() => viewResponses(b.slug)}>
                               Ver respostas
                             </Button>
                           )}
-                          <Button variant="outline" size="sm"
-                            onClick={() => navigator.clipboard.writeText(`${window.location.origin}/${b.slug}`).then(() => toast('Link copiado!', 'success', 1500))}>
-                            <LinkIcon className="mr-1 h-3.5 w-3.5" /> Link
-                          </Button>
-
-                          {/* Secondary — hover reveal */}
-                          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                            {b.status !== 'concluido' && (
-                              <>
-                                <IconButton icon={<BellRing className="h-4 w-4" />} label="Enviar lembrete" size="icon"
-                                  onClick={() => sendReminder(b.slug)} />
-                                <IconButton icon={<Mail className="h-4 w-4" />} label="Reenviar email" size="icon"
-                                  onClick={() => resendEmail(b.slug)} />
-                              </>
-                            )}
-                            {b.status === 'concluido' && (
-                              <IconButton
-                                icon={b.editing_locked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                                label={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
-                                size="icon" onClick={() => toggleLock(b.slug, !!b.editing_locked)}
-                              />
-                            )}
-                          </div>
+                          <IconButton
+                            icon={copiedSlug === b.slug ? <Check className="h-4 w-4 text-success" /> : <LinkIcon className="h-4 w-4" />}
+                            label="Copiar link" size="icon"
+                            onClick={() => copyBriefingLink(b.slug)}
+                          />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button type="button"
+                                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                <MoreHorizontal size={15} />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-52">
+                              {b.status !== 'concluido' && (
+                                <>
+                                  <DropdownMenuItem
+                                    disabled={sendingResend === b.slug}
+                                    onClick={() => resendEmail(b.slug)}
+                                  >
+                                    {sendingResend === b.slug ? <RefreshCw size={14} className="animate-spin" />
+                                      : actionDone === b.slug + '_resend' ? <Check size={14} className="text-success" />
+                                      : <Mail size={14} />}
+                                    Reenviar email
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    disabled={sendingReminder === b.slug}
+                                    onClick={() => sendReminder(b.slug)}
+                                  >
+                                    {sendingReminder === b.slug ? <RefreshCw size={14} className="animate-spin" />
+                                      : actionDone === b.slug + '_reminder' ? <Check size={14} className="text-success" />
+                                      : <BellRing size={14} />}
+                                    Enviar lembrete
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {b.status === 'concluido' && (
+                                <>
+                                  <DropdownMenuItem onClick={() => toggleLock(b.slug, !!b.editing_locked)}>
+                                    {b.editing_locked ? <Unlock size={14} /> : <Lock size={14} />}
+                                    {b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              <DropdownMenuItem onClick={() => router.push(`/admin/novo?client_id=${id}&duplicate=${b.slug}`)}>
+                                <Copy size={14} />
+                                Duplicar briefing
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </div>

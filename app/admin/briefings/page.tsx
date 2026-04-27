@@ -7,7 +7,11 @@ import { useToast, ToastContainer } from '@/components/toast'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { SelectionBar } from '@/components/admin/SelectionBar'
-import { Pencil, FileText, Bell, BellRing, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight, ScrollText } from 'lucide-react'
+import { Pencil, FileText, Bell, BellRing, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight, ScrollText, MoreHorizontal } from 'lucide-react'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -645,94 +649,113 @@ export default function AdminPage() {
               <div className="flex flex-col gap-2">
                 {filtered.map(b => (
                   <div key={b.id}
-                    className={`group rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
-                    {/* Row: checkbox + name + actions */}
+                    className={`rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
+                    {/* Row: checkbox + company + actions */}
                     <div className="flex items-center gap-2.5">
                       <Checkbox checked={selectedIds.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} className="shrink-0" />
                       <button onClick={() => viewClientHistory(b.clients)}
                         className="font-bold text-[15px] text-left flex-1 min-w-0 truncate hover:text-foreground transition-colors bg-transparent border-none p-0 cursor-pointer tracking-tight">
                         {b.clients?.company}
                       </button>
-                      <div className="flex items-center gap-1 shrink-0">
 
-                        {/* ── Primary actions — always visible ── */}
+                      {/* ── Actions ─────────────────────────────────── */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Primary CTA — only when completed */}
                         {b.status === 'concluido' && (
                           <Button variant="secondary" size="sm" onClick={() => viewResponses(b)}>
                             Ver respostas
                           </Button>
                         )}
+
+                        {/* Link copy — universally understood, stays visible */}
                         <IconButton
                           icon={copiedId === b.slug ? <Check size={14} /> : <Link size={14} />}
                           label="Copiar link"
                           onClick={() => copyLink(b.slug)}
                         />
 
-                        {/* ── Secondary actions — reveal on hover ── */}
-                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          <IconButton
-                            icon={<Pencil size={14} />}
-                            label="Editar cliente"
-                            onClick={() => openEdit(b)}
-                          />
-                          <IconButton
-                            icon={<FileText size={14} />}
-                            label={b.internal_notes ? 'Anotações (preenchidas)' : 'Anotações'}
-                            className={b.internal_notes ? 'text-foreground' : ''}
-                            onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }}
-                          />
-                          <IconButton
-                            icon={<ScrollText size={14} />}
-                            label="Histórico de envios"
-                            onClick={() => viewNotifications(b)}
-                          />
-                          <IconButton
-                            icon={<Copy size={14} />}
-                            label="Duplicar briefing"
-                            disabled={duplicating === b.id}
-                            onClick={() => duplicateBriefing(b)}
-                          />
-                          {b.status !== 'concluido' && b.clients?.email && (
-                            <IconButton
-                              icon={
-                                sendingResend === b.id ? <RefreshCw size={14} className="animate-spin" /> :
-                                reminderSent === b.id + '_resend' ? <Check size={14} /> :
-                                <Mail size={14} />
-                              }
-                              label="Reenviar email"
-                              className={reminderSent === b.id + '_resend' ? 'text-foreground' : ''}
-                              disabled={sendingResend === b.id}
-                              onClick={() => resendEmail(b)}
-                            />
-                          )}
-                          {b.status !== 'concluido' && (
-                            <IconButton
-                              icon={
-                                sendingReminder === b.id ? <RefreshCw size={14} className="animate-spin" /> :
-                                reminderSent === b.id ? <Check size={14} /> :
-                                <BellRing size={14} />
-                              }
-                              label="Enviar lembrete agora"
-                              className={reminderSent === b.id ? 'text-foreground' : ''}
-                              disabled={sendingReminder === b.id}
-                              onClick={() => sendReminder(b)}
-                            />
-                          )}
-                          {b.status === 'concluido' && (
-                            <IconButton
-                              icon={b.editing_locked ? <Unlock size={14} /> : <Lock size={14} />}
-                              label={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
-                              onClick={() => toggleEditingLock(b.slug, !!b.editing_locked)}
-                            />
-                          )}
-                        </div>
+                        {/* ⋯ More actions dropdown */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <MoreHorizontal size={15} />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52">
+                            {/* Notification actions */}
+                            {b.status !== 'concluido' && b.clients?.email && (
+                              <DropdownMenuItem
+                                disabled={sendingResend === b.id}
+                                onClick={() => resendEmail(b)}
+                              >
+                                {sendingResend === b.id
+                                  ? <RefreshCw size={14} className="animate-spin" />
+                                  : reminderSent === b.id + '_resend'
+                                  ? <Check size={14} className="text-success" />
+                                  : <Mail size={14} />}
+                                Reenviar email
+                              </DropdownMenuItem>
+                            )}
+                            {b.status !== 'concluido' && (
+                              <DropdownMenuItem
+                                disabled={sendingReminder === b.id}
+                                onClick={() => sendReminder(b)}
+                              >
+                                {sendingReminder === b.id
+                                  ? <RefreshCw size={14} className="animate-spin" />
+                                  : reminderSent === b.id
+                                  ? <Check size={14} className="text-success" />
+                                  : <BellRing size={14} />}
+                                Enviar lembrete
+                              </DropdownMenuItem>
+                            )}
+                            {b.status !== 'concluido' && <DropdownMenuSeparator />}
 
-                        {/* ── Destructive — hover only, neutral until hover ── */}
-                        <IconButton
-                          icon={<Trash2 size={14} />}
-                          label="Excluir"
-                          className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setDeleteBriefing(b)}
-                        />
+                            {/* Content actions */}
+                            <DropdownMenuItem onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }}>
+                              <FileText size={14} className={b.internal_notes ? 'text-foreground' : ''} />
+                              Anotações internas
+                              {b.internal_notes && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-foreground/60" />}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => viewNotifications(b)}>
+                              <ScrollText size={14} />
+                              Histórico de envios
+                            </DropdownMenuItem>
+                            <DropdownMenuItem disabled={duplicating === b.id} onClick={() => duplicateBriefing(b)}>
+                              <Copy size={14} />
+                              Duplicar briefing
+                            </DropdownMenuItem>
+
+                            {/* Lock — only for completed */}
+                            {b.status === 'concluido' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => toggleEditingLock(b.slug, !!b.editing_locked)}>
+                                  {b.editing_locked ? <Unlock size={14} /> : <Lock size={14} />}
+                                  {b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
+                                </DropdownMenuItem>
+                              </>
+                            )}
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => openEdit(b)}>
+                              <Pencil size={14} />
+                              Editar cliente
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setDeleteBriefing(b)}
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
+                              <Trash2 size={14} />
+                              Excluir briefing
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                     {/* Meta row */}
