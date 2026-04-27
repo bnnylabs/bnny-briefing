@@ -32,6 +32,19 @@ export async function GET(req: NextRequest) {
   const { data: clients, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // Fetch primary contacts for all clients in one query
+  const clientIds = (clients ?? []).map(c => c.id)
+  const { data: primaryContacts } = await supabaseAdmin
+    .from('client_contacts')
+    .select('client_id, name, email')
+    .in('client_id', clientIds)
+    .eq('is_primary', true)
+
+  const primaryMap: Record<string, { name: string; email: string | null }> = {}
+  for (const contact of primaryContacts ?? []) {
+    primaryMap[contact.client_id] = { name: contact.name, email: contact.email }
+  }
+
   // Briefing stats per client
   const { data: briefings } = await supabaseAdmin
     .from('briefings')
@@ -49,6 +62,7 @@ export async function GET(req: NextRequest) {
 
   const result = (clients ?? []).map((c) => ({
     ...c,
+    primary_contact: primaryMap[c.id] ?? null,
     stats: statsMap[c.id] ?? { total: 0, concluido: 0, last_at: null },
   }))
 

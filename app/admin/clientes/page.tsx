@@ -58,6 +58,7 @@ interface Client {
   is_starred: boolean
   last_activity_at: string | null
   created_at: string
+  primary_contact: { name: string; email: string | null } | null
   stats: ClientStats
 }
 type Filter = 'all' | 'with_briefing' | 'no_briefing' | 'with_ai'
@@ -428,10 +429,15 @@ export default function ClientesPage() {
                       editable={false}
                     />
                     <div className="min-w-0 flex-1">
-                      {/* Row 1: company + contact name muted inline + icons */}
+                      {/* Row 1: company + primary contact name muted inline + icons */}
                       <div className="flex items-baseline gap-2">
                         <span className="truncate text-sm font-semibold leading-snug">{c.company}</span>
-                        <span className="shrink-0 text-xs text-muted-foreground/70">{c.name}</span>
+                        {(c.primary_contact?.name ?? c.name) && (
+                          <span className="shrink-0 text-xs text-muted-foreground/70">
+                            {c.primary_contact?.name ?? c.name}
+                            {(c.primary_contact?.email ?? c.email) && ` · ${c.primary_contact?.email ?? c.email}`}
+                          </span>
+                        )}
                         {c.is_starred && <Star size={11} className="shrink-0 fill-lime-400 text-lime-500" />}
                         {c.analysis && Object.keys(c.analysis).length > 0 && (
                           <Bot size={11} className="shrink-0 text-muted-foreground/50" />
