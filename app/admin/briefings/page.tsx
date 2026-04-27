@@ -7,7 +7,6 @@ import { useToast, ToastContainer } from '@/components/toast'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
-import { SelectionBar } from '@/components/admin/SelectionBar'
 import { Pencil, FileText, Bell, BellRing, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight, ScrollText, MoreHorizontal } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -546,7 +545,7 @@ export default function AdminPage() {
             </div>
 
             {/* Search + Filters */}
-            <div className="flex gap-2 items-center mb-3 flex-wrap">
+            <div className="flex gap-2 items-center flex-wrap">
               <div className="flex-1 min-w-[180px] relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input value={search} onChange={e => setSearch(e.target.value)}
@@ -579,34 +578,49 @@ export default function AdminPage() {
               />
             </div>
 
-            {/* Batch selection bar — appears when at least one row is selected */}
-            <SelectionBar
-              count={selectedIds.size}
-              itemLabel="briefing"
-              itemLabelPlural="briefings"
-              onCancel={() => setSelectedIds(new Set())}
-              onDelete={() => setBatchDeleteConfirm(true)}
-            />
-
-            {/* Permanent select-all row */}
+            {/* Select-all + inline batch actions — single persistent row, no layout shift */}
             {filtered.length > 1 && (
-              <div className="mb-3 flex items-center gap-2 px-1">
-                <Checkbox
-                  id="select-all-briefings"
-                  checked={selectedIds.size === filtered.length && filtered.length > 0}
-                  onCheckedChange={checked =>
-                    setSelectedIds(checked ? new Set(filtered.map(b => b.id)) : new Set())
-                  }
-                />
-                <label
-                  htmlFor="select-all-briefings"
-                  className="cursor-pointer select-none text-xs text-muted-foreground"
-                >
-                  {selectedIds.size === filtered.length && filtered.length > 0
-                    ? 'Desmarcar todos'
-                    : 'Selecionar todos'}{' '}
-                  ({filtered.length})
-                </label>
+              <div className="mt-4 mb-3 flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="select-all-briefings"
+                    checked={selectedIds.size === filtered.length && filtered.length > 0}
+                    onCheckedChange={checked =>
+                      setSelectedIds(checked ? new Set(filtered.map(b => b.id)) : new Set())
+                    }
+                  />
+                  <label
+                    htmlFor="select-all-briefings"
+                    className="cursor-pointer select-none text-xs text-muted-foreground"
+                  >
+                    {selectedIds.size === filtered.length && filtered.length > 0
+                      ? 'Desmarcar todos'
+                      : 'Selecionar todos'}{' '}
+                    ({filtered.length})
+                  </label>
+                </div>
+
+                {/* Batch actions — same height always, opacity transition only */}
+                <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds(new Set())}
+                    className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBatchDeleteConfirm(true)}
+                    className="inline-flex items-center gap-1 rounded-md bg-destructive px-2.5 py-1 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+                  >
+                    <Trash2 size={11} />
+                    Excluir {selectedIds.size}
+                  </button>
+                </div>
               </div>
             )}
 

@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { SelectionBar } from '@/components/admin/SelectionBar'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -317,7 +316,7 @@ export default function ClientesPage() {
         </div>
 
         {/* Search + Sort */}
-        <div className="mb-3 flex gap-2">
+        <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -339,36 +338,50 @@ export default function ClientesPage() {
           </Select>
         </div>
 
-        {/* Batch selection bar — same component as /admin/briefings */}
-        <SelectionBar
-          count={selectedIds.size}
-          itemLabel="cliente"
-          itemLabelPlural="clientes"
-          onCancel={() => setSelectedIds(new Set())}
-          onDelete={() => setBatchDeleteConfirm(true)}
-        />
-
-        {/* Select all */}
+        {/* Select-all + inline batch actions — persistent row, no layout shift */}
         {!loading && filtered.length > 1 && (
-          <div className="mb-3 flex items-center gap-2 px-1">
-            <Checkbox
-              id="select-all"
-              checked={selectedIds.size === filtered.length}
-              onCheckedChange={(checked) =>
-                checked === true
-                  ? setSelectedIds(new Set(filtered.map((c) => c.id)))
-                  : setSelectedIds(new Set())
-              }
-            />
-            <Label
-              htmlFor="select-all"
-              className="cursor-pointer text-xs font-normal text-muted-foreground"
-            >
-              {selectedIds.size === filtered.length
-                ? 'Desmarcar todos'
-                : 'Selecionar todos'}{' '}
-              ({filtered.length})
-            </Label>
+          <div className="mt-4 mb-3 flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="select-all"
+                checked={selectedIds.size === filtered.length}
+                onCheckedChange={(checked) =>
+                  checked === true
+                    ? setSelectedIds(new Set(filtered.map((c) => c.id)))
+                    : setSelectedIds(new Set())
+                }
+              />
+              <Label
+                htmlFor="select-all"
+                className="cursor-pointer text-xs font-normal text-muted-foreground"
+              >
+                {selectedIds.size === filtered.length
+                  ? 'Desmarcar todos'
+                  : 'Selecionar todos'}{' '}
+                ({filtered.length})
+              </Label>
+            </div>
+
+            <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => setBatchDeleteConfirm(true)}
+                className="inline-flex items-center gap-1 rounded-md bg-destructive px-2.5 py-1 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+              >
+                <Trash2 size={11} />
+                Excluir {selectedIds.size}
+              </button>
+            </div>
           </div>
         )}
 
