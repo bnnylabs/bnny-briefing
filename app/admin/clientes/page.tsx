@@ -494,13 +494,13 @@ export default function ClientesPage() {
                       editable={false}
                     />
                     <div className="min-w-0 flex-1">
-                      {/* Row 1: company + primary contact name muted inline + icons */}
-                      <div className="flex items-baseline gap-2">
-                        <span className="truncate text-sm font-semibold leading-snug">{c.company}</span>
+                      {/* Row 1: company + primary contact name inline + icons */}
+                      <div className="flex min-w-0 items-baseline gap-1.5">
+                        <span className="shrink-0 max-w-[45%] truncate text-sm font-semibold leading-snug sm:max-w-none">{c.company}</span>
                         {(c.primary_contact?.name ?? c.name) && (
-                          <span className="shrink-0 text-xs text-muted-foreground/70">
+                          <span className="min-w-0 truncate text-xs text-muted-foreground/70">
                             {c.primary_contact?.name ?? c.name}
-                            {(c.primary_contact?.email ?? c.email) && ` · ${c.primary_contact?.email ?? c.email}`}
+                            <span className="hidden sm:inline">{(c.primary_contact?.email ?? c.email) && ` · ${c.primary_contact?.email ?? c.email}`}</span>
                           </span>
                         )}
                         {c.is_starred && <Star size={11} className="shrink-0 fill-lime-400 text-lime-500" />}
