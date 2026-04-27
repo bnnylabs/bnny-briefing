@@ -96,6 +96,7 @@ export default function ConfigPage() {
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [savedAt, setSavedAt] = React.useState<number>(0)
+  const [activeTab, setActiveTab] = React.useState('geral')
 
   React.useEffect(() => {
     let cancelled = false
@@ -196,7 +197,7 @@ export default function ConfigPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="geral" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-6 grid w-full grid-cols-6">
             <TabsTrigger value="geral">Geral</TabsTrigger>
             <TabsTrigger value="briefings">Briefings</TabsTrigger>
@@ -428,7 +429,8 @@ export default function ConfigPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Sticky save bar */}
+        {/* Sticky save bar — hidden on the Emails tab (templates have their own per-item save) */}
+        {activeTab !== 'emails' && (
         <div className="sticky bottom-4 mt-6 flex items-center justify-between rounded-lg border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur">
           <div className="text-xs text-muted-foreground">
             {savedAt > 0 ? (
@@ -451,6 +453,7 @@ export default function ConfigPage() {
             )}
           </Button>
         </div>
+        )}
       </div>
     </div>
   )
