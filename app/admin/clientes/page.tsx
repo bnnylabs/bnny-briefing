@@ -346,77 +346,33 @@ export default function ClientesPage() {
           </Select>
         </div>
 
-        {/* Select-all + status chips + batch actions — single persistent row */}
+        {/* Select-all + batch actions row */}
         {!loading && filtered.length > 1 && (
-          <div className="mt-4 mb-3 flex items-center justify-between gap-3 px-1">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Checkbox + label */}
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="select-all"
-                  className="data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background"
-                  checked={selectedIds.size === filtered.length}
-                  onCheckedChange={(checked) =>
-                    checked === true
-                      ? setSelectedIds(new Set(filtered.map((c) => c.id)))
-                      : setSelectedIds(new Set())
-                  }
-                />
-                <Label
-                  htmlFor="select-all"
-                  className="cursor-pointer text-xs font-normal text-muted-foreground"
-                >
-                  {selectedIds.size === filtered.length
-                    ? 'Desmarcar todos'
-                    : 'Selecionar todos'}{' '}
-                  ({filtered.length})
-                </Label>
-              </div>
-
-              {/* Status chips inline */}
-              {(() => {
-                const presentStatuses = Array.from(new Set(clients.map(c => c.status))).filter(Boolean)
-                if (presentStatuses.length < 2) return null
-                return (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {presentStatuses.map(s => {
-                      const active = statusFilter.has(s)
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setStatusFilter(prev => {
-                            const next = new Set(prev)
-                            if (next.has(s)) next.delete(s); else next.add(s)
-                            return next
-                          })}
-                          className={cn(
-                            'inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
-                            active
-                              ? STATUS_COLORS[s] ?? 'border-border bg-muted text-foreground'
-                              : 'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',
-                          )}
-                        >
-                          {STATUS_LABELS[s] ?? s}
-                        </button>
-                      )
-                    })}
-                    {statusFilter.size > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setStatusFilter(new Set())}
-                        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-                      >
-                        <X size={10} /> Limpar
-                      </button>
-                    )}
-                  </div>
-                )
-              })()}
+          <div className="mt-4 mb-2 flex items-center justify-between gap-3 px-1">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="select-all"
+                className="data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background"
+                checked={selectedIds.size === filtered.length}
+                onCheckedChange={(checked) =>
+                  checked === true
+                    ? setSelectedIds(new Set(filtered.map((c) => c.id)))
+                    : setSelectedIds(new Set())
+                }
+              />
+              <Label
+                htmlFor="select-all"
+                className="cursor-pointer whitespace-nowrap text-xs font-normal text-muted-foreground"
+              >
+                {selectedIds.size === filtered.length
+                  ? 'Desmarcar todos'
+                  : 'Selecionar todos'}{' '}
+                ({filtered.length})
+              </Label>
             </div>
 
             <div className={`flex items-center gap-1.5 transition-opacity duration-150 ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
                 {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
               </span>
               <button
@@ -437,6 +393,47 @@ export default function ClientesPage() {
             </div>
           </div>
         )}
+
+        {/* Status filter chips — own row, only when multiple statuses exist */}
+        {!loading && (() => {
+          const presentStatuses = Array.from(new Set(clients.map(c => c.status))).filter(Boolean)
+          if (presentStatuses.length < 2) return null
+          return (
+            <div className="mb-3 flex flex-wrap items-center gap-1.5 px-1">
+              {presentStatuses.map(s => {
+                const active = statusFilter.has(s)
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter(prev => {
+                      const next = new Set(prev)
+                      if (next.has(s)) next.delete(s); else next.add(s)
+                      return next
+                    })}
+                    className={cn(
+                      'inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                      active
+                        ? STATUS_COLORS[s] ?? 'border-border bg-muted text-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+                    )}
+                  >
+                    {STATUS_LABELS[s] ?? s}
+                  </button>
+                )
+              })}
+              {statusFilter.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(new Set())}
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  <X size={10} /> Limpar
+                </button>
+              )}
+            </div>
+          )
+        })()}
 
         {/* List */}
         {loading ? (

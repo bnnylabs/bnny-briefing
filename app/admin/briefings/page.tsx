@@ -545,14 +545,15 @@ export default function AdminPage() {
             </div>
 
             {/* Search + Filters */}
-            <div className="flex gap-2 items-center flex-wrap">
-              <div className="flex-1 min-w-[180px] relative">
+            {/* Search + Sort row */}
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar cliente, empresa ou tipo..." className="pl-9 bg-card" />
               </div>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as 'recent' | 'oldest' | 'company')}>
-                <SelectTrigger className="w-44 shrink-0">
+                <SelectTrigger className="w-36 sm:w-44 shrink-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -561,6 +562,9 @@ export default function AdminPage() {
                   <SelectItem value="company">A → Z</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            {/* DatePicker — full width on mobile */}
+            <div className="mt-2">
               <DateRangePicker
                 value={
                   dateFrom || dateTo
@@ -751,9 +755,9 @@ export default function AdminPage() {
                               </Tooltip>
                             </TooltipProvider>
                           )}
-                          <span className="text-[11px] text-muted-foreground/70">{b.clients?.name}</span>
-                          <span className="text-[11px] text-muted-foreground/50">· {timeAgo(b.created_at)} ({fmt(b.created_at)})</span>
-                          {b.completed_at && <span className="text-[11px] text-muted-foreground/50">· concluído {fmt(b.completed_at)}</span>}
+                          <span className="max-w-[120px] truncate text-[11px] text-muted-foreground/70">{b.clients?.name}</span>
+                          <span className="text-[11px] text-muted-foreground/50">· {timeAgo(b.created_at)}<span className="hidden sm:inline"> ({fmt(b.created_at)})</span></span>
+                          {b.completed_at && <span className="hidden sm:inline text-[11px] text-muted-foreground/50">· concluído {fmt(b.completed_at)}</span>}
                           {b.expires_at && new Date(b.expires_at) > new Date() && <span className="text-[11px] text-warning">· expira {fmt(b.expires_at)}</span>}
                           {b.expires_at && new Date(b.expires_at) < new Date() && <span className="text-[11px] text-destructive">· expirado</span>}
                         </div>
@@ -761,8 +765,9 @@ export default function AdminPage() {
 
                       {/* ── Actions ─────────────────────────────────── */}
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Ver respostas — hidden on mobile, in dropdown instead */}
                         {b.status === 'concluido' && (
-                          <Button size="sm" onClick={() => viewResponses(b)}>
+                          <Button size="sm" onClick={() => viewResponses(b)} className="hidden sm:inline-flex">
                             <Eye size={13} />
                             Ver respostas
                           </Button>
@@ -783,6 +788,16 @@ export default function AdminPage() {
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-52">
+                            {/* Ver respostas — shown in dropdown on mobile only */}
+                            {b.status === 'concluido' && (
+                              <>
+                                <DropdownMenuItem onClick={() => viewResponses(b)} className="sm:hidden">
+                                  <Eye size={14} />
+                                  Ver respostas
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="sm:hidden" />
+                              </>
+                            )}
                             {b.status !== 'concluido' && b.clients?.email && (
                               <DropdownMenuItem onClick={() => resendEmail(b)}>
                                 {reminderSent === b.id + '_resend' ? <Check size={14} className="text-success" /> : <Mail size={14} />}
