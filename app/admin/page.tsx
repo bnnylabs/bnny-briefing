@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 import { useToast, ToastContainer } from '@/components/toast'
 import { Button } from '@/components/ui/button'
-import { Pencil, FileText, Bell, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard } from 'lucide-react'
+import { BrandLogo } from '@/components/brand/BrandLogo'
+import { Pencil, FileText, Bell, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -390,12 +391,11 @@ export default function AdminPage() {
   if (!authed) return (
     <div className="flex items-center justify-center min-h-screen bg-background px-4">
       <div className="w-full max-w-sm animate-in fade-in-0 duration-300">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black text-sm">B</div>
-            <span className="font-bold text-xl tracking-tight">Bnny <span className="text-primary">Labs</span></span>
-          </div>
-          <p className="text-muted-foreground text-sm">Painel de briefings</p>
+        <div className="mb-8 flex flex-col items-center gap-1.5">
+          <BrandLogo className="h-7 w-auto" />
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
+            Painel
+          </p>
         </div>
         <form onSubmit={handleLogin} className="flex flex-col gap-3">
           <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha de acesso" autoFocus className="h-11 text-base" />
@@ -486,16 +486,27 @@ export default function AdminPage() {
 
         {/* ── BRIEFINGS LIST ────────────────────────────────────────── */}
         <>
+          {/* Page header */}
+          <div className="mb-6 flex items-center justify-between">
+            <h1 className="font-mono text-xl font-bold tracking-tight">
+              Briefings
+            </h1>
+            <Button onClick={() => router.push('/admin/novo')}>
+              <Plus size={14} />
+              Novo briefing
+            </Button>
+          </div>
+
           {/* Stats grid */}
             <div className="grid grid-cols-5 gap-2 mb-5">
               {([
-                { label: 'Total',       value: briefings.length,                                          status: '' },
+                { label: 'Total',       value: briefings.length,                                          status: 'all' },
                 { label: 'Enviado',     value: briefings.filter(b => b.status === 'enviado').length,      status: 'enviado' },
                 { label: 'Visualizado', value: briefings.filter(b => b.status === 'visualizado').length,  status: 'visualizado' },
                 { label: 'Andamento',   value: briefings.filter(b => b.status === 'em_andamento').length, status: 'em_andamento' },
                 { label: 'Concluído',   value: briefings.filter(b => b.status === 'concluido').length,    status: 'concluido' },
               ] as { label: string; value: number; status: string }[]).map(s => (
-                <button key={s.label} onClick={() => setStatusFilter(prev => prev === s.status ? '' : s.status)}
+                <button key={s.label} onClick={() => setStatusFilter(prev => prev === s.status ? 'all' : s.status)}
                   className={`rounded-lg border p-3.5 text-left transition-colors duration-100 cursor-pointer ${statusFilter === s.status ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
                   <div className="text-2xl font-bold tabular-nums leading-none font-mono text-foreground">{s.value}</div>
                   <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-1.5">{s.label}</div>
@@ -571,13 +582,28 @@ export default function AdminPage() {
               <div className="text-center py-20 text-muted-foreground">
                 <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-40" />
                 <div className="font-semibold text-foreground mb-1">
-                  {search || dateFrom || dateTo ? 'Nenhum resultado' : 'Nenhum briefing ainda'}
+                  {search || dateFrom || dateTo || statusFilter !== 'all' ? 'Nenhum resultado' : 'Nenhum briefing ainda'}
                 </div>
                 <div className="text-sm mb-5">
-                  {search || dateFrom || dateTo ? 'Tente ajustar os filtros' : 'Crie o primeiro briefing para começar'}
+                  {search || dateFrom || dateTo || statusFilter !== 'all' ? 'Tente ajustar os filtros' : 'Crie o primeiro briefing para começar'}
                 </div>
-                {!search && !dateFrom && !dateTo && (
-                  <Button onClick={() => router.push('/admin/novo')}>+ Criar briefing</Button>
+                {search || dateFrom || dateTo || statusFilter !== 'all' ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearch('')
+                      setDateFrom('')
+                      setDateTo('')
+                      setStatusFilter('all')
+                    }}
+                  >
+                    Limpar filtros
+                  </Button>
+                ) : (
+                  <Button onClick={() => router.push('/admin/novo')}>
+                    <Plus size={14} />
+                    Criar briefing
+                  </Button>
                 )}
               </div>
             ) : (

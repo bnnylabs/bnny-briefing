@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { PreviewModal } from '@/components/admin/PreviewModal'
 import { cn } from '@/lib/utils'
 
 interface ClientData {
@@ -197,6 +198,7 @@ function NovoBriefingContent() {
   const [emailSent, setEmailSent] = useState(false)
   const [copied, setCopied] = useState(false)
   const [extraNote, setExtraNote] = useState('')
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   // Load existing clients for the select step
   const loadClients = useCallback(async () => {
@@ -391,7 +393,7 @@ function NovoBriefingContent() {
               className={cn(
                 '-mb-px border-b-2 py-3 text-sm font-medium',
                 step === s.key
-                  ? 'border-primary text-foreground'
+                  ? 'border-foreground text-foreground'
                   : 'border-transparent text-muted-foreground',
               )}
             >
@@ -784,17 +786,22 @@ function NovoBriefingContent() {
               <Button
                 variant="outline"
                 className="mb-5 w-full"
-                onClick={() =>
-                  window.open(
-                    `/admin/preview?type=${selectedType}&lang=${language}&company=${encodeURIComponent(clientForm.company || 'Empresa')}`,
-                    '_blank',
-                    'width=500,height=800,scrollbars=yes',
-                  )
-                }
+                onClick={() => setPreviewOpen(true)}
               >
                 <Eye className="mr-1.5 h-4 w-4" />
                 Ver preview — como o cliente vai ver
               </Button>
+            )}
+
+            {/* Preview lightbox */}
+            {selectedType && (
+              <PreviewModal
+                open={previewOpen}
+                onOpenChange={setPreviewOpen}
+                type={selectedType}
+                language={language}
+                company={clientForm.company || 'Empresa'}
+              />
             )}
 
             {/* Extra note */}

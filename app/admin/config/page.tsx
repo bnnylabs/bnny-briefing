@@ -14,6 +14,7 @@ import {
   Sparkles,
   Trash2,
   Upload,
+  User,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -64,10 +65,30 @@ const EMPTY: SettingsBag = {
   brand_email_signature: '',
 }
 
+type ProfileBag = {
+  name: string
+  photo_url: string
+  job_title: string
+}
+
+const EMPTY_PROFILE: ProfileBag = {
+  name: '',
+  photo_url: '',
+  job_title: 'Admin',
+}
+
+function getInitials(name: string): string {
+  if (!name) return 'BL'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
 export default function ConfigPage() {
   const router = useRouter()
   const { toasts, toast, remove } = useToast()
   const [settings, setSettings] = React.useState<SettingsBag>(EMPTY)
+  const [profile, setProfile] = React.useState<ProfileBag>(EMPTY_PROFILE)
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [savedAt, setSavedAt] = React.useState<number>(0)
@@ -75,14 +96,27 @@ export default function ConfigPage() {
   React.useEffect(() => {
     let cancelled = false
     async function load() {
-      const res = await fetch('/api/admin/settings')
-      if (res.status === 401) {
+      const [sRes, pRes] = await Promise.all([
+        fetch('/api/admin/settings'),
+        fetch('/api/admin/profile'),
+      ])
+      if (sRes.status === 401 || pRes.status === 401) {
         router.push('/admin')
         return
       }
-      if (res.ok) {
-        const d = await res.json()
+      if (sRes.ok) {
+        const d = await sRes.json()
         if (!cancelled) setSettings((s) => ({ ...s, ...d.settings }))
+      }
+      if (pRes.ok) {
+        const d = await pRes.json()
+        if (!cancelled && d.profile) {
+          setProfile({
+            name: d.profile.name || '',
+            photo_url: d.profile.photo_url || '',
+            job_title: d.profile.job_title || 'Admin',
+          })
+        }
       }
       if (!cancelled) setLoading(false)
     }
@@ -101,16 +135,27 @@ export default function ConfigPage() {
     // Don't send empty password — that would clear it
     const payload: Record<string, string> = { ...settings }
     if (!payload.admin_password) delete payload.admin_password
-    const res = await fetch('/api/admin/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
+
+    const [sRes, pRes] = await Promise.all([
+      fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+      fetch('/api/admin/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: profile.name,
+          job_title: profile.job_title,
+          // photo_url is updated by the upload endpoint directly
+        }),
+      }),
+    ])
     setSaving(false)
-    if (res.ok) {
+    if (sRes.ok && pRes.ok) {
       setSavedAt(Date.now())
       toast('Configurações salvas', 'success', 2000)
-      // Clear password field after save
       setSettings((s) => ({ ...s, admin_password: '' }))
     } else {
       toast('Erro ao salvar', 'error')
@@ -152,7 +197,7 @@ export default function ConfigPage() {
           <TabsList className="mb-6 grid w-full grid-cols-5">
             <TabsTrigger value="geral">Geral</TabsTrigger>
             <TabsTrigger value="briefings">Briefings</TabsTrigger>
-            <TabsTrigger value="conta">Conta</TabsTrigger>
+            <TabsTrigger value="perfil">Perfil</TabsTrigger>
             <TabsTrigger value="marca">Marca</TabsTrigger>
             <TabsTrigger value="sobre">Sobre</TabsTrigger>
           </TabsList>
@@ -234,8 +279,37 @@ export default function ConfigPage() {
             </SectionCard>
           </TabsContent>
 
-          {/* CONTA */}
-          <TabsContent value="conta" className="space-y-4">
+          {/* PERFIL */}
+          <TabsContent value="perfil" className="space-y-4">
+            <SectionCard
+              icon={<User size={14} />}
+              title="Você"
+              description="Aparece no rodapé da sidebar quando você está logado"
+            >
+              <ProfilePhotoField
+                currentUrl={profile.photo_url}
+                fallbackInitials={getInitials(profile.name)}
+                onChange={(url) =>
+                  setProfile((p) => ({ ...p, photo_url: url }))
+                }
+                onError={(msg) => toast(msg, 'error')}
+                onSuccess={(msg) => toast(msg, 'success')}
+              />
+              <Field
+                label="Nome completo"
+                value={profile.name}
+                onChange={(v) => setProfile((p) => ({ ...p, name: v }))}
+                placeholder="Seu nome"
+              />
+              <Field
+                label="Cargo"
+                value={profile.job_title}
+                onChange={(v) => setProfile((p) => ({ ...p, job_title: v }))}
+                placeholder="Admin"
+                hint="Texto pequeno mostrado abaixo do seu nome"
+              />
+            </SectionCard>
+
             <SectionCard
               icon={<ShieldCheck size={14} />}
               title="Segurança"
@@ -277,7 +351,7 @@ export default function ConfigPage() {
                 value={settings.brand_primary_color}
                 onChange={(v) => update('brand_primary_color', v)}
                 placeholder="#a3e635"
-                hint="Aplicada nos botões primários e CTAs. Padrão: lime."
+                hint="Aplicada nos botões primários e CTAs. Padrão: #a3e635"
               />
             </SectionCard>
 
@@ -541,6 +615,121 @@ function BrandLogoField({
             ref={inputRef}
             type="file"
             accept="image/svg+xml,image/png,image/jpeg,image/webp"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) handleFile(f)
+              e.target.value = ''
+            }}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+          >
+            <Upload size={13} />
+            {uploading ? 'Enviando…' : 'Trocar'}
+          </Button>
+          {currentUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleRemove}
+              disabled={uploading}
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 size={13} />
+              Remover
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProfilePhotoField({
+  currentUrl,
+  fallbackInitials,
+  onChange,
+  onError,
+  onSuccess,
+}: {
+  currentUrl: string
+  fallbackInitials: string
+  onChange: (url: string) => void
+  onError: (msg: string) => void
+  onSuccess: (msg: string) => void
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = React.useState(false)
+
+  async function handleFile(file: File) {
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await fetch('/api/admin/profile/photo', {
+      method: 'POST',
+      body: fd,
+    })
+    setUploading(false)
+    if (res.ok) {
+      const d = await res.json()
+      onChange(d.url)
+      onSuccess('Foto atualizada')
+    } else {
+      const d = await res.json().catch(() => ({}))
+      onError(d.error || 'Falha no upload')
+    }
+  }
+
+  async function handleRemove() {
+    setUploading(true)
+    await fetch('/api/admin/profile/photo', { method: 'DELETE' })
+    setUploading(false)
+    onChange('')
+    onSuccess('Foto removida')
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+        Foto
+      </Label>
+      <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-card">
+          {currentUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={currentUrl}
+              alt="Foto"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="text-xs font-semibold text-foreground">
+              {fallbackInitials}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 text-xs text-muted-foreground">
+          {currentUrl ? (
+            'Foto personalizada em uso'
+          ) : (
+            <>
+              Sem foto — usando suas iniciais
+              <br />
+              PNG, JPG ou WebP — máximo 2 MB
+            </>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col gap-1.5">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
             onChange={(e) => {
               const f = e.target.files?.[0]
               if (f) handleFile(f)

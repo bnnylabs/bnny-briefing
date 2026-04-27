@@ -2,7 +2,13 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ClipboardList } from 'lucide-react'
+import {
+  ArrowLeft,
+  ClipboardList,
+  Copy,
+  Trash2,
+  type LucideIcon,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
@@ -13,10 +19,10 @@ interface ActivityLog {
   created_at: string
 }
 
-const ACTION_LABELS: Record<string, string> = {
-  delete_briefing: 'Briefing excluído',
-  bulk_delete_briefings: 'Exclusão em lote',
-  duplicate_briefing: 'Briefing duplicado',
+const ACTION_META: Record<string, { label: string; icon: LucideIcon }> = {
+  delete_briefing: { label: 'Briefing excluído', icon: Trash2 },
+  bulk_delete_briefings: { label: 'Exclusão em lote', icon: Trash2 },
+  duplicate_briefing: { label: 'Briefing duplicado', icon: Copy },
 }
 
 function fmt(d: string) {
@@ -87,34 +93,42 @@ export default function ActivityLogPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {logs.map((log) => (
-              <div
-                key={log.id}
-                className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold">
-                    {ACTION_LABELS[log.action] || log.action}
+            {logs.map((log) => {
+              const meta = ACTION_META[log.action]
+              const Icon = meta?.icon ?? ClipboardList
+              const label = meta?.label ?? log.action
+              return (
+                <div
+                  key={log.id}
+                  className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3"
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <Icon size={13} strokeWidth={1.75} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold">{label}</div>
+                      {log.details?.company ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {String(log.details.company)}
+                          {log.details.type_label
+                            ? ` · ${String(log.details.type_label)}`
+                            : ''}
+                        </div>
+                      ) : null}
+                      {log.details?.count ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {String(log.details.count)} briefings excluídos
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                  {log.details?.company ? (
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {String(log.details.company)}
-                      {log.details.type_label
-                        ? ` · ${String(log.details.type_label)}`
-                        : ''}
-                    </div>
-                  ) : null}
-                  {log.details?.count ? (
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {String(log.details.count)} briefings excluídos
-                    </div>
-                  ) : null}
+                  <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+                    {fmt(log.created_at)}
+                  </span>
                 </div>
-                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
-                  {fmt(log.created_at)}
-                </span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

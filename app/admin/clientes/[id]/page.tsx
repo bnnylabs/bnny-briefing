@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft,
   Bot,
+  Check,
   CheckCircle2,
   ChevronDown,
   Clipboard,
@@ -593,7 +594,7 @@ export default function ClientePerfilPage() {
         <Card className="p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <div className="text-base font-semibold">{client.company}</div>
+              <div className="font-mono text-base font-bold tracking-tight">{client.company}</div>
               <div className="mt-0.5 text-xs text-muted-foreground">
                 cliente desde {fmt(client.created_at).split(',')[0]}
               </div>
@@ -674,7 +675,7 @@ export default function ClientePerfilPage() {
                       href={f.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="break-all text-sm text-primary no-underline hover:underline"
+                      className="break-all text-sm text-foreground underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-foreground"
                     >
                       {f.value}
                     </a>
@@ -701,10 +702,11 @@ export default function ClientePerfilPage() {
           >
             <div>
               <div className="flex items-center gap-2 text-[15px] font-bold">
-                <Bot className="h-4 w-4 text-primary" />
+                <Bot className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
                 Perfil de IA
                 {hasAiProfile && (
-                  <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+                    <Check size={10} />
                     Salvo
                   </span>
                 )}
@@ -753,19 +755,6 @@ export default function ClientePerfilPage() {
                   hasAiProfile && 'mb-4',
                 )}
               >
-                <div className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  {hasAiProfile ? (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      Re-analisar com IA
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Analisar com IA
-                    </>
-                  )}
-                </div>
                 <div className="flex flex-col gap-2">
                   <Input
                     value={analyzeUrl}
@@ -787,12 +776,12 @@ export default function ClientePerfilPage() {
                     ) : hasAiProfile ? (
                       <>
                         <RefreshCw className="mr-1.5 h-4 w-4" />
-                        Re-analisar
+                        Re-analisar com IA
                       </>
                     ) : (
                       <>
                         <Sparkles className="mr-1.5 h-4 w-4" />
-                        Gerar perfil com IA
+                        Analisar com IA
                       </>
                     )}
                   </Button>
@@ -877,31 +866,26 @@ export default function ClientePerfilPage() {
 
         {/* Briefings history */}
         <Card className="p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-1.5 text-[15px] font-bold">
-                <ClipboardList className="h-4 w-4" />
-                Briefings
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {briefings.length} no histórico
-              </div>
+          <div className="mb-4">
+            <div className="flex items-center gap-1.5 text-[15px] font-bold">
+              <ClipboardList className="h-4 w-4" />
+              Briefings
             </div>
-            <Button size="sm" onClick={newBriefing}>
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Novo briefing
-            </Button>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {briefings.length} no histórico
+            </div>
           </div>
 
           {briefings.length === 0 ? (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              Nenhum briefing ainda —{' '}
-              <button
-                onClick={newBriefing}
-                className="font-mono text-primary hover:underline"
-              >
-                criar o primeiro
-              </button>
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <ClipboardList className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
+              <div className="text-sm text-muted-foreground">
+                Nenhum briefing ainda
+              </div>
+              <Button variant="outline" size="sm" onClick={newBriefing}>
+                <Plus size={13} />
+                Criar o primeiro
+              </Button>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
