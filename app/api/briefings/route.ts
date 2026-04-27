@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateSlug } from '@/lib/briefing-types'
 import { sendBriefingToClient, sendWhatsApp } from '@/lib/email'
+import { resolveBriefingRecipients } from '@/lib/briefing-recipients'
 
 function isAuthed(req: NextRequest) {
   const cookie = req.cookies.get('bnny_auth')
@@ -106,60 +107,44 @@ export async function POST(req: NextRequest) {
 
   if (briefingError) return NextResponse.json({ error: briefingError.message }, { status: 500 })
 
-  // Build recipients list and send emails
+  // Resolve canonical recipient list and send emails
   const recipients: Array<{ email: string; name: string; role: 'primary' | 'cc' }> = []
   let emailSent = false
 
-  if (sendEmail !== false && client.email) {
-    const emailResult = await sendBriefingToClient({
-      clientName: client.name,
-      clientEmail: client.email,
-      company: client.company,
-      typeLabel: briefingTypeLabel,
-      link,
-      language: language || 'pt-BR',
+  if (sendEmail !== false) {
+    const resolved = await resolveBriefingRecipients(clientId, {
+      name: client.name,
+      email: client.email || null,
     })
-    emailSent = emailResult.ok
 
-    recipients.push({ email: client.email, name: client.name, role: 'primary' })
-
-    // Log primary send
-    try { await supabaseAdmin.from('notifications').insert({
-      briefing_id: briefing.id,
-      type: 'email_client',
-      status: emailResult.ok ? 'sent' : 'failed',
-      details: { to: client.email, name: client.name, role: 'primary', link }
-    }) } catch(_e) {}
-
-    // Fetch CC contacts and send to each
-    const { data: ccContacts } = await supabaseAdmin
-      .from('client_contacts')
-      .select('name, email, language')
-      .eq('client_id', clientId)
-      .eq('receives_copies', true)
-
-    for (const cc of (ccContacts ?? []).filter(c => c.email)) {
-      const ccResult = await sendBriefingToClient({
-        clientName: cc.name,
-        clientEmail: cc.email!,
+    for (const r of resolved) {
+      const result = await sendBriefingToClient({
+        clientName: r.name,
+        clientEmail: r.email,
         company: client.company,
         typeLabel: briefingTypeLabel,
         link,
-        language: cc.language || language || 'pt-BR',
+        language: r.language || language || 'pt-BR',
       })
-      recipients.push({ email: cc.email!, name: cc.name, role: 'cc' })
+
+      if (r.role === 'primary') emailSent = result.ok
+
+      recipients.push({ email: r.email, name: r.name, role: r.role })
+
       try { await supabaseAdmin.from('notifications').insert({
         briefing_id: briefing.id,
         type: 'email_client',
-        status: ccResult.ok ? 'sent' : 'failed',
-        details: { to: cc.email, name: cc.name, role: 'cc', link }
+        status: result.ok ? 'sent' : 'failed',
+        details: { to: r.email, name: r.name, role: r.role, link }
       }) } catch(_e) {}
     }
 
-    // Persist recipients snapshot on the briefing row
-    try { await supabaseAdmin.from('briefings')
-      .update({ recipients })
-      .eq('id', briefing.id) } catch(_e) {}
+    // Persist recipients snapshot
+    if (recipients.length > 0) {
+      try { await supabaseAdmin.from('briefings')
+        .update({ recipients })
+        .eq('id', briefing.id) } catch(_e) {}
+    }
 
     // WhatsApp to admin
     await sendWhatsApp(`📨 Novo briefing enviado!\nEmpresa: ${client.company}\nTipo: ${briefingTypeLabel}\nDestinatários: ${recipients.length}\nLink: ${link}`)

@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { AvatarUpload } from '@/components/admin/AvatarUpload'
+import { RecipientPickerModal } from '@/components/admin/RecipientPickerModal'
 import {
   Select,
   SelectContent,
@@ -212,11 +213,11 @@ export default function AdminPage() {
   const [savingNotes, setSavingNotes] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', company: '', email: '', phone: '' })
   const [savingEdit, setSavingEdit] = useState(false)
-  const [sendingReminder, setSendingReminder] = useState<string | null>(null)
   const [reminderSent, setReminderSent] = useState<string | null>(null)
+  const [pickerBriefing, setPickerBriefing] = useState<Briefing | null>(null)
+  const [pickerType, setPickerType] = useState<'reminder' | 'resend'>('reminder')
   const [notifBriefing, setNotifBriefing] = useState<Briefing | null>(null)
   const [notifHistory, setNotifHistory] = useState<Array<{type: string; status: string; sent_at: string; details: Record<string, string>}>>([])
-  const [sendingResend, setSendingResend] = useState<string | null>(null)
 
   const [deleteBriefing, setDeleteBriefing] = useState<Briefing | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -327,9 +328,7 @@ export default function AdminPage() {
   }
 
   async function sendReminder(b: Briefing) {
-    setSendingReminder(b.id)
-    await fetch(`/api/admin/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: b.slug, type: 'reminder' }) })
-    setSendingReminder(null); setReminderSent(b.id); setTimeout(() => setReminderSent(null), 3000)
+    setPickerBriefing(b); setPickerType('reminder')
   }
 
   async function viewNotifications(b: Briefing) {
@@ -339,14 +338,24 @@ export default function AdminPage() {
   }
 
   async function resendEmail(b: Briefing) {
-    setSendingResend(b.id)
+    setPickerBriefing(b); setPickerType('resend')
+  }
+
+  async function submitPickerSend(recipients: { email: string; name: string; role: 'primary' | 'cc' }[]) {
+    if (!pickerBriefing) return
     const res = await fetch('/api/admin/notify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug: b.slug, type: 'resend' })
+      body: JSON.stringify({ slug: pickerBriefing.slug, type: pickerType, recipients }),
     })
-    const data = await res.json()
-    setSendingResend(null)
-    if (data.emailSent) { setReminderSent(b.id + '_resend'); setTimeout(() => setReminderSent(null), 3000) }
+    const data = await res.json().catch(() => ({}))
+    if (res.ok) {
+      toast(`Enviado para ${data.sent || recipients.length}`, 'success')
+      setReminderSent(pickerBriefing.id + (pickerType === 'resend' ? '_resend' : ''))
+      setTimeout(() => setReminderSent(null), 3000)
+      loadBriefings()
+    } else {
+      toast('Erro ao enviar', 'error')
+    }
   }
 
   async function confirmDelete() {
@@ -718,29 +727,15 @@ export default function AdminPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-52">
                             {b.status !== 'concluido' && b.clients?.email && (
-                              <DropdownMenuItem
-                                disabled={sendingResend === b.id}
-                                onClick={() => resendEmail(b)}
-                              >
-                                {sendingResend === b.id
-                                  ? <RefreshCw size={14} className="animate-spin" />
-                                  : reminderSent === b.id + '_resend'
-                                  ? <Check size={14} className="text-success" />
-                                  : <Mail size={14} />}
-                                Reenviar email
+                              <DropdownMenuItem onClick={() => resendEmail(b)}>
+                                {reminderSent === b.id + '_resend' ? <Check size={14} className="text-success" /> : <Mail size={14} />}
+                                Reenviar email…
                               </DropdownMenuItem>
                             )}
                             {b.status !== 'concluido' && (
-                              <DropdownMenuItem
-                                disabled={sendingReminder === b.id}
-                                onClick={() => sendReminder(b)}
-                              >
-                                {sendingReminder === b.id
-                                  ? <RefreshCw size={14} className="animate-spin" />
-                                  : reminderSent === b.id
-                                  ? <Check size={14} className="text-success" />
-                                  : <BellRing size={14} />}
-                                Enviar lembrete
+                              <DropdownMenuItem onClick={() => sendReminder(b)}>
+                                {reminderSent === b.id ? <Check size={14} className="text-success" /> : <BellRing size={14} />}
+                                Enviar lembrete…
                               </DropdownMenuItem>
                             )}
                             {b.status !== 'concluido' && <DropdownMenuSeparator />}
@@ -1046,6 +1041,19 @@ export default function AdminPage() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* ── RECIPIENT PICKER ─────────────────────────────────────────── */}
+      {pickerBriefing && (
+        <RecipientPickerModal
+          open={!!pickerBriefing}
+          onClose={() => setPickerBriefing(null)}
+          clientId={pickerBriefing.clients?.id || ''}
+          briefingLabel={pickerBriefing.type_label}
+          briefingCompany={pickerBriefing.clients?.company || ''}
+          type={pickerType}
+          onSubmit={submitPickerSend}
+        />
       )}
 
     </div>
