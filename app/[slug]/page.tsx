@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import { CheckCircle2, Lock, Pencil, Mail, Clock } from 'lucide-react'
 import { getTemplate, BriefingType, BriefingField, FieldCondition } from '@/lib/briefing-types'
+import { BrandLogo } from '@/components/brand/BrandLogo'
 
 interface BriefingData {
   id: string; slug: string; type: BriefingType; type_label: string; status: string
@@ -248,50 +250,89 @@ export default function BriefingFormPage() {
       : null
     const clientName = briefing?.clients?.name || ''
 
+    // Visual identity matches the admin app + transactional emails:
+    // logo on top, single card with neutral palette, lime reserved for
+    // the primary edit action only. No decorative emojis — semantic
+    // icons where they add meaning.
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)', textAlign: 'center', padding: '40px 24px' }}>
-        <div style={{ fontSize: 64, marginBottom: 20 }}>✅</div>
-        <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 12, letterSpacing: '-0.02em' }}>
-          {isEN ? 'Briefing submitted!' : 'Briefing enviado!'}
-        </h1>
-        <p style={{ color: 'var(--text-2)', fontSize: 15, maxWidth: 380, lineHeight: 1.7 }}>
-          {isEN ? 'Thank you, ' : 'Obrigado, '}
-          <strong style={{ color: 'var(--text)' }}>{clientName}</strong>!<br />
-          {isEN
-            ? <span>The <strong style={{ color: 'var(--accent)' }}>Bnny Labs</strong> team will review your answers and get in touch soon.</span>
-            : <span>A equipe da <strong style={{ color: 'var(--accent)' }}>Bnny Labs</strong> vai analisar suas respostas e em breve entrará em contato.</span>
-          }
-        </p>
+      <div style={{ minHeight: '100vh', background: 'var(--bg-3)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', padding: '40px 20px 60px' }}>
+        {/* Brand logo — anchors the page and links visually to the app/email */}
+        <div style={{ marginBottom: 36 }}>
+          <BrandLogo className="h-7 w-auto" />
+        </div>
 
+        {/* Main card */}
+        <div style={{ width: '100%', maxWidth: 480, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 16, padding: '36px 32px', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+          {/* Success indicator — small, semantic, not a 64px emoji */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 12, background: 'rgba(22, 163, 74, 0.1)', color: '#16a34a', marginBottom: 18 }}>
+            <CheckCircle2 size={22} strokeWidth={2} />
+          </div>
+
+          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 10, letterSpacing: '-0.02em', color: 'var(--text)', lineHeight: 1.2 }}>
+            {isEN ? 'Briefing submitted' : 'Briefing enviado'}
+          </h1>
+
+          <p style={{ color: 'var(--text-2)', fontSize: 15, lineHeight: 1.6, margin: '0 auto', maxWidth: 380 }}>
+            {isEN ? 'Thank you, ' : 'Obrigado, '}
+            <strong style={{ color: 'var(--text)' }}>{clientName}</strong>!{' '}
+            {isEN
+              ? 'The Bnny Labs team will review your answers and get in touch soon.'
+              : 'A equipe da Bnny Labs vai analisar suas respostas e em breve entrará em contato.'}
+          </p>
+        </div>
+
+        {/* Editing window card — primary action when applicable */}
         {canEdit && hoursLeft !== null && hoursLeft > 0 && (
-          <div style={{ marginTop: 20, padding: '16px 20px', background: 'var(--bg-2)', border: '1px solid var(--accent-border)', borderRadius: 12, maxWidth: 360, width: '100%' }}>
-            <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, marginBottom: 6 }}>
-              ⏱ {isEN ? `You have ${hoursLeft}h to review your answers` : `Você tem ${hoursLeft}h para revisar suas respostas`}
+          <div style={{ marginTop: 12, width: '100%', maxWidth: 480, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: 'var(--bg-3)', color: 'var(--text-2)', flexShrink: 0 }}>
+                <Clock size={15} strokeWidth={1.75} />
+              </div>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600, marginBottom: 3, lineHeight: 1.3 }}>
+                  {isEN ? `${hoursLeft}h to review your answers` : `${hoursLeft}h para revisar suas respostas`}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}>
+                  {isEN ? 'You can update your answers during this period.' : 'Você pode atualizar suas respostas durante este período.'}
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12 }}>
-              {isEN ? 'You can update your answers during this period.' : 'Você pode atualizar suas respostas durante este período.'}
-            </div>
-            <button onClick={() => { setEditingMode(true); setIsUpdate(true); setCurrentSection(0) }}
-              style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 700, padding: '11px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>
-              {isEN ? '✏️ Edit my answers' : '✏️ Editar minhas respostas'}
+            <button
+              onClick={() => { setEditingMode(true); setIsUpdate(true); setCurrentSection(0) }}
+              style={{ width: '100%', background: '#a3e635', color: '#0a0a0a', fontWeight: 600, padding: '12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'transform 0.05s' }}
+            >
+              <Pencil size={14} strokeWidth={2} />
+              {isEN ? 'Edit my answers' : 'Editar minhas respostas'}
             </button>
           </div>
         )}
 
+        {/* Editing window expired */}
         {canEdit && (hoursLeft === null || hoursLeft === 0) && (
-          <div style={{ marginTop: 20, padding: '14px 20px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 13, color: 'var(--text-3)', maxWidth: 360 }}>
-            {isEN ? '⏰ The 48h editing period has expired. Contact us if you need to change something.' : '⏰ O período de edição de 48h expirou. Entre em contato se precisar alterar algo.'}
+          <div style={{ marginTop: 12, width: '100%', maxWidth: 480, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Clock size={16} strokeWidth={1.75} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, textAlign: 'left' }}>
+              {isEN ? 'The 48h editing period has expired. Contact us if you need to change something.' : 'O período de edição de 48h expirou. Entre em contato se precisar alterar algo.'}
+            </span>
           </div>
         )}
 
+        {/* Editing locked */}
         {!canEdit && briefing?.editing_locked && (
-          <div style={{ marginTop: 20, padding: '14px 20px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 13, color: 'var(--text-3)', maxWidth: 360 }}>
-            {isEN ? '🔒 Editing is currently locked. Contact us to request changes.' : '🔒 Edição bloqueada. Entre em contato se precisar alterar algo.'}
+          <div style={{ marginTop: 12, width: '100%', maxWidth: 480, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Lock size={16} strokeWidth={1.75} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, textAlign: 'left' }}>
+              {isEN ? 'Editing is currently locked. Contact us to request changes.' : 'Edição bloqueada. Entre em contato se precisar alterar algo.'}
+            </span>
           </div>
         )}
 
-        <div style={{ marginTop: 16, padding: '14px 20px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 13, color: 'var(--text-3)', maxWidth: 360 }}>
-          {isEN ? '📧 You will also receive a confirmation email shortly.' : '📧 Você também receberá um email de confirmação em instantes.'}
+        {/* Confirmation email note — quiet, last */}
+        <div style={{ marginTop: 12, width: '100%', maxWidth: 480, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center' }}>
+          <Mail size={13} strokeWidth={1.75} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5 }}>
+            {isEN ? 'A confirmation email is on the way.' : 'Um email de confirmação está a caminho.'}
+          </span>
         </div>
       </div>
     )
