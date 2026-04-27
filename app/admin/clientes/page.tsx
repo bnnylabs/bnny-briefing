@@ -11,6 +11,7 @@ import {
   Star,
   Trash2,
   User,
+  X,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -112,6 +113,7 @@ export default function ClientesPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<SortKey>('recent')
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set())
   const [showNew, setShowNew] = useState(false)
   const [newForm, setNewForm] = useState({
     name: '',
@@ -228,13 +230,19 @@ export default function ClientesPage() {
 
   const filtered = clients
     .filter(filterFns[filter])
-    .filter(
-      (c) =>
-        !search ||
-        [c.company, c.name, c.email].some((v) =>
-          v?.toLowerCase().includes(search.toLowerCase()),
-        ),
-    )
+    .filter((c) => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return (
+        c.company?.toLowerCase().includes(q) ||
+        c.name?.toLowerCase().includes(q) ||
+        c.email?.toLowerCase().includes(q) ||
+        c.primary_contact?.name?.toLowerCase().includes(q) ||
+        c.primary_contact?.email?.toLowerCase().includes(q) ||
+        c.tags?.some((t) => t.toLowerCase().includes(q))
+      )
+    })
+    .filter((c) => statusFilter.size === 0 || statusFilter.has(c.status))
     .sort(sortFns[sort])
 
   const filterLabels: { key: Filter; label: React.ReactNode; count: number }[] = [
@@ -322,7 +330,7 @@ export default function ClientesPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar empresa, nome ou email..."
+              placeholder="Buscar empresa, nome, email ou segmento..."
               className="bg-card pl-9"
             />
           </div>
@@ -337,6 +345,47 @@ export default function ClientesPage() {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Status filter chips — multi-select, only shows statuses present in list */}
+        {(() => {
+          const presentStatuses = Array.from(new Set(clients.map(c => c.status))).filter(Boolean)
+          if (presentStatuses.length < 2) return null
+          return (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {presentStatuses.map(s => {
+                const active = statusFilter.has(s)
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter(prev => {
+                      const next = new Set(prev)
+                      if (next.has(s)) next.delete(s); else next.add(s)
+                      return next
+                    })}
+                    className={cn(
+                      'inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                      active
+                        ? STATUS_COLORS[s] ?? 'border-border bg-muted text-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+                    )}
+                  >
+                    {STATUS_LABELS[s] ?? s}
+                  </button>
+                )
+              })}
+              {statusFilter.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(new Set())}
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  <X size={10} /> Limpar
+                </button>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Select-all + inline batch actions — persistent row, no layout shift */}
         {!loading && filtered.length > 1 && (
