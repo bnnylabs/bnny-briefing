@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback, ReactNode } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
-  Activity, ArrowLeft, ArrowRight, BarChart2, BellRing, Bot, Briefcase, Building2,
+  Activity, ArrowLeft, ArrowRight, BarChart2, Bell, BellRing, Bot, Briefcase, Building2,
   Check, CheckCircle2, ChevronDown,
   Clipboard, ClipboardCheck, ClipboardList, Clock, Copy, Download, ExternalLink,
   Eye, FileText, Image as ImageIcon, Link as LinkIcon,
   Lock, Mail, MoreHorizontal, Paperclip, Pencil, Plus, RefreshCw, Save, Send,
-  Sparkles, Star, StickyNote, Unlock, Users, X,
+  ScrollText, Sparkles, Star, StickyNote, Trash2, Unlock, Users, X,
 } from 'lucide-react'
 import { SOCIAL_NETWORKS } from './SocialIcons'
 import { AvatarUpload } from '@/components/admin/AvatarUpload'
@@ -232,6 +232,9 @@ export default function ClientePerfilPage() {
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
   const [pickerBriefing, setPickerBriefing] = useState<Briefing | null>(null)
   const [pickerType, setPickerType] = useState<'reminder' | 'resend'>('reminder')
+  const [activityBriefing, setActivityBriefing] = useState<Briefing | null>(null)
+  const [activityHistory, setActivityHistory] = useState<Array<{type: string; status: string; sent_at: string; details: Record<string, string>}>>([])
+  const [loadingActivity, setLoadingActivity] = useState(false)
 
   // Client info edit
   const [editMode, setEditMode] = useState(false)
@@ -478,6 +481,18 @@ export default function ClientePerfilPage() {
         toast('Link copiado!', 'success', 1500)
         setTimeout(() => setCopiedSlug(null), 2000)
       })
+  }
+
+  async function viewActivity(b: Briefing) {
+    setActivityBriefing(b)
+    setActivityHistory([])
+    setLoadingActivity(true)
+    const res = await fetch(`/api/briefings/${b.slug}/notifications`)
+    if (res.ok) {
+      const data = await res.json()
+      setActivityHistory(data.notifications || [])
+    }
+    setLoadingActivity(false)
   }
 
   function buildText(b: Briefing, resp: Record<string, unknown>) {
@@ -1019,6 +1034,11 @@ export default function ClientePerfilPage() {
                                 <Copy size={14} />
                                 Duplicar briefing
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => viewActivity(b)}>
+                                <ScrollText size={14} />
+                                Histórico de atividades
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -1179,6 +1199,67 @@ export default function ClientePerfilPage() {
           type={pickerType}
           onSubmit={submitPickerSend}
         />
+      )}
+
+      {/* ── ACTIVITY HISTORY MODAL ───────────────────────────────────── */}
+      {activityBriefing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in-0 duration-150"
+          onClick={() => { setActivityBriefing(null); setActivityHistory([]) }}>
+          <div className="relative w-full max-w-md rounded-xl bg-card border border-border p-6 shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1 duration-200 max-h-[88vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}>
+            <button onClick={() => { setActivityBriefing(null); setActivityHistory([]) }}
+              className="absolute right-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <X size={15} />
+            </button>
+            <div className="mb-5">
+              <div className="font-bold text-lg tracking-tight">Histórico de atividades</div>
+              <div className="text-sm text-muted-foreground mt-0.5">{client?.company} · {activityBriefing.type_label}</div>
+            </div>
+            {loadingActivity ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Carregando…</div>
+            ) : activityHistory.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Nenhuma atividade registrada</div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {activityHistory.map((n, i) => {
+                  const isClientEvent = ['link_opened', 'form_started', 'form_submitted'].includes(n.type)
+                  const lblMap: Record<string, { icon: React.ReactNode; label: string }> = {
+                    email_client:   { icon: <Send size={13} />,                                    label: 'Email enviado' },
+                    email_admin:    { icon: <Mail size={13} />,                                    label: 'Notificação ao admin' },
+                    reminder:       { icon: <Bell size={13} />,                                    label: 'Lembrete enviado' },
+                    resend:         { icon: <RefreshCw size={13} />,                               label: 'Reenvio' },
+                    link_opened:    { icon: <Eye size={13} className="text-info" />,               label: 'Link acessado' },
+                    form_started:   { icon: <Clock size={13} className="text-warning" />,          label: 'Preenchimento iniciado' },
+                    form_submitted: { icon: <CheckCircle2 size={13} className="text-success" />,   label: 'Briefing concluído' },
+                  }
+                  const entry = lblMap[n.type] || { icon: <Bell size={13} />, label: n.type }
+                  return (
+                    <div key={i} className={`rounded-lg border px-4 py-3 ${isClientEvent ? 'border-border bg-card' : 'border-border bg-muted/30'}`}>
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-medium">{entry.icon} {entry.label}</span>
+                        {!isClientEvent && (
+                          <span className={`inline-flex items-center gap-1 text-xs font-medium ${n.status === 'sent' ? 'text-success' : 'text-destructive'}`}>
+                            {n.status === 'sent' ? <><Check size={12} /> Entregue</> : <><Trash2 size={12} /> Falhou</>}
+                          </span>
+                        )}
+                      </div>
+                      {n.details?.to && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          {n.details.role === 'cc' && <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium">CC</span>}
+                          {n.details.role === 'primary' && <span className="rounded-md border border-lime-300 bg-lime-50 px-1.5 py-0.5 text-[10px] font-medium text-lime-700">Principal</span>}
+                          {n.details.name && <span className="font-medium text-foreground">{n.details.name}</span>}
+                          {n.details.name && <span className="text-muted-foreground/50">·</span>}
+                          <span>{n.details.to}</span>
+                        </div>
+                      )}
+                      <div className="text-[10px] text-muted-foreground/60 mt-1">{new Date(n.sent_at).toLocaleString('pt-BR')}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

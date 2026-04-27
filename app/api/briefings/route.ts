@@ -74,6 +74,18 @@ export async function POST(req: NextRequest) {
       .select().single()
     if (clientError) return NextResponse.json({ error: clientError.message }, { status: 500 })
     clientId = newClient.id
+
+    // Create primary contact in client_contacts — source of truth for recipients
+    if (client.email?.trim()) {
+      await supabaseAdmin.from('client_contacts').insert({
+        client_id: clientId,
+        name: client.name?.trim() || client.company,
+        email: client.email.trim(),
+        whatsapp: client.phone?.trim() || null,
+        is_primary: true,
+        language: language || 'pt-BR',
+      }).select().maybeSingle()
+    }
   }
 
   const slug = generateSlug(client.company)
