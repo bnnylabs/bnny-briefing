@@ -235,9 +235,10 @@ export default function ClientesPage() {
     label: string
     key: keyof typeof newForm
     placeholder: string
+    hint?: string
   }[] = [
     { label: 'Empresa *', key: 'company', placeholder: 'Nome da empresa' },
-    { label: 'Nome do contato *', key: 'name', placeholder: 'Nome completo' },
+    { label: 'Contato principal *', key: 'name', placeholder: 'Nome completo', hint: 'Vira o contato primário — você adiciona mais depois' },
     { label: 'Email', key: 'email', placeholder: 'email@empresa.com' },
     { label: 'WhatsApp', key: 'phone', placeholder: '+55 47 99999-9999' },
     { label: 'Site', key: 'website', placeholder: 'https://empresa.com' },
@@ -496,6 +497,7 @@ export default function ClientesPage() {
                     }
                     placeholder={f.placeholder}
                   />
+                  {f.hint && <p className="text-[11px] text-muted-foreground">{f.hint}</p>}
                 </div>
               ))}
             </div>
