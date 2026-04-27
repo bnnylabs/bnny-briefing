@@ -406,19 +406,17 @@ export default function ClientesPage() {
               <Card
                 key={c.id}
                 className={cn(
-                  'group overflow-hidden p-0 transition-colors',
+                  'group overflow-hidden p-0 transition-colors cursor-pointer',
                   selectedIds.has(c.id) && 'border-primary/40 bg-primary/5',
                 )}
+                onClick={() => router.push(`/admin/clientes/${c.id}`)}
               >
                 <div className="flex items-stretch">
                   {/* ── Main clickable area ─────────────────────── */}
-                  <div
-                    className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 px-4 py-3"
-                    onClick={() => router.push(`/admin/clientes/${c.id}`)}
-                  >
+                  <div className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3">
                     <Checkbox
                       checked={selectedIds.has(c.id)}
-                      onCheckedChange={(v) => { toggleSelect(c.id); }}
+                      onCheckedChange={() => toggleSelect(c.id)}
                       onClick={(e) => e.stopPropagation()}
                       className="shrink-0"
                     />
@@ -480,14 +478,10 @@ export default function ClientesPage() {
                     </div>
                   </div>
 
-                  {/* ── Arrow button — border-left divider ──────── */}
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/admin/clientes/${c.id}`)}
-                    className="flex w-10 shrink-0 items-center justify-center border-l border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
+                  {/* ── Arrow — border-left, highlights on card hover ── */}
+                  <div className="flex w-10 shrink-0 items-center justify-center border-l border-border text-muted-foreground transition-colors group-hover:bg-muted group-hover:text-foreground">
                     <ArrowRight size={14} />
-                  </button>
+                  </div>
                 </div>
               </Card>
             ))}
