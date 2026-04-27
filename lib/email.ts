@@ -83,10 +83,15 @@ function renderLogo(logoUrl: string | undefined): string {
 }
 
 function renderButton(href: string, text: string): string {
-  // VML fallback would be ideal for Outlook desktop, but it adds 8 lines
-  // of conditional comments per button — skipping for now since Outlook
-  // still renders this as a colored rectangle, just without rounded corners.
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr><td style="border-radius:8px;background:${T.primary}"><a href="${escapeHtml(href)}" target="_blank" style="display:inline-block;padding:12px 22px;font-family:${FONT_STACK};font-size:14px;font-weight:600;color:${T.primaryFg};text-decoration:none;letter-spacing:-0.01em;line-height:1">${escapeHtml(text)}</a></td></tr></table>`
+  // Email clients (notably Apple Mail and Gmail iOS) override <a> styles
+  // and add the default link color + underline. Defense in depth:
+  //   1. !important on the <a> tag's color and text-decoration
+  //   2. -webkit-text-decoration explicit (Apple Mail uses webkit prefix)
+  //   3. Inner <span> with the same color + text-decoration:none — some
+  //      clients style the wrapper but leave inner spans alone
+  //   4. mso-padding-alt for legacy Outlook (table cell padding fallback)
+  const safeText = escapeHtml(text)
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr><td align="center" bgcolor="${T.primary}" style="border-radius:8px;background-color:${T.primary};mso-padding-alt:12px 22px"><a href="${escapeHtml(href)}" target="_blank" style="display:inline-block;padding:12px 22px;font-family:${FONT_STACK};font-size:14px;font-weight:600;color:${T.primaryFg} !important;text-decoration:none !important;-webkit-text-decoration:none !important;letter-spacing:-0.01em;line-height:1;border-radius:8px;mso-line-height-rule:exactly"><span style="color:${T.primaryFg};text-decoration:none">${safeText}</span></a></td></tr></table>`
 }
 
 interface MetaItem {
@@ -145,23 +150,42 @@ function renderTemplate(opts: TemplateOpts): string {
 <meta charset="UTF-8">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="format-detection" content="telephone=no">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="only light">
+<meta name="supported-color-schemes" content="only light">
+<meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
 <title>${escapeHtml(title)}</title>
+<style>
+  /* Force light scheme — most clients honor this when declared. Apple
+     Mail iOS dark mode is the stubborn outlier; the inline styles below
+     compensate for it where the meta tags don't. */
+  :root { color-scheme: only light; supported-color-schemes: only light; }
+  /* Apple Mail dark-mode-specific override — keep our colors stable. */
+  [data-ogsc] body, [data-ogsb] body { background:${T.bg} !important; }
+  /* Mobile tightening */
+  @media only screen and (max-width: 480px) {
+    .email-card { border-radius:0 !important; border-left:0 !important; border-right:0 !important }
+    .email-pad { padding:24px 22px 28px !important }
+    .email-header-pad { padding:20px 22px !important }
+    .email-footer-pad { padding:16px 22px !important }
+    .email-h1 { font-size:19px !important }
+  }
+</style>
 </head>
-<body style="margin:0;padding:0;background:${T.bg};font-family:${FONT_STACK};color:${T.fg};-webkit-font-smoothing:antialiased">
-${preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">${escapeHtml(preheader)}</div>` : ''}
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${T.bg}">
+<body bgcolor="${T.bg}" style="margin:0;padding:0;background:${T.bg};background-color:${T.bg};font-family:${FONT_STACK};color:${T.fg};-webkit-font-smoothing:antialiased;-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%">
+${preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;color:transparent">${escapeHtml(preheader)}</div>` : ''}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${T.bg}" style="background:${T.bg};background-color:${T.bg}">
   <tr>
     <td align="center" style="padding:32px 16px">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;background:${T.card};border:1px solid ${T.border};border-radius:12px;overflow:hidden">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="email-card" style="max-width:600px;width:100%;background:${T.card};background-color:${T.card};border:1px solid ${T.border};border-radius:12px;overflow:hidden">
         <tr>
-          <td style="padding:24px 32px;border-bottom:1px solid ${T.borderSubtle}">
+          <td class="email-header-pad" style="padding:24px 32px;border-bottom:1px solid ${T.borderSubtle};background:${T.card};background-color:${T.card}">
             ${renderLogo(logoUrl)}
           </td>
         </tr>
         <tr>
-          <td style="padding:32px 32px 36px">
-            <h1 style="margin:0 0 12px;font-family:${FONT_STACK};font-size:20px;font-weight:700;letter-spacing:-0.02em;color:${T.fg};line-height:1.3">${escapeHtml(title)}</h1>
+          <td class="email-pad" style="padding:32px 32px 36px;background:${T.card};background-color:${T.card}">
+            <h1 class="email-h1" style="margin:0 0 12px;font-family:${FONT_STACK};font-size:20px;font-weight:700;letter-spacing:-0.02em;color:${T.fg};line-height:1.3">${escapeHtml(title)}</h1>
             <div style="font-family:${FONT_STACK};font-size:15px;color:${T.fg};line-height:1.6">
               ${bodyHtml}
             </div>
@@ -173,7 +197,7 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:al
           </td>
         </tr>
         <tr>
-          <td style="padding:18px 32px;background:${T.bg};border-top:1px solid ${T.borderSubtle};font-family:${FONT_STACK};font-size:12px;color:${T.muted};text-align:center;line-height:1.5">
+          <td class="email-footer-pad" style="padding:18px 32px;background:${T.bg};background-color:${T.bg};border-top:1px solid ${T.borderSubtle};font-family:${FONT_STACK};font-size:12px;color:${T.muted};text-align:center;line-height:1.5">
             ${escapeHtml(footerText)}
           </td>
         </tr>

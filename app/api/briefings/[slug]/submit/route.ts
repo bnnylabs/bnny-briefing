@@ -81,7 +81,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     }
   }
 
-  // Email to admin
+  // Email to admin — always sent in admin's language (pt-BR), independent
+  // of the briefing's language. The admin is one person; the language
+  // mismatch when receiving emails for foreign-language briefings was
+  // surprising in screenshots.
   if (adminEmail) {
     await sendCompletionToAdmin({
       adminEmail,
@@ -91,7 +94,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       baseUrl,
       kind: isUpdate ? 'updated' : 'completed',
       changes,
-      language: lang,
+      language: 'pt-BR',
     })
     try { await supabaseAdmin.from('notifications').insert({ briefing_id: briefing.id, type: isUpdate ? 'update_admin' : 'email_admin', status: 'sent', details: { to: adminEmail } }) } catch (_e) {}
   }
