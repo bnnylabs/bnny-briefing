@@ -13,6 +13,7 @@ import {
 import { SOCIAL_NETWORKS } from './SocialIcons'
 import { AvatarUpload } from '@/components/admin/AvatarUpload'
 import { RecipientPickerModal } from '@/components/admin/RecipientPickerModal'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -923,17 +924,45 @@ export default function ClientePerfilPage() {
                               b.status === 'concluido' && 'border-success/30 bg-success/10 text-success',
                               b.status === 'em_andamento' && 'border-warning/30 bg-warning/10 text-warning',
                               b.status === 'visualizado' && 'border-info/30 bg-info/10 text-info',
-                              b.status === 'enviado' && 'border-border bg-muted text-muted-foreground',
+                              b.status === 'enviado' && 'border-info/30 bg-info/10 text-info',
                             )}>
                               <BriefingStatusIcon status={b.status} />
                               {BRIEFING_STATUS_LABELS[b.status]}
                             </span>
                             <span className="whitespace-nowrap text-xs text-muted-foreground">{fmt(b.created_at)}</span>
                             {b.completed_at && <span className="whitespace-nowrap text-xs text-muted-foreground">· concluído {fmt(b.completed_at)}</span>}
-                            {(b.recipients?.filter(r => r.role === 'cc').length ?? 0) > 0 && (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                                CC · {b.recipients!.filter(r => r.role === 'cc').length}
-                              </span>
+                            {(b.recipients?.length ?? 0) > 0 && (
+                              <TooltipProvider delayDuration={200}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex cursor-default items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                      <Send size={9} />
+                                      {b.recipients!.length}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="p-0">
+                                    <div className="min-w-44 p-2.5">
+                                      <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-foreground/50">Enviado para</div>
+                                      <div className="flex flex-col gap-1.5">
+                                        {b.recipients!.map((r, i) => (
+                                          <div key={i} className="flex items-center gap-2">
+                                            <div className="min-w-0 flex-1">
+                                              <div className="truncate text-xs font-medium text-background">{r.name}</div>
+                                              <div className="truncate text-[10px] text-background/60">{r.email}</div>
+                                            </div>
+                                            <span className={cn(
+                                              'shrink-0 rounded px-1 py-0 text-[9px] font-semibold uppercase',
+                                              r.role === 'primary' ? 'bg-lime-400/20 text-lime-300' : 'bg-white/10 text-background/70'
+                                            )}>
+                                              {r.role === 'primary' ? 'Principal' : 'CC'}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                           </div>
                         </div>

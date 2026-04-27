@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 import { useToast, ToastContainer } from '@/components/toast'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { SelectionBar } from '@/components/admin/SelectionBar'
@@ -16,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AvatarUpload } from '@/components/admin/AvatarUpload'
 import { RecipientPickerModal } from '@/components/admin/RecipientPickerModal'
 import {
@@ -75,8 +77,8 @@ function StatusIcon({ status, size = 11 }: { status: string; size?: number }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, 'muted' | 'outline' | 'warning' | 'success'> = {
-    enviado: 'outline', visualizado: 'muted', em_andamento: 'warning', concluido: 'success'
+  const variants: Record<string, 'info' | 'muted' | 'warning' | 'success'> = {
+    enviado: 'info', visualizado: 'muted', em_andamento: 'warning', concluido: 'success'
   }
   return (
     <Badge variant={variants[status] || 'muted'} className="text-[11px] font-medium whitespace-nowrap">
@@ -690,10 +692,44 @@ export default function AdminPage() {
                               <Pencil size={9} /> {b.update_count}x
                             </button>
                           )}
-                          {(b.recipients?.filter(r => r.role === 'cc').length ?? 0) > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                              CC · {b.recipients!.filter(r => r.role === 'cc').length}
-                            </span>
+                          {(b.recipients?.length ?? 0) > 0 && (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={() => viewNotifications(b)}
+                                    className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+                                  >
+                                    <Send size={9} />
+                                    {b.recipients!.length}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="p-0">
+                                  <div className="min-w-48 p-2.5">
+                                    <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-foreground/50">Enviado para</div>
+                                    <div className="flex flex-col gap-1.5">
+                                      {b.recipients!.map((r, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                          <div className="min-w-0 flex-1">
+                                            <div className="truncate text-xs font-medium text-background">{r.name}</div>
+                                            <div className="truncate text-[10px] text-background/60">{r.email}</div>
+                                          </div>
+                                          <span className={cn(
+                                            'shrink-0 rounded px-1 py-0 text-[9px] font-semibold uppercase',
+                                            r.role === 'primary' ? 'bg-lime-400/20 text-lime-300' : 'bg-white/10 text-background/70'
+                                          )}>
+                                            {r.role === 'primary' ? 'Principal' : 'CC'}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="mt-2 border-t border-white/10 pt-1.5 text-[10px] text-background/50">
+                                      Clique para ver histórico completo
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
                           <span className="text-[11px] text-muted-foreground/70">{b.clients?.name}</span>
                           <span className="text-[11px] text-muted-foreground/50">· {timeAgo(b.created_at)} ({fmt(b.created_at)})</span>
