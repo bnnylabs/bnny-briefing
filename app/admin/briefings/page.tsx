@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { AvatarUpload } from '@/components/admin/AvatarUpload'
 import {
   Select,
   SelectContent,
@@ -32,7 +33,7 @@ function toIsoDay(d: Date): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
-interface Client { id: string; name: string; company: string; email: string; phone: string }
+interface Client { id: string; name: string; company: string; email: string; phone: string; avatar_url?: string | null }
 interface Briefing {
   id: string; slug: string; type: string; type_label: string; status: string
   created_at: string; viewed_at: string | null; started_at: string | null
@@ -648,32 +649,64 @@ export default function AdminPage() {
               <div className="flex flex-col gap-2">
                 {filtered.map(b => (
                   <div key={b.id}
-                    className={`rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
-                    {/* Row: checkbox + company + actions */}
-                    <div className="flex items-center gap-2.5">
+                    className={`group rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/20 bg-muted' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
+                    <div className="flex items-center gap-3">
                       <Checkbox checked={selectedIds.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} className="shrink-0" />
-                      <button onClick={() => viewClientHistory(b.clients)}
-                        className="font-bold text-[15px] text-left flex-1 min-w-0 truncate hover:text-foreground transition-colors bg-transparent border-none p-0 cursor-pointer tracking-tight">
-                        {b.clients?.company}
-                      </button>
+                      <AvatarUpload
+                        url={b.clients?.avatar_url}
+                        name={b.clients?.company || '?'}
+                        size={36}
+                        shape="rounded"
+                        editable={false}
+                      />
+
+                      <div className="min-w-0 flex-1">
+                        {/* Row 1: company · type */}
+                        <div className="flex items-baseline gap-2">
+                          <button onClick={() => viewClientHistory(b.clients)}
+                            className="truncate text-sm font-semibold leading-snug text-left hover:text-foreground transition-colors bg-transparent border-none p-0 cursor-pointer">
+                            {b.clients?.company}
+                          </button>
+                          <span className="shrink-0 text-xs text-muted-foreground/70">{b.type_label}</span>
+                          {b.language === 'en-US' && (
+                            <span className="shrink-0 rounded-md border border-border bg-muted/60 px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">EN</span>
+                          )}
+                        </div>
+                        {/* Row 2: status + meta */}
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <StatusBadge status={b.status} />
+                          {(b.update_count || 0) > 0 && (
+                            <button onClick={() => openDiffModal(b)} title="Ver alterações"
+                              className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-foreground hover:bg-muted/40 transition-colors">
+                              <Pencil size={9} /> {b.update_count}x
+                            </button>
+                          )}
+                          {(b.recipients?.filter(r => r.role === 'cc').length ?? 0) > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              CC · {b.recipients!.filter(r => r.role === 'cc').length}
+                            </span>
+                          )}
+                          <span className="text-[11px] text-muted-foreground/70">{b.clients?.name}</span>
+                          <span className="text-[11px] text-muted-foreground/50">· {timeAgo(b.created_at)} ({fmt(b.created_at)})</span>
+                          {b.completed_at && <span className="text-[11px] text-muted-foreground/50">· concluído {fmt(b.completed_at)}</span>}
+                          {b.expires_at && new Date(b.expires_at) > new Date() && <span className="text-[11px] text-warning">· expira {fmt(b.expires_at)}</span>}
+                          {b.expires_at && new Date(b.expires_at) < new Date() && <span className="text-[11px] text-destructive">· expirado</span>}
+                        </div>
+                      </div>
 
                       {/* ── Actions ─────────────────────────────────── */}
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Primary CTA — only when completed */}
                         {b.status === 'concluido' && (
                           <Button variant="secondary" size="sm" onClick={() => viewResponses(b)}>
                             Ver respostas
                           </Button>
                         )}
-
-                        {/* Link copy — universally understood, stays visible */}
                         <IconButton
                           icon={copiedId === b.slug ? <Check size={14} /> : <Link size={14} />}
                           label="Copiar link"
                           onClick={() => copyLink(b.slug)}
                         />
 
-                        {/* ⋯ More actions dropdown */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button
@@ -684,7 +717,6 @@ export default function AdminPage() {
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-52">
-                            {/* Notification actions */}
                             {b.status !== 'concluido' && b.clients?.email && (
                               <DropdownMenuItem
                                 disabled={sendingResend === b.id}
@@ -713,7 +745,6 @@ export default function AdminPage() {
                             )}
                             {b.status !== 'concluido' && <DropdownMenuSeparator />}
 
-                            {/* Content actions */}
                             <DropdownMenuItem onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }}>
                               <FileText size={14} className={b.internal_notes ? 'text-foreground' : ''} />
                               Anotações internas
@@ -728,7 +759,6 @@ export default function AdminPage() {
                               Duplicar briefing
                             </DropdownMenuItem>
 
-                            {/* Lock — only for completed */}
                             {b.status === 'concluido' && (
                               <>
                                 <DropdownMenuSeparator />
@@ -756,29 +786,6 @@ export default function AdminPage() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                    </div>
-                    {/* Meta row */}
-                    <div className="flex items-center gap-2 mt-2.5 ml-[26px] flex-wrap">
-                      <StatusBadge status={b.status} />
-                      <Badge variant="outline" className="text-[11px] font-medium">{b.type_label}</Badge>
-                      {b.language === 'en-US' && <Badge variant="outline" className="text-[10px] font-medium uppercase tracking-wider">EN</Badge>}
-                      {(b.update_count || 0) > 0 && (
-                        <button onClick={() => openDiffModal(b)} title="Ver alterações"
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-muted hover:bg-muted/70 px-2 py-0.5 rounded-md cursor-pointer border border-border transition-colors">
-                          <Pencil size={10} /> {b.update_count}x
-                        </button>
-                      )}
-                      <span className="text-[11px] text-muted-foreground">{b.clients?.name}</span>
-                      {/* CC recipients indicator */}
-                      {(b.recipients?.filter(r => r.role === 'cc').length ?? 0) > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                          CC · {b.recipients!.filter(r => r.role === 'cc').length}
-                        </span>
-                      )}
-                      <span className="text-[11px] text-muted-foreground">· {timeAgo(b.created_at)} ({fmt(b.created_at)})</span>
-                      {b.completed_at && <span className="text-[11px] text-muted-foreground">· concluído {fmt(b.completed_at)}</span>}
-                      {b.expires_at && new Date(b.expires_at) > new Date() && <span className="text-[11px] text-warning">· expira {fmt(b.expires_at)}</span>}
-                      {b.expires_at && new Date(b.expires_at) < new Date() && <span className="text-[11px] text-destructive">· expirado</span>}
                     </div>
                   </div>
                 ))}
