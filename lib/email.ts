@@ -83,15 +83,17 @@ function renderLogo(logoUrl: string | undefined): string {
 }
 
 function renderButton(href: string, text: string): string {
-  // Email clients (notably Apple Mail and Gmail iOS) override <a> styles
-  // and add the default link color + underline. Defense in depth:
-  //   1. !important on the <a> tag's color and text-decoration
-  //   2. -webkit-text-decoration explicit (Apple Mail uses webkit prefix)
-  //   3. Inner <span> with the same color + text-decoration:none — some
-  //      clients style the wrapper but leave inner spans alone
-  //   4. mso-padding-alt for legacy Outlook (table cell padding fallback)
+  // Email clients (notably Apple Mail across all platforms) apply
+  // text-decoration:underline on <a> tags regardless of !important
+  // overrides. The trick that works: make the inner <span> a separate
+  // formatting context with display:inline-block — Apple Mail won't
+  // propagate the underline to the inline-block child, so the text
+  // renders clean.
+  //
+  // Defense in depth still applies: !important + -webkit-text-decoration
+  // on both the <a> and the <span> for clients that do honor them.
   const safeText = escapeHtml(text)
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr><td align="center" bgcolor="${T.primary}" style="border-radius:8px;background-color:${T.primary};mso-padding-alt:12px 22px"><a href="${escapeHtml(href)}" target="_blank" style="display:inline-block;padding:12px 22px;font-family:${FONT_STACK};font-size:14px;font-weight:600;color:${T.primaryFg} !important;text-decoration:none !important;-webkit-text-decoration:none !important;letter-spacing:-0.01em;line-height:1;border-radius:8px;mso-line-height-rule:exactly"><span style="color:${T.primaryFg};text-decoration:none">${safeText}</span></a></td></tr></table>`
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate"><tr><td align="center" bgcolor="${T.primary}" style="border-radius:8px;background-color:${T.primary};mso-padding-alt:12px 22px"><a href="${escapeHtml(href)}" target="_blank" style="display:inline-block;padding:12px 22px;font-family:${FONT_STACK};font-size:14px;font-weight:600;color:${T.primaryFg} !important;text-decoration:none !important;-webkit-text-decoration:none !important;letter-spacing:-0.01em;line-height:1;border-radius:8px;mso-line-height-rule:exactly"><span style="display:inline-block;color:${T.primaryFg};text-decoration:none !important;-webkit-text-decoration:none !important">${safeText}</span></a></td></tr></table>`
 }
 
 interface MetaItem {
@@ -270,15 +272,17 @@ export async function sendBriefingToClient({
     ? 'Your briefing is ready'
     : 'Seu briefing está pronto'
 
+  const fallbackLinkBlock = (label: string) => `<p style="margin:0;color:${T.muted};font-size:13px">${label}<br><a href="${escapeHtml(link)}" target="_blank" style="color:${T.muted} !important;text-decoration:underline;-webkit-text-decoration:underline;word-break:break-all">${escapeHtml(link)}</a></p>`
+
   const bodyHtml = isEN
     ? `<p style="margin:0 0 12px">Hello, <strong>${escapeHtml(clientName)}</strong>!</p>
        <p style="margin:0 0 12px">We've prepared a <strong>${escapeHtml(typeLabel)}</strong> briefing for <strong>${escapeHtml(company)}</strong>.</p>
        <p style="margin:0 0 12px">Some fields are pre-filled based on what we know — just review, complete the rest, and submit. Takes a few minutes.</p>
-       <p style="margin:0;color:${T.muted};font-size:13px">If the button below doesn't work, copy this link:<br><span style="word-break:break-all">${escapeHtml(link)}</span></p>`
+       ${fallbackLinkBlock("If the button below doesn't work, copy this link:")}`
     : `<p style="margin:0 0 12px">Olá, <strong>${escapeHtml(clientName)}</strong>!</p>
        <p style="margin:0 0 12px">Preparamos um briefing de <strong>${escapeHtml(typeLabel)}</strong> para a <strong>${escapeHtml(company)}</strong>.</p>
        <p style="margin:0 0 12px">Alguns campos já estão preenchidos com base no que sabemos. É só revisar, completar o que faltar e enviar. Leva poucos minutos.</p>
-       <p style="margin:0;color:${T.muted};font-size:13px">Se o botão abaixo não funcionar, copie o link:<br><span style="word-break:break-all">${escapeHtml(link)}</span></p>`
+       ${fallbackLinkBlock('Se o botão abaixo não funcionar, copie o link:')}`
 
   const ctaText = isEN ? 'Fill out briefing →' : 'Preencher briefing →'
   const preheader = isEN
