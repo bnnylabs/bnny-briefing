@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -22,6 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -110,8 +112,8 @@ export default function ClientesPage() {
     load()
   }, [load])
 
-  async function createClient(e: React.FormEvent) {
-    e.preventDefault()
+  async function createClient(e?: React.FormEvent) {
+    e?.preventDefault()
     if (!newForm.name || !newForm.company) return
     setSaving(true)
     const res = await fetch('/api/admin/clients', {
@@ -463,17 +465,16 @@ export default function ClientesPage() {
                       Ver
                       <ArrowRight className="ml-1 h-3.5 w-3.5" />
                     </Button>
-                    <Button
-                      variant="ghost"
+                    <IconButton
+                      icon={<Trash2 className="h-4 w-4" />}
+                      label="Excluir cliente"
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation()
                         setDeleteTarget(c)
                       }}
                       className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    />
                   </div>
                 </div>
               </Card>
@@ -484,30 +485,52 @@ export default function ClientesPage() {
 
       {/* NEW CLIENT */}
       <Dialog open={showNew} onOpenChange={setShowNew}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent
+          className="max-w-md gap-0 p-0"
+          onKeyDown={(e) => {
+            // Cmd/Ctrl+Enter submits the form
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              e.preventDefault()
+              if (newForm.name && newForm.company && !saving) {
+                createClient()
+              }
+            }
+          }}
+        >
+          <DialogHeader className="border-b border-border/60 px-6 py-5">
             <DialogTitle>Novo cliente</DialogTitle>
+            <DialogDescription>
+              Os dados ficam salvos pra você reutilizar em briefings futuros.
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={createClient} className="space-y-4">
-            {newClientFields.map((f) => (
-              <div key={f.key} className="space-y-1.5">
-                <Label
-                  htmlFor={`field-${f.key}`}
-                  className="text-xs uppercase tracking-wider text-muted-foreground"
-                >
-                  {f.label}
-                </Label>
-                <Input
-                  id={`field-${f.key}`}
-                  value={newForm[f.key]}
-                  onChange={(e) =>
-                    setNewForm((p) => ({ ...p, [f.key]: e.target.value }))
-                  }
-                  placeholder={f.placeholder}
-                />
-              </div>
-            ))}
-            <DialogFooter className="gap-2 pt-2 sm:gap-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              createClient()
+            }}
+          >
+            <div className="space-y-4 px-6 py-5">
+              {newClientFields.map((f, i) => (
+                <div key={f.key} className="space-y-1.5">
+                  <Label
+                    htmlFor={`field-${f.key}`}
+                    className="text-xs uppercase tracking-wider text-muted-foreground"
+                  >
+                    {f.label}
+                  </Label>
+                  <Input
+                    id={`field-${f.key}`}
+                    autoFocus={i === 0}
+                    value={newForm[f.key]}
+                    onChange={(e) =>
+                      setNewForm((p) => ({ ...p, [f.key]: e.target.value }))
+                    }
+                    placeholder={f.placeholder}
+                  />
+                </div>
+              ))}
+            </div>
+            <DialogFooter className="gap-2 border-t border-border/60 bg-muted/20 px-6 py-4 sm:gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -521,7 +544,7 @@ export default function ClientesPage() {
                 disabled={saving || !newForm.name || !newForm.company}
                 className="flex-1"
               >
-                {saving ? 'Criando...' : 'Criar e ver perfil →'}
+                {saving ? 'Criando…' : 'Criar e ver perfil'}
               </Button>
             </DialogFooter>
           </form>

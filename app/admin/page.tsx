@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 import { useToast, ToastContainer } from '@/components/toast'
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { BrandLogo } from '@/components/brand/BrandLogo'
-import { Pencil, FileText, Bell, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus } from 'lucide-react'
+import { Pencil, FileText, Bell, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -74,14 +75,25 @@ function Modal({ onClose, children, wide }: { onClose: () => void; children: Rea
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', h)
-    return () => document.removeEventListener('keydown', h)
+    // Lock body scroll while modal open
+    const orig = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', h)
+      document.body.style.overflow = orig
+    }
   }, [onClose])
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in-0 duration-150"
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className={`relative bg-card border border-border rounded-xl w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-[90vh] overflow-y-auto shadow-xl animate-in fade-in-0 zoom-in-95 duration-150 p-6`}
+      <div className={`relative bg-card border border-border rounded-xl w-full ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[88vh] overflow-y-auto shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1 duration-200 p-6`}
         onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all text-lg">×</button>
+        <button
+          onClick={onClose}
+          aria-label="Fechar"
+          className="absolute top-3.5 right-3.5 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+          <X size={15} strokeWidth={2} />
+        </button>
         {children}
       </div>
     </div>
@@ -504,6 +516,7 @@ export default function AdminPage() {
             <Button onClick={() => router.push('/admin/novo')}>
               <Plus size={14} />
               Novo briefing
+              <ArrowRight size={14} className="opacity-70" />
             </Button>
           </div>
 
@@ -629,38 +642,75 @@ export default function AdminPage() {
                         {b.clients?.company}
                       </button>
                       <div className="flex items-center gap-1 shrink-0">
-                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(b)} title="Editar"><Pencil size={13} /></Button>
-                        <Button variant="ghost" size="icon-sm" className={b.internal_notes ? 'text-foreground' : ''}
-                          onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }} title="Anotações"><FileText size={13} /></Button>
-                        <Button variant="ghost" size="icon-sm" onClick={() => viewNotifications(b)} title="Envios"><Bell size={13} /></Button>
-                        <Button variant="ghost" size="icon-sm" disabled={duplicating === b.id} onClick={() => duplicateBriefing(b)} title="Duplicar">
-                          <Copy size={13} />
-                        </Button>
+                        <IconButton
+                          icon={<Pencil size={13} />}
+                          label="Editar cliente"
+                          onClick={() => openEdit(b)}
+                        />
+                        <IconButton
+                          icon={<FileText size={13} />}
+                          label={b.internal_notes ? 'Anotações (preenchidas)' : 'Anotações'}
+                          className={b.internal_notes ? 'text-foreground' : ''}
+                          onClick={() => { setNotesBriefing(b); setNotesText(b.internal_notes || '') }}
+                        />
+                        <IconButton
+                          icon={<Bell size={13} />}
+                          label="Histórico de envios"
+                          onClick={() => viewNotifications(b)}
+                        />
+                        <IconButton
+                          icon={<Copy size={13} />}
+                          label="Duplicar briefing"
+                          disabled={duplicating === b.id}
+                          onClick={() => duplicateBriefing(b)}
+                        />
                         {b.status !== 'concluido' && b.clients?.email && (
-                          <Button variant="ghost" size="sm" className={reminderSent === b.id + '_resend' ? 'text-foreground' : ''}
-                            disabled={sendingResend === b.id} onClick={() => resendEmail(b)} title="Reenviar email">
-                            {sendingResend === b.id ? <RefreshCw size={13} className="animate-spin" /> : reminderSent === b.id + '_resend' ? <Check size={13} /> : <Mail size={13} />}
-                          </Button>
+                          <IconButton
+                            icon={
+                              sendingResend === b.id ? <RefreshCw size={13} className="animate-spin" /> :
+                              reminderSent === b.id + '_resend' ? <Check size={13} /> :
+                              <Mail size={13} />
+                            }
+                            label="Reenviar email"
+                            className={reminderSent === b.id + '_resend' ? 'text-foreground' : ''}
+                            disabled={sendingResend === b.id}
+                            onClick={() => resendEmail(b)}
+                          />
                         )}
                         {b.status !== 'concluido' && (
-                          <Button variant="ghost" size="icon-sm" className={reminderSent === b.id ? 'text-foreground' : ''}
-                            disabled={sendingReminder === b.id} onClick={() => sendReminder(b)} title="Lembrete">
-                            {sendingReminder === b.id ? <RefreshCw size={13} className="animate-spin" /> : reminderSent === b.id ? <Check size={13} /> : <Bell size={13} />}
-                          </Button>
+                          <IconButton
+                            icon={
+                              sendingReminder === b.id ? <RefreshCw size={13} className="animate-spin" /> :
+                              reminderSent === b.id ? <Check size={13} /> :
+                              <Bell size={13} />
+                            }
+                            label="Enviar lembrete"
+                            className={reminderSent === b.id ? 'text-foreground' : ''}
+                            disabled={sendingReminder === b.id}
+                            onClick={() => sendReminder(b)}
+                          />
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => copyLink(b.slug)} title="Copiar link">
-                          {copiedId === b.slug ? <Check size={13} /> : <Link size={13} />}
-                        </Button>
+                        <IconButton
+                          icon={copiedId === b.slug ? <Check size={13} /> : <Link size={13} />}
+                          label="Copiar link"
+                          onClick={() => copyLink(b.slug)}
+                        />
                         {b.status === 'concluido' && (
                           <>
                             <Button variant="secondary" size="sm" onClick={() => viewResponses(b)}>Ver respostas</Button>
-                            <Button variant="ghost" size="icon-sm" title={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
-                              onClick={() => toggleEditingLock(b.slug, !!b.editing_locked)}>
-                              {b.editing_locked ? <Unlock size={13} /> : <Lock size={13} />}
-                            </Button>
+                            <IconButton
+                              icon={b.editing_locked ? <Unlock size={13} /> : <Lock size={13} />}
+                              label={b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
+                              onClick={() => toggleEditingLock(b.slug, !!b.editing_locked)}
+                            />
                           </>
                         )}
-                        <Button variant="ghost" size="icon-sm" className="text-destructive/70 hover:text-destructive" onClick={() => setDeleteBriefing(b)}><Trash2 size={13} /></Button>
+                        <IconButton
+                          icon={<Trash2 size={13} />}
+                          label="Excluir"
+                          className="text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteBriefing(b)}
+                        />
                       </div>
                     </div>
                     {/* Meta row */}
@@ -798,23 +848,32 @@ export default function AdminPage() {
       {/* ── EDIT CLIENT ──────────────────────────────────────────────── */}
       {editBriefing && (
         <Modal onClose={() => setEditBriefing(null)}>
-          <div className="mb-5">
-            <div className="font-bold text-lg">Editar cliente</div>
-            <div className="text-xs text-muted-foreground mt-0.5">Após salvar, copie o link e reenvie se necessário</div>
-          </div>
-          <div className="flex flex-col gap-4">
-            {[{ label: 'Empresa', key: 'company' as const }, { label: 'Nome', key: 'name' as const }, { label: 'Email', key: 'email' as const }, { label: 'WhatsApp', key: 'phone' as const }].map(f => (
-              <div key={f.key}>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">{f.label}</label>
-                <Input value={editForm[f.key]} onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
-              </div>
-            ))}
-            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground inline-flex items-center gap-1.5">
-              <Link size={12} /> Após salvar, copie o link e reenvie o briefing.
+          <div
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault()
+                if (!savingEdit) saveEdit()
+              }
+            }}
+          >
+            <div className="mb-5">
+              <div className="font-bold text-lg tracking-tight">Editar cliente</div>
+              <div className="text-sm text-muted-foreground mt-0.5">Após salvar, copie o link e reenvie se necessário.</div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setEditBriefing(null)} className="flex-1">Cancelar</Button>
-              <Button onClick={saveEdit} disabled={savingEdit} className="flex-[2]">{savingEdit ? 'Salvando...' : 'Salvar'}</Button>
+            <div className="flex flex-col gap-4">
+              {[{ label: 'Empresa', key: 'company' as const }, { label: 'Nome', key: 'name' as const }, { label: 'Email', key: 'email' as const }, { label: 'WhatsApp', key: 'phone' as const }].map((f, i) => (
+                <div key={f.key} className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">{f.label}</label>
+                  <Input autoFocus={i === 0} value={editForm[f.key]} onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
+                </div>
+              ))}
+              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground inline-flex items-center gap-1.5">
+                <Link size={12} /> Após salvar, copie o link e reenvie o briefing.
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setEditBriefing(null)} className="flex-1">Cancelar</Button>
+                <Button onClick={saveEdit} disabled={savingEdit} className="flex-1">{savingEdit ? 'Salvando…' : 'Salvar'}</Button>
+              </div>
             </div>
           </div>
         </Modal>
@@ -823,14 +882,29 @@ export default function AdminPage() {
       {/* ── NOTES ────────────────────────────────────────────────────── */}
       {notesBriefing && (
         <Modal onClose={() => setNotesBriefing(null)}>
-          <div className="font-bold text-lg mb-0.5">Anotações internas</div>
-          <div className="text-xs text-muted-foreground mb-4">Visível só para você — o cliente não vê</div>
-          <textarea value={notesText} onChange={e => setNotesText(e.target.value)}
-            placeholder="Anote qualquer informação sobre este briefing..."
-            className="w-full min-h-[140px] bg-secondary border border-border rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-4" />
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setNotesBriefing(null)} className="flex-1">Cancelar</Button>
-            <Button onClick={saveNotes} disabled={savingNotes} className="flex-[2]">{savingNotes ? 'Salvando...' : 'Salvar anotação'}</Button>
+          <div
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault()
+                if (!savingNotes) saveNotes()
+              }
+            }}
+          >
+            <div className="mb-4">
+              <div className="font-bold text-lg tracking-tight">Anotações internas</div>
+              <div className="text-sm text-muted-foreground mt-0.5">Visível só para você — o cliente não vê.</div>
+            </div>
+            <textarea
+              autoFocus
+              value={notesText}
+              onChange={e => setNotesText(e.target.value)}
+              placeholder="Anote qualquer informação sobre este briefing..."
+              className="w-full min-h-[140px] bg-card border border-border rounded-md px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-4"
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setNotesBriefing(null)} className="flex-1">Cancelar</Button>
+              <Button onClick={saveNotes} disabled={savingNotes} className="flex-1">{savingNotes ? 'Salvando…' : 'Salvar'}</Button>
+            </div>
           </div>
         </Modal>
       )}
@@ -838,8 +912,10 @@ export default function AdminPage() {
       {/* ── NOTIFICATIONS ────────────────────────────────────────────── */}
       {notifBriefing && (
         <Modal onClose={() => { setNotifBriefing(null); setNotifHistory([]) }}>
-          <div className="font-bold text-lg mb-0.5">Histórico de envios</div>
-          <div className="text-xs text-muted-foreground mb-4">{notifBriefing.clients?.company} · {notifBriefing.type_label}</div>
+          <div className="mb-4">
+            <div className="font-bold text-lg tracking-tight">Histórico de envios</div>
+            <div className="text-sm text-muted-foreground mt-0.5">{notifBriefing.clients?.company} · {notifBriefing.type_label}</div>
+          </div>
           {notifBriefing.clients?.email && (
             <div className="rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm mb-4 inline-flex items-center gap-2">
               <Mail size={14} className="text-muted-foreground" /> Email: <span className="font-semibold">{notifBriefing.clients.email}</span>
@@ -880,12 +956,12 @@ export default function AdminPage() {
         <Modal onClose={() => setDeleteBriefing(null)}>
           <div className="text-center py-2">
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mx-auto mb-4"><Trash2 size={22} className="text-destructive" /></div>
-            <div className="font-bold text-lg mb-1">Excluir briefing?</div>
+            <div className="font-bold text-lg tracking-tight mb-1">Excluir briefing?</div>
             <div className="text-sm text-muted-foreground mb-1"><span className="font-semibold text-foreground">{deleteBriefing.clients?.company}</span> — {deleteBriefing.type_label}</div>
-            <div className="text-xs text-muted-foreground mb-6">Esta ação não pode ser desfeita.</div>
+            <div className="text-sm text-muted-foreground mb-6">Esta ação não pode ser desfeita.</div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setDeleteBriefing(null)} className="flex-1">Cancelar</Button>
-              <Button variant="destructive" onClick={confirmDelete} disabled={deleting} className="flex-1">{deleting ? 'Excluindo...' : 'Sim, excluir'}</Button>
+              <Button variant="destructive" onClick={confirmDelete} disabled={deleting} className="flex-1">{deleting ? 'Excluindo…' : 'Sim, excluir'}</Button>
             </div>
           </div>
         </Modal>
@@ -896,11 +972,11 @@ export default function AdminPage() {
         <Modal onClose={() => setBatchDeleteConfirm(false)}>
           <div className="text-center py-2">
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mx-auto mb-4"><Trash2 size={22} className="text-destructive" /></div>
-            <div className="font-bold text-lg mb-1">Excluir {selectedIds.size} briefings?</div>
-            <div className="text-xs text-muted-foreground mb-6">Esta ação não pode ser desfeita.</div>
+            <div className="font-bold text-lg tracking-tight mb-1">Excluir {selectedIds.size} briefings?</div>
+            <div className="text-sm text-muted-foreground mb-6">Esta ação não pode ser desfeita.</div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setBatchDeleteConfirm(false)} className="flex-1">Cancelar</Button>
-              <Button variant="destructive" onClick={confirmBatchDelete} disabled={batchDeleting} className="flex-1">{batchDeleting ? 'Excluindo...' : `Excluir ${selectedIds.size}`}</Button>
+              <Button variant="destructive" onClick={confirmBatchDelete} disabled={batchDeleting} className="flex-1">{batchDeleting ? 'Excluindo…' : `Excluir ${selectedIds.size}`}</Button>
             </div>
           </div>
         </Modal>

@@ -71,9 +71,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           >
             {/* +15% size vs Phase 2 (h-5 → h-6) */}
             <BrandLogo className="h-6 w-auto" />
-            <div className="mt-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
-              {fullVersion()}
-            </div>
           </Link>
         }
         footer={<UserProfileFooter />}
@@ -192,6 +189,12 @@ function UserProfileFooter() {
         <LogOut size={13} strokeWidth={1.75} />
         <span>{loggingOut ? 'Saindo…' : 'Sair'}</span>
       </button>
+
+      {/* Build identifier — sits at the very bottom so every deploy is
+          visibly different. Stays subtle and out of the way. */}
+      <div className="px-2.5 pt-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">
+        {fullVersion()}
+      </div>
     </div>
   )
 }

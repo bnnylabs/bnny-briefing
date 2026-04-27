@@ -28,6 +28,7 @@ import {
 } from '@/lib/briefing-types'
 
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -375,9 +376,12 @@ function NovoBriefingContent() {
       {/* Header */}
       <div className="mx-auto max-w-3xl px-6 pt-6">
         <div className="mb-3 flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={handleBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+          <IconButton
+            icon={<ArrowLeft className="h-4 w-4" />}
+            label="Voltar"
+            size="icon"
+            onClick={handleBack}
+          />
           <h1 className="font-mono text-xl font-bold tracking-tight">
             {clientId && clientForm.company
               ? `${clientForm.company} / Novo Briefing`

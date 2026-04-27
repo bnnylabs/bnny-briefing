@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, ReactNode } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft,
+  ArrowRight,
   Bot,
   Check,
   CheckCircle2,
@@ -31,6 +32,7 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -39,6 +41,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 
 import { useToast, ToastContainer } from '@/components/toast'
@@ -573,20 +576,20 @@ export default function ClientePerfilPage() {
         {/* Page header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <Button
-              variant="ghost"
+            <IconButton
+              icon={<ArrowLeft className="h-4 w-4" />}
+              label="Voltar"
               size="icon"
               onClick={() => router.push('/admin/clientes')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+            />
             <h1 className="truncate font-mono text-xl font-bold tracking-tight">
               {client.company}
             </h1>
           </div>
           <Button onClick={newBriefing} className="shrink-0">
-            <Plus className="mr-1.5 h-4 w-4" />
+            <Plus className="h-4 w-4" />
             Novo briefing
+            <ArrowRight className="h-3.5 w-3.5 opacity-70" />
           </Button>
         </div>
 
@@ -948,24 +951,24 @@ export default function ClientePerfilPage() {
                           >
                             Ver respostas
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              toggleLock(b.slug, !!b.editing_locked)
+                          <IconButton
+                            icon={
+                              b.editing_locked ? (
+                                <Unlock className="h-4 w-4" />
+                              ) : (
+                                <Lock className="h-4 w-4" />
+                              )
                             }
-                            title={
+                            label={
                               b.editing_locked
                                 ? 'Liberar edição'
                                 : 'Bloquear edição'
                             }
-                          >
-                            {b.editing_locked ? (
-                              <Unlock className="h-4 w-4" />
-                            ) : (
-                              <Lock className="h-4 w-4" />
-                            )}
-                          </Button>
+                            size="icon"
+                            onClick={() =>
+                              toggleLock(b.slug, !!b.editing_locked)
+                            }
+                          />
                         </>
                       )}
                     </div>
@@ -990,9 +993,9 @@ export default function ClientePerfilPage() {
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{client?.company}</DialogTitle>
-            <div className="text-xs text-muted-foreground">
+            <DialogDescription>
               Respostas do briefing
-            </div>
+            </DialogDescription>
           </DialogHeader>
 
           <div className="mb-4 mt-2 flex gap-2">

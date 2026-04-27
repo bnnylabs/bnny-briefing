@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
@@ -176,13 +177,12 @@ export default function ConfigPage() {
 
       <div className="mx-auto max-w-3xl p-6">
         <div className="mb-6 flex items-center gap-2">
-          <Button
-            variant="ghost"
+          <IconButton
+            icon={<ArrowLeft className="h-4 w-4" />}
+            label="Voltar"
             size="icon"
             onClick={() => router.push('/admin')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+          />
           <div>
             <h1 className="font-mono text-xl font-bold tracking-tight">
               Configurações

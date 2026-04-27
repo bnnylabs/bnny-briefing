@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 
 interface ActivityLog {
   id: string
@@ -65,13 +66,12 @@ export default function ActivityLogPage() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl p-6">
         <div className="mb-6 flex items-center gap-2">
-          <Button
-            variant="ghost"
+          <IconButton
+            icon={<ArrowLeft className="h-4 w-4" />}
+            label="Voltar"
             size="icon"
             onClick={() => router.push('/admin')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+          />
           <div>
             <h1 className="font-mono text-xl font-bold tracking-tight">
               Log de atividades
