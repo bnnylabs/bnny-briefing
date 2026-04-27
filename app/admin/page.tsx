@@ -8,7 +8,6 @@ import {
   Bell,
   Bot,
   CheckCircle2,
-  ClipboardList,
   Clock,
   FileText,
   Pencil,
@@ -16,7 +15,6 @@ import {
   Send,
   Trash2,
   TrendingUp,
-  Users,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -263,14 +261,29 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
       <ToastContainer toasts={toasts} remove={remove} />
 
       <div className="mx-auto max-w-5xl p-6">
-        {/* Greeting */}
-        <div className="mb-7">
-          <h1 className="font-mono text-2xl font-bold tracking-tight">
-            {greeting}, {profile?.name?.split(' ')[0] || 'Bnny'}
-          </h1>
-          <p className="mt-1 text-sm capitalize text-muted-foreground">
-            {today}
-          </p>
+        {/* Greeting + primary CTA */}
+        <div className="mb-7 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="font-mono text-2xl font-bold tracking-tight">
+              {greeting}, {profile?.name?.split(' ')[0] || 'Bnny'}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="capitalize">{today}</span>
+              {awaitingYou.length > 0 && (
+                <>
+                  {' · '}
+                  <span className="text-foreground">
+                    {awaitingYou.length} briefing{awaitingYou.length > 1 ? 's' : ''} pra revisar
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+          <Button onClick={() => router.push('/admin/novo')} className="shrink-0">
+            <Plus size={14} />
+            Novo briefing
+            <ArrowRight size={14} className="opacity-70" />
+          </Button>
         </div>
 
         {/* Cards row */}
@@ -431,29 +444,6 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
             </ol>
           )}
         </Card>
-
-        {/* Quick actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => router.push('/admin/novo')}>
-            <Plus size={14} />
-            Novo briefing
-            <ArrowRight size={14} className="opacity-70" />
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => router.push('/admin/clientes')}
-          >
-            <Users size={14} />
-            Gerenciar clientes
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => router.push('/admin/briefings')}
-          >
-            <ClipboardList size={14} />
-            Ver todos os briefings
-          </Button>
-        </div>
       </div>
     </div>
   )
