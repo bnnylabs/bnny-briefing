@@ -223,7 +223,8 @@ export default function ClientesPage() {
       key: 'with_ai',
       label: (
         <span className="inline-flex items-center gap-1">
-          Com IA <Bot size={11} />
+          Com IA
+          <Bot size={11} strokeWidth={1.75} />
         </span>
       ),
       count: clients.filter(filterFns.with_ai).length,
@@ -258,25 +259,28 @@ export default function ClientesPage() {
           </Button>
         </div>
 
-        {/* Stats */}
-        <div className="mb-6 grid grid-cols-3 gap-3">
-          {[
-            { label: 'Total de clientes', value: clients.length },
-            {
-              label: 'Com briefing',
-              value: clients.filter((c) => c.stats.total > 0).length,
-            },
-            {
-              label: 'Briefings concluídos',
-              value: clients.reduce((a, c) => a + c.stats.concluido, 0),
-            },
-          ].map((s) => (
-            <Card key={s.label} className="p-4">
-              <div className="font-mono text-2xl font-bold">{s.value}</div>
-              <div className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">
+        {/* Stats grid — clickable filters, same visual as /admin/briefings */}
+        <div className="mb-5 grid grid-cols-4 gap-2">
+          {filterLabels.map((s) => (
+            <button
+              key={s.key}
+              onClick={() =>
+                setFilter((prev) => (prev === s.key ? 'all' : s.key))
+              }
+              className={cn(
+                'rounded-lg border p-3.5 text-left transition-colors duration-100',
+                filter === s.key
+                  ? 'border-foreground/20 bg-muted'
+                  : 'border-border bg-card hover:border-border/70 hover:bg-muted/30',
+              )}
+            >
+              <div className="font-mono text-2xl font-bold leading-none tabular-nums text-foreground">
+                {s.count}
+              </div>
+              <div className="mt-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
                 {s.label}
               </div>
-            </Card>
+            </button>
           ))}
         </div>
 
@@ -288,7 +292,7 @@ export default function ClientesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar empresa, nome ou email..."
-              className="pl-9"
+              className="bg-card pl-9"
             />
           </div>
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
@@ -301,24 +305,6 @@ export default function ClientesPage() {
               <SelectItem value="briefings">Mais briefings</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-
-        {/* Filter pills */}
-        <div className="mb-4 flex flex-wrap gap-2">
-          {filterLabels.map(({ key, label, count }) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key)}
-              className={cn(
-                'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition-colors',
-                filter === key
-                  ? 'border-foreground/20 bg-muted font-medium text-foreground'
-                  : 'border-border bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground',
-              )}
-            >
-              {label} <span className="opacity-70">({count})</span>
-            </button>
-          ))}
         </div>
 
         {/* Batch selection bar — same component as /admin/briefings */}

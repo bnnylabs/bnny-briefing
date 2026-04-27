@@ -252,6 +252,9 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
     sentThisWeek === 0
       ? 0
       : Math.round((concludedThisWeek / sentThisWeek) * 100)
+  // All-time count — surfaces the lifetime metric that used to live as a
+  // decorative stat on /admin/clientes.
+  const totalConcluded = briefings.filter((b) => b.status === 'concluido').length
 
   const timelineItems = buildTimeline(briefings, activity).slice(0, 8)
 
@@ -375,6 +378,14 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
                 value={`${conversionRate}%`}
                 muted={sentThisWeek === 0}
               />
+            </div>
+            {/* Lifetime metric — moved here from /admin/clientes where it
+                was a decorative stat that didn't filter anything. */}
+            <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-xs text-muted-foreground">
+              <span>Total concluídos</span>
+              <span className="font-mono font-medium tabular-nums text-foreground">
+                {totalConcluded}
+              </span>
             </div>
           </DashCard>
         </div>

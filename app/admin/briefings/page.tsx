@@ -12,6 +12,13 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 /** Format Date as YYYY-MM-DD string in local time, matching the existing date filter format */
 function toIsoDay(d: Date): string {
@@ -177,6 +184,7 @@ export default function AdminPage() {
   const [briefings, setBriefings] = useState<Briefing[]>([])
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'company'>('recent')
   const [search, setSearch] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -380,13 +388,36 @@ export default function AdminPage() {
     setClientHistoryBriefings(briefings.filter(b => b.clients?.id === client.id))
   }
 
-  const filtered = briefings.filter(b => {
-    if (statusFilter !== 'all' && b.status !== statusFilter) return false
-    if (search) { const q = search.toLowerCase(); if (!b.clients?.company?.toLowerCase().includes(q) && !b.clients?.name?.toLowerCase().includes(q) && !b.type_label?.toLowerCase().includes(q)) return false }
-    if (dateFrom && new Date(b.created_at) < new Date(dateFrom)) return false
-    if (dateTo && new Date(b.created_at) > new Date(dateTo + 'T23:59:59')) return false
-    return true
-  })
+  type SortKey = 'recent' | 'oldest' | 'company'
+  // Sort + filter chain — applies status filter, search, date range, then sorts.
+  const filtered = briefings
+    .filter((b) => {
+      if (statusFilter !== 'all' && b.status !== statusFilter) return false
+      if (search) {
+        const q = search.toLowerCase()
+        if (
+          !b.clients?.company?.toLowerCase().includes(q) &&
+          !b.clients?.name?.toLowerCase().includes(q) &&
+          !b.type_label?.toLowerCase().includes(q)
+        )
+          return false
+      }
+      if (dateFrom && new Date(b.created_at) < new Date(dateFrom)) return false
+      if (dateTo && new Date(b.created_at) > new Date(dateTo + 'T23:59:59'))
+        return false
+      return true
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        case 'company':
+          return (a.clients?.company || '').localeCompare(b.clients?.company || '')
+        case 'recent':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+    })
 
   // No auth UI here — if loadBriefings hits 401 it redirects to /admin where
   // the login form lives. While loading, show a minimal spinner.
@@ -506,6 +537,16 @@ export default function AdminPage() {
                 <Input value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar cliente, empresa ou tipo..." className="pl-9 bg-card" />
               </div>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as 'recent' | 'oldest' | 'company')}>
+                <SelectTrigger className="w-44 shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">Mais recentes</SelectItem>
+                  <SelectItem value="oldest">Mais antigos</SelectItem>
+                  <SelectItem value="company">A → Z</SelectItem>
+                </SelectContent>
+              </Select>
               <DateRangePicker
                 value={
                   dateFrom || dateTo
