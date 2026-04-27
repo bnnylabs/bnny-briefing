@@ -69,8 +69,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             className="block w-full"
             aria-label="Bnny Labs — voltar ao início"
           >
-            {/* +15% size vs Phase 2 (h-5 → h-6) */}
-            <BrandLogo className="h-6 w-auto" />
+            {/* +20% size vs phase 2.2 (h-6 → h-7) */}
+            <BrandLogo className="h-7 w-auto" />
           </Link>
         }
         footer={<UserProfileFooter />}
