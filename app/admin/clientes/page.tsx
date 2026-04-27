@@ -422,7 +422,7 @@ export default function ClientesPage() {
                 key={c.id}
                 className={cn(
                   'group overflow-hidden p-0 transition-colors cursor-pointer hover:border-border/70 hover:bg-muted/30',
-                  selectedIds.has(c.id) && 'border-foreground/15 bg-muted/50',
+                  selectedIds.has(c.id) && 'border-foreground/15 bg-muted/50 hover:bg-muted/60',
                 )}
                 onClick={() => router.push(`/admin/clientes/${c.id}`)}
               >

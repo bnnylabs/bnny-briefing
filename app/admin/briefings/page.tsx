@@ -675,7 +675,7 @@ export default function AdminPage() {
               <div className="flex flex-col gap-2">
                 {filtered.map(b => (
                   <div key={b.id}
-                    className={`group rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/15 bg-muted/50' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
+                    className={`group rounded-lg border px-4 py-3 transition-colors duration-100 ${selectedIds.has(b.id) ? 'border-foreground/15 bg-muted/50 hover:bg-muted/60' : 'border-border bg-card hover:border-border/70 hover:bg-muted/30'}`}>
                     <div className="flex items-center gap-3">
                       <Checkbox checked={selectedIds.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} className="shrink-0 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background" />
                       <AvatarUpload
