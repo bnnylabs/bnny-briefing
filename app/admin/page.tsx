@@ -6,15 +6,12 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowRight,
   Bell,
-  Bot,
   CheckCircle2,
-  Clock,
   FileText,
   Pencil,
   Plus,
   Send,
   Trash2,
-  TrendingUp,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -250,9 +247,35 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
     sentThisWeek === 0
       ? 0
       : Math.round((concludedThisWeek / sentThisWeek) * 100)
-  // All-time count — surfaces the lifetime metric that used to live as a
-  // decorative stat on /admin/clientes.
-  const totalConcluded = briefings.filter((b) => b.status === 'concluido').length
+
+  // Average completion time across every concluded briefing — measures
+  // how long clients typically take from receiving the link to finishing.
+  // Lifetime, not weekly, so the metric is stable as the operation grows.
+  const completedBriefings = briefings.filter((b) => b.completed_at)
+  const avgCompletionMs =
+    completedBriefings.length === 0
+      ? null
+      : completedBriefings.reduce((sum, b) => {
+          return (
+            sum +
+            (new Date(b.completed_at!).getTime() -
+              new Date(b.created_at).getTime())
+          )
+        }, 0) / completedBriefings.length
+
+  // 7-day sparkline: count of briefings sent on each of the last 7 days,
+  // oldest → newest left to right. Plotted as bars below.
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const day = new Date()
+    day.setDate(day.getDate() - (6 - i))
+    day.setHours(0, 0, 0, 0)
+    const next = new Date(day)
+    next.setDate(next.getDate() + 1)
+    return briefings.filter((b) => {
+      const t = new Date(b.created_at).getTime()
+      return t >= day.getTime() && t < next.getTime()
+    }).length
+  })
 
   const timelineItems = buildTimeline(briefings, activity).slice(0, 8)
 
@@ -286,22 +309,143 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
           </Button>
         </div>
 
-        {/* Cards row */}
-        <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <DashCard
-            title="Aguardando você"
-            description="Briefings concluídos pra revisar"
-            count={awaitingYou.length}
-          >
-            {awaitingYou.length === 0 ? (
-              <EmptyMini text="Nada pendente — você está em dia." />
-            ) : (
-              <ul className="space-y-2">
-                {awaitingYou.map((b) => (
+        {/* KPI row — three focused metrics, no actions */}
+        <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+          {/* Taxa semanal */}
+          <Card className="flex h-full flex-col p-5">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Taxa semanal
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Concluídos vs enviados
+            </p>
+            <div className="mt-5 flex flex-1 flex-col justify-end">
+              <div className="font-mono text-3xl font-bold leading-none tabular-nums">
+                {sentThisWeek === 0 ? '—' : `${conversionRate}%`}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {sentThisWeek === 0
+                  ? 'Sem envios na semana'
+                  : `${concludedThisWeek} de ${sentThisWeek} ${sentThisWeek === 1 ? 'envio' : 'envios'}`}
+              </p>
+            </div>
+          </Card>
+
+          {/* Tempo médio até concluir */}
+          <Card className="flex h-full flex-col p-5">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Tempo médio
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Até o cliente concluir
+            </p>
+            <div className="mt-5 flex flex-1 flex-col justify-end">
+              <div className="font-mono text-3xl font-bold leading-none tabular-nums">
+                {formatDuration(avgCompletionMs)}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {completedBriefings.length === 0
+                  ? 'Sem briefings concluídos ainda'
+                  : `${completedBriefings.length} ${completedBriefings.length === 1 ? 'briefing' : 'briefings'} considerado${completedBriefings.length === 1 ? '' : 's'}`}
+              </p>
+            </div>
+          </Card>
+
+          {/* Atividade 7 dias */}
+          <Card className="flex h-full flex-col p-5">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Atividade
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Volume dos últimos 7 dias
+            </p>
+            <div className="mt-5 flex flex-1 flex-col justify-end">
+              <Sparkline data={last7Days} />
+              <p className="mt-2 text-xs text-muted-foreground">
+                {sentThisWeek} {sentThisWeek === 1 ? 'enviado' : 'enviados'}
+                {' · '}
+                {concludedThisWeek}{' '}
+                {concludedThisWeek === 1 ? 'concluído' : 'concluídos'}
+              </p>
+            </div>
+          </Card>
+        </div>
+
+        {/* Queue: awaiting your review */}
+        <Card className="mb-3 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <div className="text-[15px] font-bold tracking-tight">
+                Pra você revisar
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Briefings concluídos pelos clientes
+              </p>
+            </div>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              {awaitingYou.length}
+            </span>
+          </div>
+          {awaitingYou.length === 0 ? (
+            <EmptyMini text="Nada pendente — você está em dia." />
+          ) : (
+            <ul className="space-y-1">
+              {awaitingYou.map((b) => (
+                <li key={b.id}>
+                  <Link
+                    href="/admin/briefings"
+                    className="-mx-2 flex items-center justify-between gap-2 rounded-md px-2 py-2 transition-colors hover:bg-muted/60"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">
+                        {b.clients?.company || 'Cliente'}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {b.type_label}
+                        {(b.update_count || 0) > 0 && (
+                          <span className="ml-1 inline-flex items-center gap-0.5 text-foreground/70">
+                            · <Pencil size={9} /> {b.update_count}x
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Badge variant="success" className="shrink-0 text-[10px]">
+                      Concluído
+                    </Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        {/* Queue: awaiting client */}
+        <Card className="mb-5 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <div className="text-[15px] font-bold tracking-tight">
+                Aguardando cliente
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Você enviou, eles ainda não responderam
+              </p>
+            </div>
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              {awaitingClient.length}
+            </span>
+          </div>
+          {awaitingClient.length === 0 ? (
+            <EmptyMini text="Nenhum briefing pendente do lado deles." />
+          ) : (
+            <ul className="space-y-1">
+              {awaitingClient.map((b) => {
+                const days = daysSince(b.created_at)
+                const overdue = days >= 5
+                return (
                   <li key={b.id}>
                     <Link
                       href="/admin/briefings"
-                      className="flex items-start justify-between gap-2 rounded-md px-2 py-1.5 -mx-2 hover:bg-muted/60 transition-colors"
+                      className="-mx-2 flex items-center justify-between gap-2 rounded-md px-2 py-2 transition-colors hover:bg-muted/60"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">
@@ -309,99 +453,25 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
                         </div>
                         <div className="truncate text-xs text-muted-foreground">
                           {b.type_label}
-                          {(b.update_count || 0) > 0 && (
-                            <span className="ml-1 inline-flex items-center gap-0.5 text-foreground/70">
-                              · <Pencil size={9} /> {b.update_count}x
-                            </span>
-                          )}
                         </div>
                       </div>
-                      <Badge variant="success" className="shrink-0 text-[10px]">
-                        Concluído
-                      </Badge>
+                      <span
+                        className={cn(
+                          'shrink-0 whitespace-nowrap text-xs tabular-nums',
+                          overdue
+                            ? 'font-medium text-destructive'
+                            : 'text-muted-foreground',
+                        )}
+                      >
+                        {formatDays(days)}
+                      </span>
                     </Link>
                   </li>
-                ))}
-              </ul>
-            )}
-          </DashCard>
-
-          <DashCard
-            title="Aguardando cliente"
-            description="Você enviou, ele ainda não respondeu"
-            count={awaitingClient.length}
-          >
-            {awaitingClient.length === 0 ? (
-              <EmptyMini text="Nenhum briefing pendente do lado deles." />
-            ) : (
-              <ul className="space-y-2">
-                {awaitingClient.map((b) => {
-                  const days = daysSince(b.created_at)
-                  const overdue = days >= 5
-                  return (
-                    <li key={b.id}>
-                      <Link
-                        href="/admin/briefings"
-                        className="flex items-start justify-between gap-2 rounded-md px-2 py-1.5 -mx-2 hover:bg-muted/60 transition-colors"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium">
-                            {b.clients?.company || 'Cliente'}
-                          </div>
-                          <div className="truncate text-xs text-muted-foreground">
-                            {b.type_label}
-                          </div>
-                        </div>
-                        <span
-                          className={cn(
-                            'shrink-0 whitespace-nowrap text-xs tabular-nums',
-                            overdue
-                              ? 'font-medium text-destructive'
-                              : 'text-muted-foreground',
-                          )}
-                        >
-                          {formatDays(days)}
-                        </span>
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </DashCard>
-
-          <DashCard
-            title="Esta semana"
-            description="Atividade dos últimos 7 dias"
-          >
-            <div className="space-y-3 py-1">
-              <Stat
-                icon={Send}
-                label="Enviados"
-                value={sentThisWeek}
-              />
-              <Stat
-                icon={CheckCircle2}
-                label="Concluídos"
-                value={concludedThisWeek}
-              />
-              <Stat
-                icon={TrendingUp}
-                label="Taxa de conclusão"
-                value={`${conversionRate}%`}
-                muted={sentThisWeek === 0}
-              />
-            </div>
-            {/* Lifetime metric — moved here from /admin/clientes where it
-                was a decorative stat that didn't filter anything. */}
-            <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-xs text-muted-foreground">
-              <span>Total concluídos</span>
-              <span className="font-mono font-medium tabular-nums text-foreground">
-                {totalConcluded}
-              </span>
-            </div>
-          </DashCard>
-        </div>
+                )
+              })}
+            </ul>
+          )}
+        </Card>
 
         {/* Activity timeline */}
         <Card className="mb-5 p-5">
@@ -453,69 +523,52 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
 /* UI bits                                                               */
 /* ──────────────────────────────────────────────────────────────────── */
 
-function DashCard({
-  title,
-  description,
-  count,
-  children,
-}: {
-  title: string
-  description: string
-  count?: number
-  children: React.ReactNode
-}) {
-  return (
-    <Card className="flex h-full flex-col p-5">
-      <div className="mb-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            {title}
-          </h2>
-          {typeof count === 'number' && (
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">
-              {count}
-            </span>
-          )}
-        </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-      </div>
-      <div className="flex-1">{children}</div>
-    </Card>
-  )
-}
-
 function EmptyMini({ text }: { text: string }) {
   return (
     <div className="py-4 text-center text-xs text-muted-foreground">{text}</div>
   )
 }
 
-function Stat({
-  icon: Icon,
-  label,
-  value,
-  muted = false,
-}: {
-  icon: LucideIcon
-  label: string
-  value: number | string
-  muted?: boolean
-}) {
+/**
+ * Tiny inline bar chart for the 'Atividade' KPI card. Renders one bar
+ * per data point, height proportional to the largest value in the
+ * series. Pure SVG, no chart library.
+ *
+ * Designed to sit at the bottom of a Card next to a 1-line subtitle —
+ * the bars themselves are the visual hook, not exact values.
+ */
+function Sparkline({ data }: { data: number[] }) {
+  const max = Math.max(...data, 1)
+  const barCount = data.length
+  const barWidth = 8
+  const gap = 4
+  const totalWidth = barCount * barWidth + (barCount - 1) * gap
+  const height = 28
   return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Icon size={13} strokeWidth={1.75} />
-        {label}
-      </span>
-      <span
-        className={cn(
-          'font-mono text-lg font-bold tabular-nums',
-          muted && 'text-muted-foreground',
-        )}
-      >
-        {value}
-      </span>
-    </div>
+    <svg
+      viewBox={`0 0 ${totalWidth} ${height}`}
+      width={totalWidth}
+      height={height}
+      role="img"
+      aria-label={`Volume diário: ${data.join(', ')}`}
+      className="overflow-visible"
+    >
+      {data.map((value, i) => {
+        const h = max === 0 ? 1 : Math.max(1, (value / max) * (height - 2))
+        const isLast = i === data.length - 1
+        return (
+          <rect
+            key={i}
+            x={i * (barWidth + gap)}
+            y={height - h}
+            width={barWidth}
+            height={h}
+            rx={1.5}
+            className={isLast ? 'fill-foreground' : 'fill-foreground/25'}
+          />
+        )
+      })}
+    </svg>
   )
 }
 
@@ -550,6 +603,26 @@ function formatDays(days: number): string {
   if (days < 1) return 'hoje'
   if (days === 1) return '1 dia'
   return `${days} dias`
+}
+
+/**
+ * Format a duration in milliseconds into a compact pt-BR string:
+ *   < 1 hora  → '42min'
+ *   < 1 dia   → '3h 12min' (no min when exactly an hour boundary)
+ *   ≥ 1 dia   → '2d 4h'
+ *
+ * Returns '—' when the input is null (no completed briefings yet).
+ */
+function formatDuration(ms: number | null): string {
+  if (ms === null) return '—'
+  const mins = Math.round(ms / 60_000)
+  if (mins < 60) return `${mins}min`
+  const hours = Math.floor(mins / 60)
+  const remMins = mins % 60
+  if (hours < 24) return remMins ? `${hours}h ${remMins}min` : `${hours}h`
+  const days = Math.floor(hours / 24)
+  const remHours = hours % 24
+  return remHours ? `${days}d ${remHours}h` : `${days}d`
 }
 
 function timeAgo(iso: string): string {
@@ -662,7 +735,3 @@ function buildTimeline(
   )
   return items
 }
-
-// suppress unused import warning — Bot/Clock are referenced in shared types
-void Bot
-void Clock
