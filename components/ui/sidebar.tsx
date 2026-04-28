@@ -71,6 +71,13 @@ function SidebarContent({
                     <Link
                       href={item.href}
                       onClick={onNavigate}
+                      // Sidebar links target the heavy admin pages
+                      // (briefings, propostas, clientes — all 1000+ LOC
+                      // client components). Auto-prefetch on viewport
+                      // would download all of them on first sidebar
+                      // render. Disable so each route is only fetched
+                      // when the user actively clicks.
+                      prefetch={false}
                       className={cn(
                         'group flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
                         active

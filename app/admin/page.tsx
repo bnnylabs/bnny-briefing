@@ -397,6 +397,7 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
                 <li key={b.id}>
                   <Link
                     href="/admin/briefings"
+                    prefetch={false}
                     className="-mx-2 flex items-center justify-between gap-2 rounded-md px-2 py-2 transition-colors hover:bg-muted/60"
                   >
                     <div className="min-w-0 flex-1">
@@ -449,6 +450,7 @@ function Dashboard({ router }: { router: ReturnType<typeof useRouter> }) {
                   <li key={b.id}>
                     <Link
                       href="/admin/briefings"
+                      prefetch={false}
                       className="-mx-2 flex items-center justify-between gap-2 rounded-md px-2 py-2 transition-colors hover:bg-muted/60"
                     >
                       <div className="min-w-0 flex-1">
