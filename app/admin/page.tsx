@@ -91,6 +91,7 @@ function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
   const [password, setPassword] = React.useState('')
   const [loginError, setLoginError] = React.useState('')
   const [submitting, setSubmitting] = React.useState(false)
+  const inputRef = React.useRef<HTMLInputElement>(null)
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -108,6 +109,11 @@ function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
       router.refresh()
     } else {
       setLoginError('Senha incorreta')
+      // Auto-select existing text so the user can immediately type
+      // a corrected password — standard pattern for any SaaS login.
+      // Wrapped in a microtask so React has finished re-rendering with
+      // the error state before we focus.
+      queueMicrotask(() => inputRef.current?.select())
     }
   }
 
@@ -122,15 +128,29 @@ function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
         </div>
         <form onSubmit={handleLogin} className="flex flex-col gap-3">
           <Input
+            ref={inputRef}
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              // Clear error as soon as the user starts correcting —
+              // the destructive state shouldn't persist while they're
+              // actively fixing it.
+              if (loginError) setLoginError('')
+            }}
             placeholder="Senha de acesso"
             autoFocus
-            className="h-11 text-base"
+            aria-invalid={!!loginError}
+            aria-describedby={loginError ? 'login-error' : undefined}
+            className={cn(
+              'h-11 text-base',
+              loginError && 'border-destructive focus-visible:ring-destructive/30',
+            )}
           />
           {loginError && (
-            <p className="text-center text-sm text-destructive">{loginError}</p>
+            <p id="login-error" role="alert" className="text-center text-sm text-destructive">
+              {loginError}
+            </p>
           )}
           <Button
             type="submit"
