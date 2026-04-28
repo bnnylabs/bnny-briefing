@@ -279,8 +279,8 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
   // immediately paste it to the client (WhatsApp, email, etc.).
 
   const publicUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/proposta/${slug}`
-    : `/proposta/${slug}`
+    ? `${window.location.origin}/p/${slug}`
+    : `/p/${slug}`
 
   const copyPublicLink = async () => {
     try {
