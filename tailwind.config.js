@@ -72,8 +72,8 @@ module.exports = {
         '2xl':'calc(var(--radius) + 8px)',
       },
       fontFamily: {
-        sans:  ['Inter Variable', 'Inter', 'system-ui', 'sans-serif'],
-        mono:  ['Geist Mono Variable', 'Geist Mono', 'JetBrains Mono', 'monospace'],
+        sans:  ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+        mono:  ['var(--font-geist-mono)', 'Geist Mono', 'JetBrains Mono', 'monospace'],
       },
       keyframes: {
         'accordion-down': { from: { height: '0' }, to: { height: 'var(--radix-accordion-content-height)' } },

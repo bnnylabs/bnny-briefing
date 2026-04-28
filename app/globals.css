@@ -1,6 +1,7 @@
-/* Inter (body) + Geist Mono (headings) */
-@import "@fontsource-variable/inter";
-@import "@fontsource-variable/geist-mono";
+/* Fonts loaded via next/font in app/layout.tsx
+   - --font-inter (Inter, body)
+   - --font-geist-mono (Geist Mono, headings)
+   These CSS variables are injected on <html> by next/font, no @import needed. */
 
 @tailwind base;
 @tailwind components;
@@ -93,12 +94,12 @@
   * { margin: 0; padding: 0; }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+    font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -webkit-text-size-adjust: 100%;
   }
   h1 {
-    font-family: 'Geist Mono Variable', 'Geist Mono', monospace;
+    font-family: var(--font-geist-mono), 'Geist Mono', monospace;
     letter-spacing: -0.03em;
   }
 }
