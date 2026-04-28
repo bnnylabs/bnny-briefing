@@ -168,9 +168,9 @@ interface InvestmentPreviewProps {
 }
 
 export function InvestmentPreview({ content }: InvestmentPreviewProps) {
-  const terms = Array.isArray(content.payment_terms)
+  const terms = (Array.isArray(content.payment_terms)
     ? (content.payment_terms as PaymentTerm[])
-    : []
+    : []).filter((t) => (t as { visible?: boolean }).visible !== false)
   const amount = content.total_amount ?? 0
 
   return (

@@ -118,7 +118,7 @@ interface PhasesPreviewProps {
 }
 
 export function PhasesPreview({ content }: PhasesPreviewProps) {
-  const phases = content.phases ?? []
+  const phases = (content.phases ?? []).filter((p) => p.visible !== false)
   if (phases.length === 0) {
     return (
       <p className="text-sm italic text-muted-foreground/60">

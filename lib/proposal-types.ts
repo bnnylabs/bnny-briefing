@@ -44,6 +44,7 @@ export type PaymentTerm =
       label: string
       description: string
       discount_percent?: number
+      visible?: boolean // default true when absent
     }
   | {
       type: 'pix'
@@ -76,10 +77,11 @@ export interface ApprovalData {
 
 /** Phase entry inside a `phases` block (escopo + cronograma unificados). */
 export interface ProposalPhase {
-  number: string // "1.0", "2.0"… (free-form so user can do "1.1" if needed)
+  number: string
   title: string
-  duration: string // "3 a 4 dias úteis", "1 semana", etc.
+  duration: string
   description: string
+  visible?: boolean // default true when absent
 }
 
 /** Block content shape varies by type. Each variant is an explicit interface. */
