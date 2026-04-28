@@ -303,21 +303,29 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
             </div>
 
             <div className="min-w-0 flex-1">
-              {/* Title + Status on same row */}
-              <div className="flex items-center gap-2">
-                <Input
-                  value={proposal.title}
-                  onChange={(e) => patchProposal({ title: e.target.value })}
-                  placeholder="Sem título"
-                  className="h-auto min-w-0 flex-1 border-0 bg-transparent p-0 font-mono text-xl font-bold tracking-tight shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/40"
-                />
+              {/* Title alone on its row — no competing elements */}
+              <Input
+                value={proposal.title}
+                onChange={(e) => patchProposal({ title: e.target.value })}
+                placeholder="Sem título"
+                className="h-auto w-full border-0 bg-transparent p-0 font-mono text-xl font-bold tracking-tight shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/40"
+              />
 
-                <div className="relative shrink-0">
+              {/* Metadata line with status pill + save indicator inline */}
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <span className="font-mono tabular-nums">
+                  {formatProposalNumber(proposal.number, proposal.version_suffix)}
+                </span>
+
+                <span>·</span>
+
+                {/* Clickable status pill */}
+                <div className="relative">
                   <button
                     type="button"
                     onClick={() => setEditingStatus((e) => !e)}
                     className={cn(
-                      'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80',
+                      'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80',
                       STATUS_COLORS[status],
                     )}
                   >
@@ -325,7 +333,7 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                     <ChevronDown size={10} className={cn('transition-transform', editingStatus && 'rotate-180')} />
                   </button>
                   {editingStatus && (
-                    <div className="absolute right-0 top-full z-10 mt-1 w-40 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                    <div className="absolute left-0 top-full z-10 mt-1 w-40 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
                       {(Object.keys(PROPOSAL_STATUS_LABELS_PT) as ProposalStatus[]).map((s) => (
                         <button
                           key={s}
@@ -344,24 +352,23 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                     </div>
                   )}
                 </div>
-              </div>
 
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                <span className="font-mono tabular-nums">
-                  {formatProposalNumber(proposal.number, proposal.version_suffix)}
-                </span>
                 {proposal.clients?.company && (<>
                   <span>·</span>
                   <span>para {proposal.clients.company}</span>
                 </>)}
                 <span>·</span>
                 <span>criada {formatDistanceToNow(new Date(proposal.created_at), { locale: ptBR, addSuffix: true })}</span>
+
+                {(combinedStatus !== 'idle' || combinedSavedAt) && (<>
+                  <span>·</span>
+                  <SaveIndicator status={combinedStatus} lastSavedAt={combinedSavedAt} />
+                </>)}
               </div>
             </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-3">
-            <SaveIndicator status={combinedStatus} lastSavedAt={combinedSavedAt} />
             <Button onClick={() => { proposalSave.flush(); blocksSave.flush(); setMode('document') }}>
               <Eye className="mr-1.5 h-4 w-4" />Visualizar proposta
             </Button>
@@ -373,6 +380,41 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
 
           {/* ── Left column ──────────────────────────────────────────── */}
           <div className="flex flex-col gap-5">
+
+            {/* IA Assistente — primary action, fills the content below */}
+            <IACard
+              proposal={proposal}
+              onPersonalize={async (context, url) => {
+                if (!proposal.template_id && !context.trim() && !url.trim()) return
+                const res = await fetch('/api/proposals/generate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    template_id: proposal.template_id,
+                    client_company: proposal.clients?.company ?? '',
+                    context, url: url || undefined,
+                  }),
+                })
+                if (!res.ok) { toast('IA indisponível agora', 'error'); return }
+                const data = await res.json()
+                const overrides = data.content_overrides
+                if (!overrides) return
+
+                if (headerBlock && overrides.header) {
+                  patchBlock(headerBlock.id, overrides.header)
+                }
+                if (phasesBlock && overrides.phases) {
+                  // Preserve existing visible flags on phases (user toggles)
+                  const oldPhases = (phasesBlock.content as { phases?: ProposalPhase[] }).phases ?? []
+                  const newPhases = overrides.phases.phases.map((p: ProposalPhase, i: number) => ({
+                    ...p,
+                    visible: oldPhases[i]?.visible ?? true,
+                  }))
+                  patchBlock(phasesBlock.id, { phases: newPhases })
+                }
+                toast('Proposta personalizada com IA', 'success')
+              }}
+            />
 
             {/* Texto de abertura */}
             {headerBlock ? (
@@ -429,42 +471,6 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
             ) : (
               <MissingSection label="Investimento" type="investment" onAdd={addBlock} />
             )}
-
-            {/* IA Assistente — re-personalize on demand */}
-            <IACard
-              proposal={proposal}
-              onPersonalize={async (context, url) => {
-                if (!proposal.template_id && !context.trim() && !url.trim()) return
-                const res = await fetch('/api/proposals/generate', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    template_id: proposal.template_id,
-                    client_company: proposal.clients?.company ?? '',
-                    context, url: url || undefined,
-                  }),
-                })
-                if (!res.ok) { toast('IA indisponível agora', 'error'); return }
-                const data = await res.json()
-                const overrides = data.content_overrides
-                if (!overrides) return
-
-                // Apply overrides to existing blocks
-                if (headerBlock && overrides.header) {
-                  patchBlock(headerBlock.id, overrides.header)
-                }
-                if (phasesBlock && overrides.phases) {
-                  // Preserve existing visible flags on phases (user toggles)
-                  const oldPhases = (phasesBlock.content as { phases?: ProposalPhase[] }).phases ?? []
-                  const newPhases = overrides.phases.phases.map((p: ProposalPhase, i: number) => ({
-                    ...p,
-                    visible: oldPhases[i]?.visible ?? true,
-                  }))
-                  patchBlock(phasesBlock.id, { phases: newPhases })
-                }
-                toast('Proposta personalizada com IA', 'success')
-              }}
-            />
 
             {/* Detalhes */}
             <Card className="p-5">
@@ -774,7 +780,7 @@ function IACard({
     <Card className="p-5">
       <CardHeader icon={<Sparkles className="h-4 w-4" />} title="Personalizar com IA" />
       <div className="space-y-3">
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="text-xs leading-relaxed text-muted-foreground">
           Cole notas, transcrição da reunião ou contexto. A IA reescreve o texto de abertura e as fases para este cliente.
         </p>
 
@@ -784,35 +790,35 @@ function IACard({
           placeholder="Notas, transcrição, contexto…"
           rows={3}
           className={cn(
-            'flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2',
-            'text-xs text-foreground placeholder:text-muted-foreground/50',
+            'flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2.5',
+            'text-sm text-foreground placeholder:text-muted-foreground/50',
             'focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all',
           )}
         />
 
-        <Input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="Site ou rede social (opcional)"
-          type="url"
-          className="text-xs"
-        />
-
-        <Button
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="w-full"
-          size="sm"
-        >
-          {loading ? (
-            <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Personalizando…</>
-          ) : (
-            <><Sparkles className="mr-1.5 h-3.5 w-3.5" />Personalizar</>
-          )}
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="Site ou rede social (opcional)"
+            type="url"
+            className="flex-1"
+          />
+          <Button
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className="shrink-0"
+          >
+            {loading ? (
+              <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Personalizando…</>
+            ) : (
+              <><Sparkles className="mr-1.5 h-3.5 w-3.5" />Personalizar</>
+            )}
+          </Button>
+        </div>
 
         {!proposal.template_id && (
-          <p className="text-[10px] text-warning">
+          <p className="text-[11px] text-warning">
             Esta proposta não tem modelo. A IA vai gerar do zero a partir do contexto.
           </p>
         )}
