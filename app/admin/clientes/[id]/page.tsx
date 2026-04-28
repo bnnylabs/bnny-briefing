@@ -686,143 +686,6 @@ export default function ClientePerfilPage() {
           {/* ── Left column ───────────────────────────────────────────── */}
           <div className="flex flex-col gap-4">
 
-            {/* Client info card */}
-            <Card className="p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  Informações
-                </div>
-                <Button variant={editMode ? 'secondary' : 'outline'} size="sm" onClick={() => setEditMode(!editMode)}>
-                  {editMode ? <><X className="mr-1 h-3.5 w-3.5" />Cancelar</> : <><Pencil className="mr-1 h-3.5 w-3.5" />Editar</>}
-                </Button>
-              </div>
-
-              {editMode ? (
-                <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    {[{ label: 'Empresa', key: 'company' },
-                      { label: 'Site', key: 'website' }].map(f => (
-                      <div key={f.key} className="col-span-2 space-y-1.5">
-                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{f.label}</Label>
-                        <Input value={editForm[f.key as keyof typeof editForm]}
-                          onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
-                      </div>
-                    ))}
-                  </div>
-                  {/* Social links in edit mode */}
-                  <div>
-                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Redes sociais</div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {SOCIAL_NETWORKS.map(s => (
-                        <div key={s.key} className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground">{s.label}</Label>
-                          <Input value={editSocials[s.key] ?? ''} onChange={e => setEditSocials(p => ({ ...p, [s.key]: e.target.value }))}
-                            placeholder="https://..." className="h-7 text-xs" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <Button onClick={saveEdit} disabled={savingEdit}>
-                    {savingEdit ? 'Salvando...' : <><Save className="mr-1.5 h-4 w-4" />Salvar alterações</>}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Segmentos */}
-                  <div>
-                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Segmentos</div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {client.tags.map(tag => (
-                        <span key={tag} className="group inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-2 py-0.5 text-[11px]">
-                          {tag}
-                          <button
-                            type="button"
-                            onClick={() => removeTag(tag)}
-                            aria-label={`Remover tag ${tag}`}
-                            className="opacity-0 transition-opacity group-hover:opacity-100"
-                          >
-                            <X size={10} />
-                          </button>
-                        </span>
-                      ))}
-                      {editingTags ? (
-                        <div className="flex items-center gap-1.5">
-                          <Input value={newTag} onChange={e => setNewTag(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setEditingTags(false) }}
-                            placeholder="Novo segmento…" className="h-6 w-36 px-2 text-xs" autoFocus />
-                          <button
-                            type="button"
-                            onClick={addTag}
-                            aria-label="Adicionar tag"
-                            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
-                          >
-                            <Check size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingTags(false)}
-                            aria-label="Cancelar edição de tags"
-                            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ) : (
-                        <button type="button" onClick={() => setEditingTags(true)}
-                          className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground">
-                          <Plus size={10} /> Segmento
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Site */}
-                  {client.website && (
-                    <div>
-                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Site</div>
-                      <a href={client.website} target="_blank" rel="noopener noreferrer"
-                        title={client.website}
-                        className="inline-flex max-w-full items-center gap-1 truncate text-sm text-foreground underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-foreground">
-                        <span className="truncate">{client.website}</span>
-                        <ExternalLink size={11} className="shrink-0 text-muted-foreground/60" />
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Social links */}
-                  {clientSocials.length > 0 && (
-                    <div>
-                      <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redes sociais</div>
-                      <div className="flex flex-wrap gap-2">
-                        {clientSocials.map(s => (
-                          <a key={s.key} href={s.url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-muted">
-                            <s.Icon size={12} />
-                            {s.label}
-                            <ExternalLink size={10} className="text-muted-foreground/60" />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </Card>
-
-            {/* Contacts card */}
-            <Card className="p-5">
-              <div className="mb-3 flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                Contatos
-              </div>
-              <ContactsSection
-                clientId={id} contacts={contacts} onUpdate={load}
-                onError={msg => toast(msg, 'error')}
-                onSuccess={msg => toast(msg, 'success', 2000)}
-              />
-            </Card>
-
             {/* AI Profile card */}
             <Card className={cn('p-5', hasAiProfile && 'border-primary/30')}>
               <div
@@ -948,6 +811,19 @@ export default function ClientePerfilPage() {
                 </div>
               )}
               </div>
+            </Card>
+
+            {/* Contacts card */}
+            <Card className="p-5">
+              <div className="mb-3 flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                Contatos
+              </div>
+              <ContactsSection
+                clientId={id} contacts={contacts} onUpdate={load}
+                onError={msg => toast(msg, 'error')}
+                onSuccess={msg => toast(msg, 'success', 2000)}
+              />
             </Card>
 
             {/* Briefings */}
@@ -1108,6 +984,157 @@ export default function ClientePerfilPage() {
 
           {/* ── Right sidebar ─────────────────────────────────────────── */}
           <div className="flex flex-col gap-4 lg:sticky lg:top-6">
+
+            {/* Quick info — segments, site, social. Compact version of
+                what used to be the 'Informações' card on the left.
+                Edit mode opens in-place: the same form fields, just
+                rendered vertically since the sidebar is narrow. */}
+            <Card className="p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  Sobre
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditMode(!editMode)}
+                  aria-label={editMode ? 'Cancelar edição' : 'Editar informações'}
+                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  {editMode ? <X size={13} /> : <Pencil size={13} />}
+                </button>
+              </div>
+
+              {editMode ? (
+                <div className="flex flex-col gap-3">
+                  {[{ label: 'Empresa', key: 'company' },
+                    { label: 'Site', key: 'website' }].map(f => (
+                    <div key={f.key} className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{f.label}</Label>
+                      <Input
+                        value={editForm[f.key as keyof typeof editForm]}
+                        onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  ))}
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Redes sociais</Label>
+                    <div className="space-y-1.5">
+                      {SOCIAL_NETWORKS.map(s => (
+                        <Input
+                          key={s.key}
+                          value={editSocials[s.key] ?? ''}
+                          onChange={e => setEditSocials(p => ({ ...p, [s.key]: e.target.value }))}
+                          placeholder={`${s.label} URL`}
+                          className="h-7 text-xs"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <Button onClick={saveEdit} disabled={savingEdit} size="sm">
+                    {savingEdit ? 'Salvando…' : <><Save className="mr-1 h-3.5 w-3.5" />Salvar</>}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  {/* Segments */}
+                  <div>
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Segmentos</div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {client.tags.map(tag => (
+                        <span key={tag} className="group inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[11px]">
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            aria-label={`Remover tag ${tag}`}
+                            className="opacity-0 transition-opacity group-hover:opacity-100"
+                          >
+                            <X size={9} />
+                          </button>
+                        </span>
+                      ))}
+                      {editingTags ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            value={newTag}
+                            onChange={e => setNewTag(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setEditingTags(false) }}
+                            placeholder="Novo…"
+                            className="h-6 w-24 px-1.5 text-[11px]"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={addTag}
+                            aria-label="Adicionar tag"
+                            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <Check size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingTags(false)}
+                            aria-label="Cancelar edição de tags"
+                            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <X size={11} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingTags(true)}
+                          className="inline-flex items-center gap-0.5 rounded-md border border-dashed border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                        >
+                          <Plus size={9} /> Segmento
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Site */}
+                  {client.website && (
+                    <div>
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Site</div>
+                      <a
+                        href={client.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={client.website}
+                        className="inline-flex max-w-full items-center gap-1 truncate text-xs text-foreground underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-foreground"
+                      >
+                        <span className="truncate">{client.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+                        <ExternalLink size={10} className="shrink-0 text-muted-foreground/60" />
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Social links */}
+                  {clientSocials.length > 0 && (
+                    <div>
+                      <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redes sociais</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {clientSocials.map(s => (
+                          <a
+                            key={s.key}
+                            href={s.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={s.label}
+                            aria-label={`${s.label} de ${client.company}`}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            <s.Icon size={13} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
 
             {/* Metrics */}
             <Card className="p-4">
