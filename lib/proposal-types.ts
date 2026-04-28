@@ -236,7 +236,13 @@ export function generateProposalSlug(input: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 30)
-  const suffix = Math.random().toString(36).slice(2, 7)
+  // Cryptographically random suffix (64 bits) — replaces Math.random
+  // which had ~26 bits and was guessable for a known title prefix.
+  const bytes = new Uint8Array(8)
+  crypto.getRandomValues(bytes)
+  let s = ''
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i])
+  const suffix = btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
   return `${base || 'proposta'}-${suffix}`
 }
 

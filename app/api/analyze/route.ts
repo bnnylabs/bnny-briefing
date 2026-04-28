@@ -19,8 +19,98 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { lookup as dnsLookup } from 'node:dns/promises'
+import { requireAuth } from '@/lib/auth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+// ─── SSRF defense ────────────────────────────────────────────────────────
+//
+// The /analyze endpoint fetches whatever URL the caller gives us. Without
+// guards, an attacker (or in single-admin mode, a careless paste) could
+// point us at internal IPs reachable from the Vercel function runtime —
+// link-local AWS metadata, RFC1918 private ranges, loopback, etc. This
+// helper rejects any URL whose hostname resolves to a private/internal IP.
+
+function isPrivateIPv4(ip: string): boolean {
+  const parts = ip.split('.').map(Number)
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return false
+  const [a, b] = parts
+  // 10.0.0.0/8
+  if (a === 10) return true
+  // 172.16.0.0/12
+  if (a === 172 && b >= 16 && b <= 31) return true
+  // 192.168.0.0/16
+  if (a === 192 && b === 168) return true
+  // 127.0.0.0/8 — loopback
+  if (a === 127) return true
+  // 169.254.0.0/16 — link-local (cloud metadata)
+  if (a === 169 && b === 254) return true
+  // 0.0.0.0/8
+  if (a === 0) return true
+  return false
+}
+
+function isPrivateIPv6(ip: string): boolean {
+  const lower = ip.toLowerCase()
+  if (lower === '::' || lower === '::1') return true
+  // fc00::/7 (unique local), fe80::/10 (link-local)
+  if (lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe8')) return true
+  // IPv4-mapped (::ffff:a.b.c.d) — re-test as v4
+  if (lower.startsWith('::ffff:')) {
+    const v4 = lower.slice(7)
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(v4)) return isPrivateIPv4(v4)
+  }
+  return false
+}
+
+/**
+ * Validate a URL is safe to fetch from the server: must be http(s),
+ * hostname must resolve to a public IP. Returns null if safe, or an
+ * error message string if rejected.
+ */
+async function validateExternalUrl(input: string): Promise<string | null> {
+  let parsed: URL
+  try {
+    parsed = new URL(input)
+  } catch {
+    return 'URL inválida'
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return 'Apenas http e https são suportados'
+  }
+
+  // Reject hostnames that are literal IPs in private ranges, even before
+  // DNS — saves a round trip and catches direct numeric inputs.
+  const host = parsed.hostname.toLowerCase()
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host) && isPrivateIPv4(host)) {
+    return 'Endereços internos não são permitidos'
+  }
+  if (host.includes(':') && isPrivateIPv6(host)) {
+    return 'Endereços internos não são permitidos'
+  }
+  if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) {
+    return 'Endereços internos não são permitidos'
+  }
+
+  // Resolve DNS and check every returned address.
+  try {
+    const records = await dnsLookup(host, { all: true })
+    for (const r of records) {
+      if (r.family === 4 && isPrivateIPv4(r.address)) {
+        return 'Endereços internos não são permitidos'
+      }
+      if (r.family === 6 && isPrivateIPv6(r.address)) {
+        return 'Endereços internos não são permitidos'
+      }
+    }
+  } catch {
+    return 'Não foi possível resolver o domínio'
+  }
+
+  return null
+}
 
 // ─── Social link extraction from raw HTML ────────────────────────────────
 
@@ -175,6 +265,9 @@ ${includeSocial ? SOCIAL_SCHEMA_FRAGMENT_EN : ''}
 // ─── Route handler ────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const unauthorized = requireAuth(req)
+  if (unauthorized) return unauthorized
+
   try {
     const { website, text, company, language } = await req.json()
     const isEN = language === 'en-US'
@@ -183,6 +276,14 @@ export async function POST(req: NextRequest) {
     let clientInfo = ''
 
     if (website) {
+      // Reject SSRF candidates BEFORE making the fetch. We tolerate the
+      // extra DNS round-trip because /analyze is admin-only and gets
+      // hit a few times per client onboarding, not per request.
+      const ssrfErr = await validateExternalUrl(website)
+      if (ssrfErr) {
+        return NextResponse.json({ error: ssrfErr }, { status: 400 })
+      }
+
       try {
         const res = await fetch(website, {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BnnyBot/1.0)' },

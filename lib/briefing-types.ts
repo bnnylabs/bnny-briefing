@@ -840,6 +840,22 @@ export function generateSlug(company: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 30)
-  const suffix = Math.random().toString(36).slice(2, 7)
-  return `${base}-${suffix}`
+  // Cryptographically random suffix (~10 chars base64url, 64 bits of
+  // entropy). Replaces Math.random().toString(36).slice(2,7) which gave
+  // only ~26 bits and was predictable enough to brute-force a known
+  // company's slug. Backward compatible — old slugs continue to work.
+  const suffix = randomSuffix()
+  return `${base || 'b'}-${suffix}`
+}
+
+function randomSuffix(): string {
+  // Use Web Crypto — present in Node 18+, Edge runtime, and browsers.
+  // Avoids importing node:crypto so this module stays browser-compatible
+  // (it's imported by client components for FIELD_LABELS, etc).
+  const bytes = new Uint8Array(8)
+  crypto.getRandomValues(bytes)
+  // Manual base64url encoding (no Buffer dependency in browsers).
+  let s = ''
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i])
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
