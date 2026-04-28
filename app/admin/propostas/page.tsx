@@ -6,7 +6,7 @@ import Image from 'next/image'
 import {
   FileText, Plus, Search, MoreHorizontal,
   Inbox, Send, CheckCircle2, DollarSign,
-  Eye, XCircle, Clock, RefreshCw,
+  Eye, XCircle, Clock, RefreshCw, ArrowRight,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -283,6 +283,14 @@ function ProposalRow({
               label="Mais opções"
             />
           </div>
+
+          {/* Discoverability chevron — only on row hover. The whole card
+              is clickable; this gives a clear visual hint without
+              cluttering the resting state. */}
+          <ArrowRight
+            className="ml-0.5 hidden h-3.5 w-3.5 shrink-0 text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100 sm:block"
+            aria-hidden="true"
+          />
         </div>
       </div>
     </Card>
