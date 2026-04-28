@@ -1,12 +1,20 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, Plus, Send, Eye, CheckCircle2, XCircle, Clock, RefreshCw } from 'lucide-react'
+import {
+  FileText, Plus, Search, MoreHorizontal,
+  Inbox, Send, CheckCircle2, DollarSign,
+  Eye, XCircle, Clock, RefreshCw,
+} from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { IconButton } from '@/components/ui/icon-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -36,6 +44,23 @@ import {
   type ProposalTemplate,
   type ProposalWithClient,
 } from '@/lib/proposal-types'
+
+// ─── Constants ────────────────────────────────────────────────────────────
+
+const STATUS_FILTER_ORDER: ProposalStatus[] = [
+  'draft', 'sent', 'viewed', 'approved', 'rejected', 'revised', 'expired',
+]
+
+// Compact label for filter chips (rascunho stays full, others kept short)
+const STATUS_CHIP_LABEL: Record<ProposalStatus, string> = {
+  draft: 'Rascunho',
+  sent: 'Enviada',
+  viewed: 'Visualizada',
+  approved: 'Aprovada',
+  rejected: 'Recusada',
+  revised: 'Revisada',
+  expired: 'Expirada',
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -114,6 +139,191 @@ function SkeletonCard() {
   )
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+/** Compact currency for metric cards: R$ 12k, R$ 3.5k, R$ 850, R$ 1.2M */
+function fmtCurrencyShort(amount: number): string {
+  if (!amount || amount === 0) return 'R$ 0'
+  const abs = Math.abs(amount)
+  if (abs >= 1_000_000) return `R$ ${(amount / 1_000_000).toFixed(1).replace('.', ',')}M`
+  if (abs >= 10_000)    return `R$ ${Math.round(amount / 1000)}k`
+  if (abs >= 1_000)     return `R$ ${(amount / 1000).toFixed(1).replace('.', ',')}k`
+  return `R$ ${Math.round(amount)}`
+}
+
+/** Relative time helper, returns 'há 2h', 'hoje', 'há 3 dias' (PT-BR). */
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return ''
+  try {
+    return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: ptBR })
+  } catch { return '' }
+}
+
+// ─── Reusable presentational components ──────────────────────────────────
+
+function MetricCard({
+  icon, label, value, active = false, highlight = false,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  active?: boolean
+  highlight?: boolean
+}) {
+  return (
+    <Card
+      className={cn(
+        'p-4 transition-colors',
+        active     && 'border-foreground/40 bg-muted/40',
+        highlight  && 'border-success/40 bg-success/5',
+      )}
+    >
+      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        <span className={cn(highlight && 'text-success')}>{icon}</span>
+        {label}
+      </div>
+      <div className={cn(
+        'font-mono text-2xl font-bold tabular-nums tracking-tight',
+        highlight ? 'text-success' : 'text-foreground',
+      )}>
+        {value}
+      </div>
+    </Card>
+  )
+}
+
+function ProposalRow({
+  proposal, selected, onSelectToggle, onClick,
+}: {
+  proposal: ProposalWithClient
+  selected: boolean
+  onSelectToggle: (checked: boolean) => void
+  onClick: () => void
+}) {
+  const num     = formatProposalNumber(proposal.number, proposal.version_suffix)
+  const valid   = proposal.valid_until ? fmtDate(proposal.valid_until) : null
+  const created = relativeTime(proposal.created_at)
+  const company = proposal.clients?.company ?? '—'
+  const initials = company.slice(0, 2).toUpperCase()
+
+  return (
+    <Card
+      className={cn(
+        'group cursor-pointer overflow-hidden p-0 transition-colors',
+        selected
+          ? 'border-foreground/40 bg-muted/40'
+          : 'hover:border-border/70 hover:bg-muted/30',
+      )}
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-3 px-4 py-3">
+        {/* Checkbox — stop propagation so clicking it doesn't navigate */}
+        <div onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={selected}
+            onCheckedChange={(checked) => onSelectToggle(checked === true)}
+            className="data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+          />
+        </div>
+
+        {/* Avatar — client logo or initials fallback */}
+        <div className="shrink-0">
+          {proposal.clients?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={proposal.clients.avatar_url}
+              alt={company}
+              className="h-9 w-9 rounded-md object-cover"
+            />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-[10px] font-semibold text-muted-foreground">
+              {initials}
+            </div>
+          )}
+        </div>
+
+        {/* Main column */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="truncate text-sm font-semibold text-foreground">
+              {proposal.title}
+            </span>
+            <span className="hidden truncate text-xs text-muted-foreground sm:inline">
+              · {company}
+            </span>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+            <StatusBadge status={proposal.status} />
+            <span className="font-mono tabular-nums">{num}</span>
+            {created && <><span>·</span><span>criada {created}</span></>}
+            {valid    && <><span className="hidden sm:inline">·</span><span className="hidden sm:inline">válida até {valid}</span></>}
+          </div>
+        </div>
+
+        {/* Right side: amount + actions */}
+        <div className="flex shrink-0 items-center gap-3">
+          <div className="text-right">
+            <div className="font-mono text-sm font-semibold tabular-nums text-foreground">
+              {fmtCurrency(proposal.total_amount, proposal.currency)}
+            </div>
+            {valid && (
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground sm:hidden">
+                até {valid}
+              </div>
+            )}
+          </div>
+          <div
+            className="hidden items-center gap-0.5 sm:flex"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <IconButton
+              icon={<MoreHorizontal className="h-4 w-4" />}
+              label="Mais opções"
+            />
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function EmptyStateNoProposals({ onCreate }: { onCreate: () => void }) {
+  return (
+    <Card className="p-12">
+      <div className="text-center text-muted-foreground">
+        <FileText className="mx-auto mb-3 h-10 w-10 opacity-40" />
+        <div className="mb-1.5 text-base font-semibold text-foreground">
+          Nenhuma proposta ainda
+        </div>
+        <div className="mb-5 text-sm">
+          Crie sua primeira proposta para começar
+        </div>
+        <Button onClick={onCreate}>
+          <Plus className="mr-1.5 h-4 w-4" />
+          Criar primeira proposta
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+function EmptyStateNoResults({ onClear }: { onClear: () => void }) {
+  return (
+    <Card className="p-10">
+      <div className="text-center text-sm text-muted-foreground">
+        <div className="mb-3">Nenhuma proposta corresponde aos filtros.</div>
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-xs font-medium text-foreground underline-offset-2 hover:underline"
+        >
+          Limpar filtros
+        </button>
+      </div>
+    </Card>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 export default function PropostasPage() {
@@ -128,6 +338,75 @@ export default function PropostasPage() {
   const [showNew, setShowNew] = useState(false)
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
+
+  // ─── List filtering / sorting state ────────────────────────────────────
+  const [search, setSearch]               = useState('')
+  const [sortBy, setSortBy]               = useState<'recent' | 'amount' | 'alpha'>('recent')
+  const [activeStatusFilters, setActiveStatusFilters] = useState<Set<ProposalStatus>>(new Set())
+  const [selected, setSelected]           = useState<Set<string>>(new Set())
+
+  // ─── Derived metrics ───────────────────────────────────────────────────
+  const metrics = useMemo(() => {
+    const total      = proposals.length
+    const draft      = proposals.filter((p) => p.status === 'draft').length
+    const inPipeline = proposals.filter((p) => p.status === 'sent' || p.status === 'viewed').length
+    const approved   = proposals.filter((p) => p.status === 'approved')
+    const approvedCount = approved.length
+    const approvedSum   = approved.reduce((acc, p) => acc + (p.total_amount ?? 0), 0)
+    return { total, draft, inPipeline, approvedCount, approvedSum }
+  }, [proposals])
+
+  const filtered = useMemo(() => {
+    const s = search.trim().toLowerCase()
+    let list = proposals.filter((p) => {
+      if (s) {
+        const hay = `${p.title} ${p.clients?.company ?? ''} ${formatProposalNumber(p.number, p.version_suffix)}`.toLowerCase()
+        if (!hay.includes(s)) return false
+      }
+      if (activeStatusFilters.size > 0 && !activeStatusFilters.has(p.status as ProposalStatus)) {
+        return false
+      }
+      return true
+    })
+    if (sortBy === 'amount') {
+      list = list.slice().sort((a, b) => (b.total_amount ?? 0) - (a.total_amount ?? 0))
+    } else if (sortBy === 'alpha') {
+      list = list.slice().sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'))
+    } else {
+      // 'recent' — default: by number desc (which equals creation order)
+      list = list.slice().sort((a, b) => b.number - a.number)
+    }
+    return list
+  }, [proposals, search, activeStatusFilters, sortBy])
+
+  const toggleStatusFilter = (s: ProposalStatus) => {
+    setActiveStatusFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(s)) next.delete(s)
+      else next.add(s)
+      return next
+    })
+  }
+
+  const clearFilters = () => {
+    setSearch('')
+    setActiveStatusFilters(new Set())
+    setSortBy('recent')
+  }
+
+  const toggleSelect = (id: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id); else next.delete(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelected(checked ? new Set(filtered.map((p) => p.id)) : new Set())
+  }
+
+  const hasFilters = search.trim().length > 0 || activeStatusFilters.size > 0
 
   // Special sentinel meaning "start blank, no template".
   const TEMPLATE_BLANK = '__blank__'
@@ -289,7 +568,7 @@ export default function PropostasPage() {
 
       <div className="mx-auto max-w-5xl p-6">
         {/* Page header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between">
           <h1 className="font-mono text-xl font-bold tracking-tight">Propostas</h1>
           <Button onClick={openNew}>
             <Plus className="mr-1.5 h-4 w-4" />
@@ -297,66 +576,121 @@ export default function PropostasPage() {
           </Button>
         </div>
 
+        {/* Metric cards */}
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <MetricCard
+            icon={<Inbox className="h-3.5 w-3.5" />}
+            label="Total"
+            value={String(metrics.total)}
+            active
+          />
+          <MetricCard
+            icon={<FileText className="h-3.5 w-3.5" />}
+            label="Rascunho"
+            value={String(metrics.draft)}
+          />
+          <MetricCard
+            icon={<Send className="h-3.5 w-3.5" />}
+            label="Em pipeline"
+            value={String(metrics.inPipeline)}
+          />
+          <MetricCard
+            icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+            label="Aprovadas"
+            value={String(metrics.approvedCount)}
+          />
+          <MetricCard
+            icon={<DollarSign className="h-3.5 w-3.5" />}
+            label="Receita aprovada"
+            value={fmtCurrencyShort(metrics.approvedSum)}
+            highlight
+          />
+        </div>
+
+        {/* Search + sort */}
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar título, cliente ou número…"
+              className="pl-9"
+            />
+          </div>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger className="sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Mais recentes</SelectItem>
+              <SelectItem value="amount">Maior valor</SelectItem>
+              <SelectItem value="alpha">A → Z</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Status filter chips + bulk select */}
+        {!loading && proposals.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <label className="mr-2 inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+              <Checkbox
+                checked={selected.size > 0 && selected.size === filtered.length}
+                onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+                className="data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+              />
+              Selecionar todos ({filtered.length})
+            </label>
+            <div className="hidden h-4 w-px bg-border sm:block" />
+            {STATUS_FILTER_ORDER.map((s) => {
+              const isActive = activeStatusFilters.has(s)
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleStatusFilter(s)}
+                  className={cn(
+                    'rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                    isActive
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+                  )}
+                >
+                  {STATUS_CHIP_LABEL[s]}
+                </button>
+              )
+            })}
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="ml-auto text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                Limpar filtros
+              </button>
+            )}
+          </div>
+        )}
+
         {/* List */}
         {loading ? (
           <div className="flex flex-col gap-2">
-            {[1, 2, 3].map((i) => (
-              <SkeletonCard key={i} />
-            ))}
+            {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
           </div>
         ) : proposals.length === 0 ? (
-          <div className="py-16 text-center text-muted-foreground">
-            <FileText className="mx-auto mb-3 h-10 w-10 opacity-40" />
-            <div className="mb-1.5 text-base font-semibold text-foreground">
-              Nenhuma proposta ainda
-            </div>
-            <div className="mb-5 text-sm">
-              Crie sua primeira proposta para começar
-            </div>
-            <Button onClick={openNew}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              Criar primeira proposta
-            </Button>
-          </div>
+          <EmptyStateNoProposals onCreate={openNew} />
+        ) : filtered.length === 0 ? (
+          <EmptyStateNoResults onClear={clearFilters} />
         ) : (
           <div className="flex flex-col gap-2">
-            {proposals.map((p) => (
-              <Card
+            {filtered.map((p) => (
+              <ProposalRow
                 key={p.id}
-                className={cn(
-                  'group cursor-pointer overflow-hidden p-0 transition-colors',
-                  'hover:border-border/70 hover:bg-muted/30',
-                )}
+                proposal={p}
+                selected={selected.has(p.id)}
+                onSelectToggle={(checked) => toggleSelect(p.id, checked)}
                 onClick={() => router.push(`/admin/propostas/${p.slug}`)}
-              >
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="font-mono text-xs font-semibold tabular-nums text-muted-foreground">
-                      {formatProposalNumber(p.number, p.version_suffix)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-foreground">
-                        {p.title}
-                      </div>
-                      <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {p.clients?.company ?? '—'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-3">
-                    <div className="hidden text-right sm:block">
-                      <div className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                        {fmtCurrency(p.total_amount, p.currency)}
-                      </div>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        {p.valid_until ? `válida até ${fmtDate(p.valid_until)}` : 'sem validade'}
-                      </div>
-                    </div>
-                    <StatusBadge status={p.status} />
-                  </div>
-                </div>
-              </Card>
+              />
             ))}
           </div>
         )}
