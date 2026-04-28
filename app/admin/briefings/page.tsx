@@ -18,7 +18,14 @@ import { Input } from '@/components/ui/input'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AvatarUpload } from '@/components/admin/AvatarUpload'
-import { RecipientPickerModal } from '@/components/admin/RecipientPickerModal'
+// RecipientPickerModal is only mounted when the owner clicks one of the
+// send/notify actions on a briefing row — never during typical browsing.
+// Lazy-loading defers the modal's chunk until the action fires.
+import dynamic from 'next/dynamic'
+const RecipientPickerModal = dynamic(
+  () => import('@/components/admin/RecipientPickerModal').then((m) => ({ default: m.RecipientPickerModal })),
+  { ssr: false },
+)
 import {
   Select,
   SelectContent,

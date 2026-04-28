@@ -12,7 +12,14 @@ import {
 } from 'lucide-react'
 import { SOCIAL_NETWORKS } from './SocialIcons'
 import { AvatarUpload } from '@/components/admin/AvatarUpload'
-import { RecipientPickerModal } from '@/components/admin/RecipientPickerModal'
+// RecipientPickerModal — same lazy treatment as in /admin/briefings.
+// Only mounted when owner triggers send/notify actions, so deferring
+// keeps the client detail bundle lighter.
+import dynamic from 'next/dynamic'
+const RecipientPickerModal = dynamic(
+  () => import('@/components/admin/RecipientPickerModal').then((m) => ({ default: m.RecipientPickerModal })),
+  { ssr: false },
+)
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
