@@ -79,7 +79,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const sidebarLogo = (
     <Link
       href="/admin"
-      className="block w-full"
+      className="block w-full transition-opacity hover:opacity-70"
       aria-label="Bnny Labs — voltar ao início"
     >
       {/* +20% size vs phase 2.2 (h-6 → h-7) */}
