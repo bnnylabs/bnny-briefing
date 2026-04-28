@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getProposalBySlug, listBlocks } from '@/lib/proposals'
 import { sendProposalToClient } from '@/lib/email'
+import { resolveBriefingRecipients } from '@/lib/briefing-recipients'
 import { formatProposalNumber } from '@/lib/proposal-types'
 import type { BlockContentInvestment } from '@/lib/proposal-types'
 
@@ -53,10 +54,21 @@ export async function POST(
     return NextResponse.json({ error: 'Proposta não encontrada' }, { status: 404 })
   }
 
-  const clientEmail = proposal.clients?.email
-  if (!clientEmail) {
+  // Resolve recipient list from client_contacts (the canonical source since
+  // schema v5). Falls back to the legacy clients.email/name if no contact
+  // rows exist — same behaviour as briefings, so the same client can
+  // receive both kinds of email through the same setup.
+  const recipients = await resolveBriefingRecipients(proposal.client_id, {
+    name: proposal.clients?.name || 'Cliente',
+    email: proposal.clients?.email ?? null,
+  })
+
+  if (recipients.length === 0) {
     return NextResponse.json(
-      { error: 'O cliente desta proposta não tem e-mail cadastrado.' },
+      {
+        error:
+          'O cliente desta proposta não tem contato com e-mail. Cadastre um contato principal em /admin/clientes.',
+      },
       { status: 400 },
     )
   }
@@ -70,42 +82,62 @@ export async function POST(
     ? (investment.content as BlockContentInvestment).total_amount ?? 0
     : 0
 
-  const language = proposal.language === 'en-US' ? 'en-US' : 'pt-BR'
-  const localeForDate = language === 'en-US' ? 'en-US' : 'pt-BR'
-
-  const validUntilStr = proposal.valid_until
-    ? new Date(proposal.valid_until + 'T00:00:00').toLocaleDateString(localeForDate, {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      })
-    : language === 'en-US'
-      ? 'on request'
-      : 'a combinar'
-
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`
   const link = `${baseUrl}/p/${proposal.slug}`
   const proposalNumber = formatProposalNumber(proposal.number, proposal.version_suffix)
 
-  // Send the email. We do this BEFORE updating status so a Resend failure
-  // leaves the proposal in 'draft' / current state and the owner can retry.
-  const result = await sendProposalToClient({
-    clientName: proposal.clients?.name || 'Cliente',
-    clientEmail,
-    company: proposal.clients?.company || '',
-    proposalTitle: proposal.title,
-    proposalNumber,
-    validUntil: validUntilStr,
-    totalAmount: fmtCurrency(totalAmount, language),
-    link,
-    language,
-  })
+  // Send to every recipient. Each one gets the email in their own
+  // language preference (set on the contact row).
+  const sendResults = await Promise.all(
+    recipients.map(async (r) => {
+      const lang = r.language === 'en-US' ? 'en-US' : 'pt-BR'
+      const localeForDate = lang === 'en-US' ? 'en-US' : 'pt-BR'
+      const validUntilStr = proposal.valid_until
+        ? new Date(proposal.valid_until + 'T00:00:00').toLocaleDateString(localeForDate, {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })
+        : lang === 'en-US'
+          ? 'on request'
+          : 'a combinar'
 
-  if (!result.ok) {
+      const r2 = await sendProposalToClient({
+        clientName: r.name,
+        clientEmail: r.email,
+        company: proposal.clients?.company || '',
+        proposalTitle: proposal.title,
+        proposalNumber,
+        validUntil: validUntilStr,
+        totalAmount: fmtCurrency(totalAmount, lang),
+        link,
+        language: lang,
+      })
+      return { recipient: r, ...r2 }
+    }),
+  )
+
+  const successes = sendResults.filter((r) => r.ok)
+  const failures = sendResults.filter((r) => !r.ok)
+
+  // We treat "primary delivered" as the success criterion. CCs failing
+  // is annoying but doesn't block the publish — they're informational
+  // copies. Primary failing means the actual recipient didn't get the
+  // proposal, which is failure.
+  const primaryDelivered = successes.some((s) => s.recipient.role === 'primary')
+  if (!primaryDelivered) {
+    const firstErr = failures[0]?.error
     const errMsg =
-      result.error instanceof Error ? result.error.message : 'Falha ao enviar e-mail'
+      firstErr instanceof Error
+        ? firstErr.message
+        : typeof firstErr === 'string'
+          ? firstErr
+          : 'Falha ao enviar e-mail pro destinatário principal'
     return NextResponse.json({ error: errMsg }, { status: 502 })
   }
+
+  // Forwards-compat with single-recipient code paths below.
+  const result = sendResults.find((r) => r.recipient.role === 'primary' && r.ok)!
 
   // Email shipped — now update state. We use a partial update so we don't
   // clobber sent_at on re-sends (preserves first-send timestamp).
@@ -135,11 +167,21 @@ export async function POST(
       proposal_id: proposal.id,
       actor_type: 'admin',
       event: 'sent',
-      details: { to: clientEmail, email_id: result.id },
+      details: {
+        to: successes.map((s) => ({ email: s.recipient.email, role: s.recipient.role })),
+        failed: failures.map((f) => ({ email: f.recipient.email, role: f.recipient.role })),
+        primary_email_id: result.id,
+      },
     })
   } catch {
     // Activity logging is best-effort. Don't break the response.
   }
 
-  return NextResponse.json({ ok: true, link, emailId: result.id })
+  return NextResponse.json({
+    ok: true,
+    link,
+    emailId: result.id,
+    sentTo: successes.map((s) => s.recipient.email),
+    failedTo: failures.map((f) => f.recipient.email),
+  })
 }
