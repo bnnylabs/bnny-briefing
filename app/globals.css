@@ -71,21 +71,6 @@
     --sidebar-accent-foreground: 0 0% 20%;
     --sidebar-border:      0 0% 88%;
     --sidebar-ring:        158 99% 40%;
-
-    /* Legacy vars */
-    --bg:           #ffffff;
-    --bg-2:         #f9f9f9;
-    --bg-3:         #f4f4f4;
-    --border-legacy:#e5e5e5;
-    --border-2:     #d4d4d4;
-    --text:         #171717;
-    --text-2:       #737373;
-    --text-3:       #a3a3a3;
-    --bnny-green:   #12fea9;
-    --accent-dim:   rgba(101, 163, 13, 0.1);
-    --accent-border:rgba(101, 163, 13, 0.25);
-    --red:          #ef4444;
-    --yellow:       #eab308;
   }
 }
 
@@ -107,8 +92,8 @@
 /* Spinner */
 .spinner {
   width: 18px; height: 18px;
-  border: 2px solid rgba(101, 163, 13, 0.2);
-  border-top-color: #12fea9;
+  border: 2px solid hsl(var(--primary) / 0.2);
+  border-top-color: hsl(var(--primary));
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   display: inline-block;
@@ -120,13 +105,3 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: #a3a3a3; }
-
-@media (max-width: 640px) {
-  .card-desktop-btns { display: none !important; }
-  .card-extra-btns   { display: flex !important; }
-}
-@media (min-width: 641px) {
-  .card-extra-btns { display: none !important; }
-}
-/* theme: nova-light-lime v1 */
-/* Sun Apr 26 20:37:00 UTC 2026 */
