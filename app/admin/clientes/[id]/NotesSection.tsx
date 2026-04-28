@@ -1,8 +1,9 @@
 'use client'
 
 import * as React from 'react'
-import { Pin, PinOff, StickyNote } from 'lucide-react'
+import { Pin, PinOff, StickyNote, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { renderMarkdownToHtml } from '@/lib/email-markdown'
 
 export interface ClientNote {
@@ -39,6 +40,9 @@ export function NotesSection({ clientId, notes, onUpdate, onError }: Props) {
   const [submitting, setSubmitting] = React.useState(false)
   const [showAll, setShowAll] = React.useState(false)
   const [togglingPin, setTogglingPin] = React.useState<string | null>(null)
+  // Holds the note pending confirmation. null = no dialog open.
+  const [confirmingDelete, setConfirmingDelete] = React.useState<ClientNote | null>(null)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
 
   const pinned = notes.filter(n => n.is_pinned)
   const unpinned = notes.filter(n => !n.is_pinned)
@@ -68,6 +72,19 @@ export function NotesSection({ clientId, notes, onUpdate, onError }: Props) {
       body: JSON.stringify({ is_pinned: !note.is_pinned }),
     })
     setTogglingPin(null)
+    onUpdate()
+  }
+
+  async function performDelete() {
+    const note = confirmingDelete
+    if (!note) return
+    setConfirmingDelete(null)
+    setDeletingId(note.id)
+    const res = await fetch(`/api/admin/clients/${clientId}/notes/${note.id}`, {
+      method: 'DELETE',
+    })
+    setDeletingId(null)
+    if (!res.ok) { onError('Erro ao remover nota'); return }
     onUpdate()
   }
 
@@ -103,26 +120,40 @@ export function NotesSection({ clientId, notes, onUpdate, onError }: Props) {
               className={cn(
                 'group relative rounded-lg border bg-card p-3 text-sm',
                 note.is_pinned ? 'border-primary/30 bg-primary/10' : 'border-border',
+                deletingId === note.id && 'opacity-50',
               )}>
-              {/* Pin toggle */}
-              <button
-                type="button"
-                onClick={() => togglePin(note)}
-                disabled={togglingPin === note.id}
-                title={note.is_pinned ? 'Desafixar' : 'Fixar no topo'}
-                className={cn(
-                  'absolute right-2 top-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100',
-                  note.is_pinned
-                    ? 'text-primary opacity-100 hover:bg-primary/15'
-                    : 'text-muted-foreground hover:bg-muted',
-                )}
-              >
-                {note.is_pinned ? <PinOff size={11} /> : <Pin size={11} />}
-              </button>
+              {/* Action buttons (top-right, hover) */}
+              <div className="absolute right-2 top-2 flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => togglePin(note)}
+                  disabled={togglingPin === note.id}
+                  aria-label={note.is_pinned ? 'Desafixar nota' : 'Fixar nota no topo'}
+                  title={note.is_pinned ? 'Desafixar' : 'Fixar no topo'}
+                  className={cn(
+                    'rounded p-1 transition-opacity',
+                    note.is_pinned
+                      ? 'text-primary opacity-100 hover:bg-primary/15'
+                      : 'text-muted-foreground opacity-0 hover:bg-muted group-hover:opacity-100',
+                  )}
+                >
+                  {note.is_pinned ? <PinOff size={11} /> : <Pin size={11} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(note)}
+                  disabled={deletingId === note.id}
+                  aria-label="Remover nota"
+                  title="Remover"
+                  className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                >
+                  <Trash2 size={11} />
+                </button>
+              </div>
 
               {/* Body — rendered as HTML from markdown */}
               <div
-                className="prose-sm leading-relaxed text-foreground [&_p]:mb-1 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_em]:italic"
+                className="prose-sm pr-12 leading-relaxed text-foreground [&_p]:mb-1 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_em]:italic"
                 dangerouslySetInnerHTML={{ __html: renderNote(note.body_markdown) }}
               />
               <div className="mt-2 text-[10px] text-muted-foreground">
@@ -150,6 +181,17 @@ export function NotesSection({ clientId, notes, onUpdate, onError }: Props) {
       {notes.length === 0 && (
         <p className="text-xs text-muted-foreground">Nenhuma nota ainda.</p>
       )}
+
+      <ConfirmDialog
+        open={!!confirmingDelete}
+        onOpenChange={(open) => !open && setConfirmingDelete(null)}
+        title="Remover esta nota?"
+        description="Esta ação não pode ser desfeita."
+        icon={Trash2}
+        variant="destructive"
+        confirmLabel="Sim, remover"
+        onConfirm={performDelete}
+      />
     </div>
   )
 }
