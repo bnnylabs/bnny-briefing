@@ -105,10 +105,21 @@ export function useToast() {
   }, [])
 
   const toast = useCallback(
-    (message: string, type: ToastType = 'success', duration = 3500) => {
+    (message: string, type: ToastType = 'success', duration?: number) => {
+      // Per-type default duration. Caller can still override explicitly.
+      // - success: 1800ms — quick acknowledgment, user already saw the
+      //   action succeed visually (button feedback, list update, etc).
+      // - info: 3000ms — neutral notice, average reading time.
+      // - error: 5000ms — errors deserve longer to read; the user might
+      //   be looking at a different part of the page when it fires, and
+      //   missing it means re-running the failing action without
+      //   knowing what went wrong.
+      const defaultDuration =
+        type === 'error' ? 5000 : type === 'info' ? 3000 : 1800
+      const finalDuration = duration ?? defaultDuration
       const id = Math.random().toString(36).slice(2)
       setToasts((prev) => [...prev, { id, message, type }])
-      timers.current[id] = setTimeout(() => remove(id), duration)
+      timers.current[id] = setTimeout(() => remove(id), finalDuration)
       return id
     },
     [remove],
