@@ -1,0 +1,9 @@
+# Bnny Labs — admin tool, not a public site.
+# Public proposal pages (when implemented in Phase 3) will have their
+# own per-route robots metadata and may be allowed individually.
+
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /b/
+Disallow: /admin
