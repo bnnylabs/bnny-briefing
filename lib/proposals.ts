@@ -31,6 +31,30 @@ const POSITION_STEP = 1024
 // ─── Read ────────────────────────────────────────────────────────────────
 
 /** List all proposals, newest first, joined with client basic fields. */
+// ─── Computed status (auto-expire) ────────────────────────────────────────
+
+/**
+ * Auto-promote a proposal's status to 'expired' when its valid_until has
+ * passed. This is done at read time only — the database column stays
+ * untouched, so if the owner later extends valid_until, the proposal
+ * returns to its real status without any data fix needed.
+ *
+ * Only `sent` and `viewed` proposals are subject to expiration. Drafts
+ * are still being worked on; approved/rejected/revised are terminal.
+ */
+function withComputedStatus<T extends { status: string; valid_until: string | null }>(
+  p: T,
+): T {
+  if (p.status !== 'sent' && p.status !== 'viewed') return p
+  if (!p.valid_until) return p
+  const now = new Date()
+  const validUntilDate = new Date(`${p.valid_until}T23:59:59`)
+  if (validUntilDate.getTime() < now.getTime()) {
+    return { ...p, status: 'expired' }
+  }
+  return p
+}
+
 export async function listProposals(): Promise<ProposalWithClient[]> {
   const { data, error } = await supabaseAdmin
     .from('proposals')
@@ -45,7 +69,7 @@ export async function listProposals(): Promise<ProposalWithClient[]> {
     .order('number', { ascending: false })
 
   if (error) throw new Error(error.message)
-  return (data ?? []) as ProposalWithClient[]
+  return ((data ?? []) as ProposalWithClient[]).map(withComputedStatus)
 }
 
 /** Fetch a single proposal by slug, joined with client. Returns null if missing. */
@@ -66,7 +90,8 @@ export async function getProposalBySlug(
     .maybeSingle()
 
   if (error) throw new Error(error.message)
-  return (data as ProposalWithClient) ?? null
+  if (!data) return null
+  return withComputedStatus(data as ProposalWithClient)
 }
 
 // ─── Create ──────────────────────────────────────────────────────────────
