@@ -91,6 +91,9 @@ export interface BlockContentPhases {
 }
 export interface BlockContentInvestment {
   intro?: string
+  total_amount: number
+  currency: string
+  payment_terms: PaymentTerm[]
 }
 export interface BlockContentTerms {
   body_markdown: string

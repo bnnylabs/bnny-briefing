@@ -39,6 +39,8 @@ import {
 import { formatSavedAgo, useAutoSave, type AutoSaveStatus } from './useAutoSave'
 import { HeaderEditor, HeaderPreview } from './BlockHeader'
 import { PhasesEditor, PhasesPreview } from './BlockPhases'
+import { InvestmentEditor, InvestmentPreview } from './BlockInvestment'
+import type { BlockContentInvestment } from '@/lib/proposal-types'
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -54,7 +56,7 @@ interface BlockTypeMeta {
 const BLOCK_TYPES: BlockTypeMeta[] = [
   { type: 'header',      label: 'Cabeçalho',      description: 'Texto de abertura da proposta.',                    available: true },
   { type: 'phases',      label: 'Fases',           description: 'Etapas numeradas com prazo (escopo + cronograma).', available: true },
-  { type: 'investment',  label: 'Investimento',    description: 'Valor total e condições de pagamento.',             available: false },
+  { type: 'investment',  label: 'Investimento',    description: 'Valor total e condições de pagamento.',             available: true },
   { type: 'terms',       label: 'Termos',          description: 'Termos e condições do projeto.',                    available: false },
   { type: 'next_steps',  label: 'Próximos passos', description: 'Lista do que acontece após aprovação.',             available: false },
   { type: 'attachments', label: 'Anexos',          description: 'Links para arquivos adicionais.',                   available: false },
@@ -123,6 +125,8 @@ function BlockEditorSwitch({
       return <HeaderEditor content={block.content as { body: string }} onChange={onContentChange} />
     case 'phases':
       return <PhasesEditor content={block.content as { phases: never[] }} onChange={onContentChange} />
+    case 'investment':
+      return <InvestmentEditor content={block.content as BlockContentInvestment} onChange={onContentChange} />
     default:
       return (
         <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-6 text-center text-xs text-muted-foreground">
@@ -135,9 +139,10 @@ function BlockEditorSwitch({
 /** Renders a block in clean read-only mode — used by both document view and preview column. */
 function BlockReadOnly({ block }: { block: ProposalBlock }) {
   switch (block.type) {
-    case 'header': return <HeaderPreview content={block.content as { body: string }} />
-    case 'phases': return <PhasesPreview content={block.content as { phases: never[] }} />
-    default:       return null
+    case 'header':     return <HeaderPreview     content={block.content as { body: string }} />
+    case 'phases':     return <PhasesPreview     content={block.content as { phases: never[] }} />
+    case 'investment': return <InvestmentPreview content={block.content as BlockContentInvestment} />
+    default:           return null
   }
 }
 
@@ -170,11 +175,16 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
     const res = await fetch(`/api/proposals/${slug}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: proposal.title, valid_until: proposal.valid_until }),
+      body: JSON.stringify({
+        title: proposal.title,
+        valid_until: proposal.valid_until,
+        total_amount: proposal.total_amount,
+        payment_terms: proposal.payment_terms,
+      }),
     })
     if (!res.ok) throw new Error('save failed')
     proposalDirtyRef.current = false
-  }, [slug, proposal.title, proposal.valid_until])
+  }, [slug, proposal.title, proposal.valid_until, proposal.total_amount, proposal.payment_terms])
 
   const proposalSave = useAutoSave(saveProposalMeta)
 
@@ -231,6 +241,20 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
     setBlocks((arr) => arr.map((b) => (b.id === id ? { ...b, content } : b)))
     blockDirtyIdsRef.current.add(id)
     blocksSave.schedule()
+
+    // Investment block is the source of truth for total_amount + payment_terms.
+    // Sync those to the proposal so the list view stays accurate.
+    const block = blocks.find((b) => b.id === id)
+    if (block?.type === 'investment') {
+      const inv = content as BlockContentInvestment
+      setProposal((p) => ({
+        ...p,
+        total_amount: inv.total_amount ?? p.total_amount,
+        payment_terms: inv.payment_terms ?? p.payment_terms,
+      }))
+      proposalDirtyRef.current = true
+      proposalSave.schedule()
+    }
   }
 
   const toggleBlockVisible = (id: string) => {
@@ -240,9 +264,21 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
   }
 
   const addBlock = async (type: ProposalBlockType) => {
+    // Investment block inherits the proposal's current financial state
+    // so the user doesn't have to re-enter what the template already set.
+    let initialContent: ProposalBlockContent | undefined
+    if (type === 'investment') {
+      initialContent = {
+        intro: '',
+        total_amount: proposal.total_amount,
+        currency: proposal.currency,
+        payment_terms: proposal.payment_terms,
+      } as BlockContentInvestment
+    }
+
     const res = await fetch(`/api/proposals/${slug}/blocks`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type }),
+      body: JSON.stringify({ type, content: initialContent }),
     })
     if (!res.ok) { toast('Erro ao adicionar bloco', 'error'); return }
     const data = await res.json()

@@ -126,6 +126,7 @@ export default function PropostasPage() {
 
   const [showNew, setShowNew] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [generating, setGenerating] = useState(false)
 
   // Special sentinel meaning "start blank, no template".
   const TEMPLATE_BLANK = '__blank__'
@@ -134,7 +135,9 @@ export default function PropostasPage() {
     client_id: '',
     title: '',
     valid_until: '',
-    template_id: '' as string, // empty until we set the default after templates load
+    template_id: '' as string,
+    context: '',
+    url: '',
   })
 
   const fetchProposals = useCallback(async () => {
@@ -199,13 +202,14 @@ export default function PropostasPage() {
   }, [fetchProposals, fetchClients, fetchTemplates])
 
   const openNew = () => {
-    // Default to the first default template if available, else blank.
     const defaultTemplate = templates.find((t) => t.is_default) ?? templates[0]
     setForm({
       client_id: '',
       title: '',
       valid_until: '',
       template_id: defaultTemplate?.id ?? TEMPLATE_BLANK,
+      context: '',
+      url: '',
     })
     setShowNew(true)
   }
@@ -216,6 +220,39 @@ export default function PropostasPage() {
       toast('Preencha cliente e título', 'error')
       return
     }
+    const hasContext = form.context.trim() || form.url.trim()
+    const useTemplate = form.template_id && form.template_id !== TEMPLATE_BLANK
+
+    // Step 1: AI generation (if context provided and a template is selected)
+    let contentOverrides: Record<string, unknown> | undefined
+    if (hasContext && useTemplate) {
+      setGenerating(true)
+      try {
+        const selectedClient = clients.find((c) => c.id === form.client_id)
+        const genRes = await fetch('/api/proposals/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            template_id: form.template_id,
+            client_company: selectedClient?.company ?? '',
+            context: form.context,
+            url: form.url || undefined,
+          }),
+        })
+        if (genRes.ok) {
+          const genData = await genRes.json()
+          contentOverrides = genData.content_overrides
+        } else {
+          toast('IA indisponível — usando template padrão', 'error')
+        }
+      } catch {
+        toast('IA indisponível — usando template padrão', 'error')
+      } finally {
+        setGenerating(false)
+      }
+    }
+
+    // Step 2: Create the proposal
     setSaving(true)
     try {
       const res = await fetch('/api/proposals', {
@@ -225,16 +262,14 @@ export default function PropostasPage() {
           client_id: form.client_id,
           title: form.title.trim(),
           valid_until: form.valid_until || null,
-          template_id:
-            form.template_id && form.template_id !== TEMPLATE_BLANK
-              ? form.template_id
-              : null,
+          template_id: useTemplate ? form.template_id : null,
+          content_overrides: contentOverrides,
         }),
       })
       if (res.ok) {
         const data = await res.json()
         setShowNew(false)
-        toast('Proposta criada', 'success')
+        toast(contentOverrides ? 'Proposta personalizada com IA' : 'Proposta criada', 'success')
         router.push(`/admin/propostas/${data.proposal.slug}`)
       } else {
         const data = await res.json().catch(() => ({}))
@@ -450,17 +485,63 @@ export default function PropostasPage() {
               />
             </div>
 
+            {/* Separator */}
+            <div className="border-t border-border pt-1">
+              <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                Personalização com IA <span className="text-muted-foreground/60">(opcional)</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="context"
+                className="text-[10px] uppercase tracking-widest text-muted-foreground"
+              >
+                Contexto
+              </Label>
+              <textarea
+                id="context"
+                value={form.context}
+                onChange={(e) => setForm((f) => ({ ...f, context: e.target.value }))}
+                placeholder="Cole notas da reunião, resumo ou qualquer contexto sobre o cliente e o projeto…"
+                rows={3}
+                className="flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary/30 transition-all duration-150"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="url"
+                className="text-[10px] uppercase tracking-widest text-muted-foreground"
+              >
+                Site ou rede social
+              </Label>
+              <Input
+                id="url"
+                value={form.url}
+                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+                placeholder="https://instagram.com/cliente ou site do cliente"
+                type="url"
+              />
+            </div>
+
+            {(form.context.trim() || form.url.trim()) && form.template_id !== TEMPLATE_BLANK && (
+              <p className="text-[11px] leading-relaxed text-success/90">
+                ✦ A proposta será personalizada com IA antes de abrir.
+              </p>
+            )}
+
             <DialogFooter className="!p-0 !pt-2">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setShowNew(false)}
-                disabled={saving}
+                disabled={saving || generating}
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Criando…' : 'Criar rascunho'}
+              <Button type="submit" disabled={saving || generating}>
+                {generating ? 'Personalizando…' : saving ? 'Criando…' : (form.context.trim() || form.url.trim()) && form.template_id !== TEMPLATE_BLANK ? 'Criar com IA' : 'Criar rascunho'}
               </Button>
             </DialogFooter>
           </form>

@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
     valid_until?: string | null
     briefing_id?: string | null
     template_id?: string | null
+    content_overrides?: {
+      header?: { body: string }
+      phases?: { phases: Array<{ number: string; title: string; duration: string; description: string }> }
+    }
   }
   try {
     body = await req.json()
@@ -66,6 +70,7 @@ export async function POST(req: NextRequest) {
       valid_until: body.valid_until ?? null,
       briefing_id: body.briefing_id ?? null,
       template_id: body.template_id ?? null,
+      content_overrides: body.content_overrides,
     })
     return NextResponse.json({ proposal }, { status: 201 })
   } catch (e) {

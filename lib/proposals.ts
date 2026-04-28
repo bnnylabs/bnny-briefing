@@ -78,6 +78,11 @@ export interface CreateProposalInput {
   valid_until?: string | null // ISO date "YYYY-MM-DD"
   briefing_id?: string | null
   template_id?: string | null
+  /** Per-block content overrides applied after template hydration (used by AI generation). */
+  content_overrides?: {
+    header?: { body: string }
+    phases?: { phases: Array<{ number: string; title: string; duration: string; description: string }> }
+  }
 }
 
 /**
@@ -127,14 +132,20 @@ export async function createProposal(
 
   // Hydrate blocks from template if present.
   if (template && Array.isArray(template.default_blocks) && template.default_blocks.length > 0) {
-    const rows = template.default_blocks.map((b, i) => ({
-      proposal_id: proposal.id,
-      type: b.type,
-      // Fall back to LEXORANK-style positions if the template didn't include them.
-      position: typeof b.position === 'number' ? b.position : (i + 1) * 1024,
-      content: b.content ?? {},
-      visible: b.visible ?? true,
-    }))
+    const overrides = input.content_overrides ?? {}
+    const rows = template.default_blocks.map((b, i) => {
+      // Apply AI-generated content overrides per block type.
+      let content = b.content ?? {}
+      if (b.type === 'header' && overrides.header) content = overrides.header
+      if (b.type === 'phases' && overrides.phases) content = overrides.phases
+      return {
+        proposal_id: proposal.id,
+        type: b.type,
+        position: typeof b.position === 'number' ? b.position : (i + 1) * 1024,
+        content,
+        visible: b.visible ?? true,
+      }
+    })
     const { error: blocksErr } = await supabaseAdmin.from('proposal_blocks').insert(rows)
     if (blocksErr) {
       console.error('Failed to hydrate template blocks:', blocksErr)
@@ -343,7 +354,7 @@ export function defaultContentForType(type: ProposalBlockType): ProposalBlockCon
     case 'phases':
       return { phases: [] }
     case 'investment':
-      return { intro: '' }
+      return { intro: '', total_amount: 0, currency: 'BRL', payment_terms: [] }
     case 'terms':
       return { body_markdown: '' }
     case 'next_steps':
