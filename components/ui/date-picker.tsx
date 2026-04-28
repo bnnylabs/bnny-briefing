@@ -30,21 +30,21 @@ export function DatePicker({
   disablePast = false,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
-
-  // Controlled month so navigation always works regardless of Portal/Dialog context.
-  const [month, setMonth] = React.useState<Date>(() => value ?? new Date())
-
-  // When the popover opens, jump to the selected date's month (or current month).
-  const handleOpenChange = (next: boolean) => {
-    if (next) setMonth(value ?? new Date())
-    setOpen(next)
-  }
+  // openKey forces calendar to remount on every open, so defaultMonth
+  // is re-applied based on the latest selected value. Avoids any stale
+  // controlled-state issues with react-day-picker v9 inside Portals.
+  const [openKey, setOpenKey] = React.useState(0)
 
   const today = React.useMemo(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
     return d
   }, [])
+
+  const handleOpenChange = (next: boolean) => {
+    if (next) setOpenKey((k) => k + 1)
+    setOpen(next)
+  }
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -83,9 +83,9 @@ export function DatePicker({
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
+          key={openKey}
           mode="single"
-          month={month}
-          onMonthChange={setMonth}
+          defaultMonth={value ?? new Date()}
           selected={value ?? undefined}
           onSelect={(d) => {
             onChange(d ?? null)

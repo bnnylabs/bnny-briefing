@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Check, AlertCircle, Loader2, Eye, Plus, Trash2,
   ChevronDown, ChevronUp, FileText, DollarSign, List, AlignLeft, Clock,
+  Sparkles,
 } from 'lucide-react'
 
 import { Badge }    from '@/components/ui/badge'
@@ -275,9 +276,9 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
 
       <div className="mx-auto max-w-5xl p-6">
 
-        {/* ── Page header (matches client detail pattern) ────────────── */}
+        {/* ── Page header ─────────────────────────────────────────────── */}
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
             <IconButton
               icon={<ArrowLeft className="h-4 w-4" />}
               label="Voltar"
@@ -285,21 +286,33 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
               onClick={() => router.push('/admin/propostas')}
             />
 
-            <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground sm:flex">
-              <FileText className="h-5 w-5" />
+            {/* Client avatar (or fallback icon) */}
+            <div className="hidden h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/40 sm:block">
+              {proposal.clients?.avatar_url ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={proposal.clients.avatar_url}
+                  alt={proposal.clients.company}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                  <FileText className="h-5 w-5" />
+                </div>
+              )}
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
+              {/* Title + Status on same row */}
+              <div className="flex items-center gap-2">
                 <Input
                   value={proposal.title}
                   onChange={(e) => patchProposal({ title: e.target.value })}
                   placeholder="Sem título"
-                  className="h-auto border-0 bg-transparent p-0 font-mono text-xl font-bold tracking-tight shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/40"
+                  className="h-auto min-w-0 flex-1 border-0 bg-transparent p-0 font-mono text-xl font-bold tracking-tight shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/40"
                 />
 
-                {/* Clickable status badge */}
-                <div className="relative">
+                <div className="relative shrink-0">
                   <button
                     type="button"
                     onClick={() => setEditingStatus((e) => !e)}
@@ -312,7 +325,7 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                     <ChevronDown size={10} className={cn('transition-transform', editingStatus && 'rotate-180')} />
                   </button>
                   {editingStatus && (
-                    <div className="absolute left-0 top-full z-10 mt-1 w-40 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                    <div className="absolute right-0 top-full z-10 mt-1 w-40 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
                       {(Object.keys(PROPOSAL_STATUS_LABELS_PT) as ProposalStatus[]).map((s) => (
                         <button
                           key={s}
@@ -361,30 +374,6 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
           {/* ── Left column ──────────────────────────────────────────── */}
           <div className="flex flex-col gap-5">
 
-            {/* Informações — title removed, now in page header */}
-            <Card className="p-5">
-              <CardHeader icon={<FileText className="h-4 w-4" />} title="Informações" />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <FieldLabel>Cliente</FieldLabel>
-                  <div className="mt-1.5 text-sm font-medium text-foreground">
-                    {proposal.clients?.company ?? '—'}
-                  </div>
-                </div>
-                <div>
-                  <FieldLabel>Validade</FieldLabel>
-                  <div className="mt-1.5">
-                    <DatePicker
-                      value={parseIsoDate(proposal.valid_until)}
-                      onChange={(d) => patchProposal({ valid_until: toIsoDate(d) })}
-                      placeholder="Sem validade"
-                      disablePast
-                    />
-                  </div>
-                </div>
-              </div>
-            </Card>
-
             {/* Texto de abertura */}
             {headerBlock ? (
               <Card className="p-5">
@@ -420,6 +409,17 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
           {/* ── Right column ─────────────────────────────────────────── */}
           <div className="flex flex-col gap-5">
 
+            {/* Validade */}
+            <Card className="p-5">
+              <CardHeader icon={<Clock className="h-4 w-4" />} title="Validade" />
+              <DatePicker
+                value={parseIsoDate(proposal.valid_until)}
+                onChange={(d) => patchProposal({ valid_until: toIsoDate(d) })}
+                placeholder="Sem validade"
+                disablePast
+              />
+            </Card>
+
             {/* Investimento */}
             {investmentBlock ? (
               <InvestimentoCard
@@ -430,18 +430,51 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
               <MissingSection label="Investimento" type="investment" onAdd={addBlock} />
             )}
 
-            {/* Detalhes — fills empty sidebar space, mirrors client Métricas */}
+            {/* IA Assistente — re-personalize on demand */}
+            <IACard
+              proposal={proposal}
+              onPersonalize={async (context, url) => {
+                if (!proposal.template_id && !context.trim() && !url.trim()) return
+                const res = await fetch('/api/proposals/generate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    template_id: proposal.template_id,
+                    client_company: proposal.clients?.company ?? '',
+                    context, url: url || undefined,
+                  }),
+                })
+                if (!res.ok) { toast('IA indisponível agora', 'error'); return }
+                const data = await res.json()
+                const overrides = data.content_overrides
+                if (!overrides) return
+
+                // Apply overrides to existing blocks
+                if (headerBlock && overrides.header) {
+                  patchBlock(headerBlock.id, overrides.header)
+                }
+                if (phasesBlock && overrides.phases) {
+                  // Preserve existing visible flags on phases (user toggles)
+                  const oldPhases = (phasesBlock.content as { phases?: ProposalPhase[] }).phases ?? []
+                  const newPhases = overrides.phases.phases.map((p: ProposalPhase, i: number) => ({
+                    ...p,
+                    visible: oldPhases[i]?.visible ?? true,
+                  }))
+                  patchBlock(phasesBlock.id, { phases: newPhases })
+                }
+                toast('Proposta personalizada com IA', 'success')
+              }}
+            />
+
+            {/* Detalhes */}
             <Card className="p-5">
-              <CardHeader icon={<Clock className="h-4 w-4" />} title="Detalhes" />
+              <CardHeader icon={<FileText className="h-4 w-4" />} title="Detalhes" />
               <div className="space-y-3 text-xs">
                 <DetalheRow label="Criada em" value={fmtDateLong(proposal.created_at)} />
                 <DetalheRow
                   label="Atualizada"
                   value={formatDistanceToNow(new Date(proposal.updated_at), { locale: ptBR, addSuffix: true })}
                 />
-                {proposal.valid_until && (
-                  <DetalheRow label="Validade" value={fmtDate(proposal.valid_until)} />
-                )}
                 <DetalheRow label="Idioma" value={proposal.language === 'pt-BR' ? 'Português' : 'English'} />
               </div>
             </Card>
@@ -708,6 +741,80 @@ function InvestimentoCard({ block, onChange }: { block: ProposalBlock; onChange:
               })}
             </div>
           </div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+// ─── IA Assistente card ──────────────────────────────────────────────────
+
+function IACard({
+  proposal, onPersonalize,
+}: { proposal: ProposalWithClient; onPersonalize: (context: string, url: string) => Promise<void> }) {
+  const [context, setContext] = useState('')
+  const [url, setUrl] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const canSubmit = (context.trim().length > 0 || url.trim().length > 0) && !loading
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return
+    setLoading(true)
+    try {
+      await onPersonalize(context, url)
+      setContext('')
+      setUrl('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <CardHeader icon={<Sparkles className="h-4 w-4" />} title="Personalizar com IA" />
+      <div className="space-y-3">
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Cole notas, transcrição da reunião ou contexto. A IA reescreve o texto de abertura e as fases para este cliente.
+        </p>
+
+        <textarea
+          value={context}
+          onChange={(e) => setContext(e.target.value)}
+          placeholder="Notas, transcrição, contexto…"
+          rows={3}
+          className={cn(
+            'flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2',
+            'text-xs text-foreground placeholder:text-muted-foreground/50',
+            'focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all',
+          )}
+        />
+
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="Site ou rede social (opcional)"
+          type="url"
+          className="text-xs"
+        />
+
+        <Button
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="w-full"
+          size="sm"
+        >
+          {loading ? (
+            <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Personalizando…</>
+          ) : (
+            <><Sparkles className="mr-1.5 h-3.5 w-3.5" />Personalizar</>
+          )}
+        </Button>
+
+        {!proposal.template_id && (
+          <p className="text-[10px] text-warning">
+            Esta proposta não tem modelo. A IA vai gerar do zero a partir do contexto.
+          </p>
         )}
       </div>
     </Card>
