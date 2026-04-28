@@ -244,6 +244,13 @@ export interface UpdateProposalPatch {
   internal_notes?: string | null
   public_settings?: Record<string, unknown>
   sent_at?: string | null
+  /** Used by the 'Trocar cliente' advanced action — switches the
+   *  joined client without otherwise touching the proposal. */
+  client_id?: string
+  /** Used by 'Trocar modelo'. Existing block content is preserved;
+   *  only the link to the template changes. The owner is expected to
+   *  regenerate via the IA card afterwards if they want fresh copy. */
+  template_id?: string | null
 }
 
 /**

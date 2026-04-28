@@ -60,6 +60,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if ('payment_terms' in body) patch.payment_terms = body.payment_terms
     if ('internal_notes' in body) patch.internal_notes = body.internal_notes
     if ('public_settings' in body) patch.public_settings = body.public_settings
+    // Advanced edits — used by the 'Trocar cliente / Trocar modelo' menu
+    // in the editor. Distinct path from regular meta auto-save.
+    if ('client_id' in body) patch.client_id = body.client_id
+    if ('template_id' in body) patch.template_id = body.template_id
 
     // Auto-stamp sent_at on the first draft → sent transition.
     // The client trusts the server's clock — never honor a sent_at
@@ -68,8 +72,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       patch.sent_at = new Date().toISOString()
     }
 
-    const updated = await updateProposal(proposal.id, patch)
-    return NextResponse.json({ proposal: updated })
+    await updateProposal(proposal.id, patch)
+
+    // Re-fetch with the client join — keeps the editor's local state in
+    // sync after edits that change relations (client_id, template_id).
+    // For meta-only edits this is one extra query, but it keeps the
+    // response shape consistent across all PATCH paths.
+    const refreshed = await getProposalBySlug(slug)
+    return NextResponse.json({ proposal: refreshed })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Check, AlertCircle, Loader2, Eye, Plus, Trash2,
   ChevronDown, ChevronUp, FileText, DollarSign, List, AlignLeft, Clock,
-  Sparkles, Lock, Send, Link as LinkIcon,
+  Sparkles, Lock, Send, Link as LinkIcon, MoreHorizontal,
+  Users, LayoutTemplate,
 } from 'lucide-react'
 
 import { Badge }    from '@/components/ui/badge'
@@ -18,6 +19,13 @@ import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { useToast, ToastContainer } from '@/components/toast'
 import { cn } from '@/lib/utils'
 import { DatePicker, parseIsoDate, toIsoDate } from '@/components/ui/date-picker'
@@ -124,6 +132,17 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
   const [proposal, setProposal]   = useState<ProposalWithClient>(initialProposal)
   const [blocks, setBlocks]       = useState<ProposalBlock[]>(initialBlocks)
   const [deleteTarget, setDeleteTarget] = useState<ProposalBlock | null>(null)
+
+  // ── Advanced actions: change client / change template ─────────────────
+  // Lazy-fetched lists for the change dialogs. Empty until the owner
+  // opens the menu — most proposal editing sessions never open these.
+  const [changeClientOpen, setChangeClientOpen]     = useState(false)
+  const [changeTemplateOpen, setChangeTemplateOpen] = useState(false)
+  const [advancedClients, setAdvancedClients]   = useState<Array<{ id: string; company: string; name: string }>>([])
+  const [advancedTemplates, setAdvancedTemplates] = useState<Array<{ id: string; name: string; type: string | null }>>([])
+  const [advancedClientChoice, setAdvancedClientChoice]     = useState<string>('')
+  const [advancedTemplateChoice, setAdvancedTemplateChoice] = useState<string>('')
+  const [advancedSaving, setAdvancedSaving]                 = useState(false)
 
   const slug = proposal.slug
   const proposalDirtyRef = useRef(false)
@@ -291,6 +310,86 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
     try { await navigator.clipboard.writeText(publicUrl) } catch {}
   }
 
+  // ── Advanced action: change client ────────────────────────────────────
+  const openChangeClient = useCallback(async () => {
+    setAdvancedClientChoice(proposal.client_id)
+    setChangeClientOpen(true)
+    // Lazy fetch — only when the dialog actually opens
+    if (advancedClients.length === 0) {
+      try {
+        const res = await fetch('/api/admin/clients', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          const list = (data.clients ?? []).map((c: { id: string; name: string; company: string }) => ({
+            id: c.id, name: c.name, company: c.company,
+          }))
+          setAdvancedClients(list)
+        }
+      } catch {}
+    }
+  }, [proposal.client_id, advancedClients.length])
+
+  const submitChangeClient = async () => {
+    if (!advancedClientChoice || advancedClientChoice === proposal.client_id) {
+      setChangeClientOpen(false); return
+    }
+    setAdvancedSaving(true)
+    try {
+      const res = await fetch(`/api/proposals/${slug}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: advancedClientChoice }),
+      })
+      if (!res.ok) { toast('Erro ao trocar cliente', 'error'); return }
+      const { proposal: updated } = await res.json()
+      // Replace local state with fresh server data — also refreshes
+      // the joined client object (avatar, company, etc.)
+      setProposal(updated)
+      toast('Cliente atualizado', 'success', 1500)
+      setChangeClientOpen(false)
+    } finally {
+      setAdvancedSaving(false)
+    }
+  }
+
+  // ── Advanced action: change template ──────────────────────────────────
+  // Note: changing the template here only changes the template_id link;
+  // existing block content is NOT overwritten. The owner can use the
+  // 'Personalizar com IA' card to regenerate against the new template.
+  const openChangeTemplate = useCallback(async () => {
+    setAdvancedTemplateChoice(proposal.template_id ?? '')
+    setChangeTemplateOpen(true)
+    if (advancedTemplates.length === 0) {
+      try {
+        const res = await fetch('/api/proposal-templates', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          setAdvancedTemplates(data.templates ?? [])
+        }
+      } catch {}
+    }
+  }, [proposal.template_id, advancedTemplates.length])
+
+  const submitChangeTemplate = async () => {
+    const next = advancedTemplateChoice || null
+    if (next === proposal.template_id) {
+      setChangeTemplateOpen(false); return
+    }
+    setAdvancedSaving(true)
+    try {
+      const res = await fetch(`/api/proposals/${slug}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template_id: next }),
+      })
+      if (!res.ok) { toast('Erro ao trocar modelo', 'error'); return }
+      const { proposal: updated } = await res.json()
+      setProposal(updated)
+      toast('Modelo atualizado — use a IA para regenerar o conteúdo', 'success', 2500)
+      setChangeTemplateOpen(false)
+    } finally {
+      setAdvancedSaving(false)
+    }
+  }
+
   const status = proposal.status as ProposalStatus
   const sorted = [...blocks].sort((a, b) => a.position - b.position)
 
@@ -427,6 +526,30 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
             <Button onClick={() => { proposalSave.flush(); blocksSave.flush(); setMode('document') }}>
               <Eye className="mr-1.5 h-4 w-4" />Visualizar proposta
             </Button>
+
+            {/* More actions — advanced edits like changing client/template */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Mais ações">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={openChangeClient} className="cursor-pointer">
+                  <Users className="mr-2 h-4 w-4" />
+                  Trocar cliente
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={openChangeTemplate} className="cursor-pointer">
+                  <LayoutTemplate className="mr-2 h-4 w-4" />
+                  Trocar modelo
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={copyPublicLink} className="cursor-pointer">
+                  <LinkIcon className="mr-2 h-4 w-4" />
+                  Copiar link público
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -558,6 +681,70 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
           <DialogFooter className="p-6 pt-0">
             <Button type="button" variant="ghost" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
             <Button variant="destructive" onClick={confirmDeleteBlock}>Remover</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Trocar cliente — advanced action */}
+      <Dialog open={changeClientOpen} onOpenChange={setChangeClientOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Trocar cliente</DialogTitle>
+            <DialogDescription>
+              Os dados do novo cliente passam a ser usados no contexto da IA. O conteúdo já escrito não muda — use o card de IA para regenerar se quiser.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-6 pb-2">
+            <Select value={advancedClientChoice} onValueChange={setAdvancedClientChoice}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione…" />
+              </SelectTrigger>
+              <SelectContent>
+                {advancedClients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.company} {c.name && <span className="text-muted-foreground">· {c.name}</span>}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="p-6 pt-2">
+            <Button variant="ghost" onClick={() => setChangeClientOpen(false)} disabled={advancedSaving}>Cancelar</Button>
+            <Button onClick={submitChangeClient} disabled={advancedSaving || !advancedClientChoice}>
+              {advancedSaving ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Salvando…</> : 'Trocar cliente'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Trocar modelo — advanced action */}
+      <Dialog open={changeTemplateOpen} onOpenChange={setChangeTemplateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Trocar modelo</DialogTitle>
+            <DialogDescription>
+              Apenas o vínculo com o modelo é trocado. O conteúdo atual da proposta não é apagado — você pode usar o card de IA para regenerar fases e abertura segundo o novo modelo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-6 pb-2">
+            <Select value={advancedTemplateChoice} onValueChange={setAdvancedTemplateChoice}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione…" />
+              </SelectTrigger>
+              <SelectContent>
+                {advancedTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="p-6 pt-2">
+            <Button variant="ghost" onClick={() => setChangeTemplateOpen(false)} disabled={advancedSaving}>Cancelar</Button>
+            <Button onClick={submitChangeTemplate} disabled={advancedSaving}>
+              {advancedSaving ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Salvando…</> : 'Trocar modelo'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
