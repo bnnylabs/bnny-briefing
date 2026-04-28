@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { Badge }    from '@/components/ui/badge'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Button }   from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { Input }    from '@/components/ui/input'
@@ -425,16 +426,20 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
 
       <div className="mx-auto max-w-5xl p-6">
 
+        {/* Breadcrumbs — replaces standalone <ArrowLeft> back button.
+            Same pattern as /admin/clientes/[id] (v0.10.52): keeps the
+            hero row visually flush with the cards below. Shows the
+            proposal number as the current-page label since 'O que é'
+            é mais reconhecível que o título quando a proposta tem
+            título genérico. */}
+        <Breadcrumbs items={[
+          { label: 'Propostas', href: '/admin/propostas' },
+          { label: formatProposalNumber(proposal.number, proposal.version_suffix) },
+        ]} />
+
         {/* ── Page header ─────────────────────────────────────────────── */}
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-start gap-3">
-            <IconButton
-              icon={<ArrowLeft className="h-4 w-4" />}
-              label="Voltar"
-              size="icon"
-              onClick={() => router.push('/admin/propostas')}
-            />
-
             {/* Client avatar (or fallback icon) */}
             <div className="relative hidden h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/40 sm:block">
               {proposal.clients?.avatar_url ? (
