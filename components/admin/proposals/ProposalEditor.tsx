@@ -467,13 +467,21 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                   <button
                     type="button"
                     onClick={() => setEditingStatus((e) => !e)}
+                    aria-haspopup="menu"
+                    aria-expanded={editingStatus}
+                    title="Mudar status"
                     className={cn(
-                      'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80',
+                      'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium transition-colors',
+                      'hover:bg-muted/60',
                       STATUS_COLORS[status],
                     )}
                   >
                     {PROPOSAL_STATUS_LABELS_PT[status]}
-                    <ChevronDown size={10} className={cn('transition-transform', editingStatus && 'rotate-180')} />
+                    <ChevronDown
+                      size={12}
+                      strokeWidth={2.5}
+                      className={cn('-mr-0.5 transition-transform', editingStatus && 'rotate-180')}
+                    />
                   </button>
                   {editingStatus && (
                     <div className="absolute left-0 top-full z-10 mt-1 w-40 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
