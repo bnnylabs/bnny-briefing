@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { BlockContentInvestment, PaymentTerm } from '@/lib/proposal-types'
+import { RewriteButton } from './RewriteButton'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -22,9 +23,12 @@ function fmtCurrency(amount: number): string {
 interface InvestmentEditorProps {
   content: BlockContentInvestment
   onChange: (content: BlockContentInvestment) => void
+  /** Optional client id — passed to the IA rewrite for the intro. */
+  clientId?: string | null
+  onRewriteError?: (message: string) => void
 }
 
-export function InvestmentEditor({ content, onChange }: InvestmentEditorProps) {
+export function InvestmentEditor({ content, onChange, clientId, onRewriteError }: InvestmentEditorProps) {
   const terms: PaymentTerm[] = Array.isArray(content.payment_terms)
     ? (content.payment_terms as PaymentTerm[])
     : []
@@ -60,9 +64,18 @@ export function InvestmentEditor({ content, onChange }: InvestmentEditorProps) {
     <div className="space-y-5">
       {/* Intro (optional) */}
       <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-          Introdução <span className="text-muted-foreground/60">(opcional)</span>
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Introdução <span className="text-muted-foreground/60">(opcional)</span>
+          </label>
+          <RewriteButton
+            value={content.intro ?? ''}
+            kind="investment_intro"
+            clientId={clientId}
+            onRewritten={(text) => onChange({ ...content, intro: text })}
+            onError={onRewriteError}
+          />
+        </div>
         <textarea
           value={content.intro ?? ''}
           onChange={(e) => onChange({ ...content, intro: e.target.value })}

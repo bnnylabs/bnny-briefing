@@ -6,10 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { BlockContentPhases, ProposalPhase } from '@/lib/proposal-types'
+import { RewriteButton } from './RewriteButton'
 
 interface PhasesEditorProps {
   content: BlockContentPhases
   onChange: (content: BlockContentPhases) => void
+  /** Optional client id — passed to the IA rewrite for each phase. */
+  clientId?: string | null
+  onRewriteError?: (message: string) => void
 }
 
 /**
@@ -20,7 +24,7 @@ interface PhasesEditorProps {
  * number ("1.0"), a title ("Briefing & Descoberta"), a duration label
  * ("3 a 4 dias úteis"), and a paragraph description.
  */
-export function PhasesEditor({ content, onChange }: PhasesEditorProps) {
+export function PhasesEditor({ content, onChange, clientId, onRewriteError }: PhasesEditorProps) {
   const phases = content.phases ?? []
 
   const update = (i: number, patch: Partial<ProposalPhase>) => {
@@ -88,6 +92,16 @@ export function PhasesEditor({ content, onChange }: PhasesEditorProps) {
                 placeholder="3 a 4 dias úteis"
                 className="text-xs"
               />
+              <div className="flex justify-end">
+                <RewriteButton
+                  value={phase.description}
+                  kind="phase_description"
+                  clientId={clientId}
+                  onRewritten={(text) => update(i, { description: text })}
+                  onError={onRewriteError}
+                  extraContext={`Esta é a fase "${phase.title || phase.number}", com duração de ${phase.duration || 'não especificada'}.`}
+                />
+              </div>
               <textarea
                 value={phase.description}
                 onChange={(e) => update(i, { description: e.target.value })}

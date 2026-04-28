@@ -46,6 +46,7 @@ import {
 } from '@/lib/proposal-types'
 
 import { formatSavedAgo, useAutoSave, type AutoSaveStatus } from './useAutoSave'
+import { RewriteButton } from './RewriteButton'
 import { BlockReadOnly } from './BlockReadOnly'
 import type { BlockContentInvestment } from '@/lib/proposal-types'
 
@@ -596,7 +597,19 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
             {/* Texto de abertura */}
             {headerBlock ? (
               <Card className="p-5">
-                <CardHeader icon={<AlignLeft className="h-4 w-4" />} title="Texto de abertura" />
+                <CardHeader
+                  icon={<AlignLeft className="h-4 w-4" />}
+                  title="Texto de abertura"
+                  action={
+                    <RewriteButton
+                      value={(headerBlock.content as { body?: string }).body ?? ''}
+                      kind="header_body"
+                      clientId={proposal.client_id}
+                      onRewritten={(text) => patchBlock(headerBlock.id, { body: text })}
+                      onError={(msg) => toast(msg, 'error')}
+                    />
+                  }
+                />
                 <textarea
                   value={(headerBlock.content as { body?: string }).body ?? ''}
                   onChange={(e) => patchBlock(headerBlock.id, { body: e.target.value })}
@@ -619,6 +632,8 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
               <PhasesCard
                 block={phasesBlock}
                 onChange={(c) => patchBlock(phasesBlock.id, c)}
+                clientId={proposal.client_id}
+                onRewriteError={(msg) => toast(msg, 'error')}
               />
             ) : (
               <MissingSection label="Fases do projeto" type="phases" onAdd={addBlock} />
@@ -836,7 +851,14 @@ function MissingSection({ label, type, onAdd }: { label: string; type: ProposalB
 
 // ─── Phases card ──────────────────────────────────────────────────────────
 
-function PhasesCard({ block, onChange }: { block: ProposalBlock; onChange: (c: ProposalBlockContent) => void }) {
+function PhasesCard({
+  block, onChange, clientId, onRewriteError,
+}: {
+  block: ProposalBlock
+  onChange: (c: ProposalBlockContent) => void
+  clientId?: string | null
+  onRewriteError?: (msg: string) => void
+}) {
   const [expanded, setExpanded] = useState<number | null>(null)
   const content = block.content as { phases?: ProposalPhase[] }
   const phases: ProposalPhase[] = content.phases ?? []
@@ -928,6 +950,19 @@ function PhasesCard({ block, onChange }: { block: ProposalBlock; onChange: (c: P
                       placeholder="3 a 4 dias úteis"
                       className="text-sm"
                     />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        Descrição
+                      </span>
+                      <RewriteButton
+                        value={phase.description}
+                        kind="phase_description"
+                        clientId={clientId}
+                        onRewritten={(text) => update(i, { description: text })}
+                        onError={onRewriteError}
+                        extraContext={`Esta é a fase "${phase.title || phase.number}", com duração de ${phase.duration || 'não especificada'}.`}
+                      />
+                    </div>
                     <textarea
                       value={phase.description}
                       onChange={(e) => update(i, { description: e.target.value })}

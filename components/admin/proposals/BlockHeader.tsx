@@ -2,10 +2,15 @@
 
 import { cn } from '@/lib/utils'
 import type { BlockContentHeader } from '@/lib/proposal-types'
+import { RewriteButton } from './RewriteButton'
 
 interface HeaderEditorProps {
   content: BlockContentHeader
   onChange: (content: BlockContentHeader) => void
+  /** Optional client id — passed to the IA rewrite endpoint so the
+   *  rewrite knows which client context to use. */
+  clientId?: string | null
+  onRewriteError?: (message: string) => void
 }
 
 /**
@@ -13,12 +18,21 @@ interface HeaderEditorProps {
  * In the BNNY Horus PDF this is the "Foi um prazer conversar com você sobre…"
  * opening copy that sits right under the proposal title.
  */
-export function HeaderEditor({ content, onChange }: HeaderEditorProps) {
+export function HeaderEditor({ content, onChange, clientId, onRewriteError }: HeaderEditorProps) {
   return (
     <div className="space-y-2">
-      <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-        Texto de abertura
-      </label>
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          Texto de abertura
+        </label>
+        <RewriteButton
+          value={content.body ?? ''}
+          kind="header_body"
+          clientId={clientId}
+          onRewritten={(text) => onChange({ body: text })}
+          onError={onRewriteError}
+        />
+      </div>
       <textarea
         value={content.body ?? ''}
         onChange={(e) => onChange({ body: e.target.value })}
