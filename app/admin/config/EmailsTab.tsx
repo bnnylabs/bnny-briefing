@@ -24,6 +24,7 @@ import { ArrowLeft, FileEdit, Mail, RotateCcw, Save, SendHorizonal } from 'lucid
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { IconButton } from '@/components/ui/icon-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -232,6 +233,8 @@ function EmailTemplateEditor({
   const [saving, setSaving] = React.useState(false)
   const [resetting, setResetting] = React.useState(false)
   const [sending, setSending] = React.useState(false)
+  // Confirmation dialog for the destructive 'reset to default' action.
+  const [resetConfirmOpen, setResetConfirmOpen] = React.useState(false)
 
   // Live preview
   const [previewHtml, setPreviewHtml] = React.useState('')
@@ -322,7 +325,6 @@ function EmailTemplateEditor({
 
   async function reset() {
     if (template.is_default) return
-    if (!confirm('Restaurar este template para o padrão? As alterações salvas serão perdidas.')) return
     setResetting(true)
     const res = await fetch(
       `/api/admin/email-templates?type=${encodeURIComponent(template.type)}&language=${encodeURIComponent(template.language)}`,
@@ -361,7 +363,7 @@ function EmailTemplateEditor({
             {/* Fix #6 — distinct visual states for restore button */}
             <button
               type="button"
-              onClick={reset}
+              onClick={() => setResetConfirmOpen(true)}
               disabled={template.is_default || resetting}
               title={template.is_default ? 'Já está usando o padrão' : 'Restaurar para o copy original'}
               className={[
@@ -532,6 +534,21 @@ function EmailTemplateEditor({
           </div>
         </div>
       </Card>
+
+      <ConfirmDialog
+        open={resetConfirmOpen}
+        onOpenChange={setResetConfirmOpen}
+        title="Restaurar para o padrão?"
+        description="As alterações salvas neste template serão perdidas e o copy original voltará."
+        icon={RotateCcw}
+        variant="destructive"
+        confirmLabel="Sim, restaurar"
+        loading={resetting}
+        onConfirm={async () => {
+          setResetConfirmOpen(false)
+          await reset()
+        }}
+      />
     </div>
   )
 }

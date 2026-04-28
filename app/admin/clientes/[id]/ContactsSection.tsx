@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { Check, ExternalLink, Mail, Phone, Plus, Star, Trash2, UserRound, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -41,6 +42,10 @@ export function ContactsSection({ clientId, contacts, onUpdate, onError, onSucce
   const [form, setForm] = React.useState(EMPTY_FORM)
   const [saving, setSaving] = React.useState(false)
   const [deleting, setDeleting] = React.useState<string | null>(null)
+  // Holds the id of the contact pending confirmation. Null means no
+  // dialog open. Replaces the native window.confirm() that was here
+  // before — gives us a branded, focus-trapped, mobile-friendly modal.
+  const [confirmingId, setConfirmingId] = React.useState<string | null>(null)
 
   function startAdd() {
     setForm({ ...EMPTY_FORM, is_primary: contacts.length === 0 })
@@ -97,8 +102,17 @@ export function ContactsSection({ clientId, contacts, onUpdate, onError, onSucce
     onUpdate()
   }
 
-  async function remove(contactId: string) {
-    if (!confirm('Remover este contato?')) return
+  // Step 1: user clicks the trash icon on a contact row.
+  // We don't delete yet — surface the confirmation dialog.
+  function requestRemove(contactId: string) {
+    setConfirmingId(contactId)
+  }
+
+  // Step 2: user confirms inside the dialog. Actually deletes.
+  async function performRemove() {
+    const contactId = confirmingId
+    if (!contactId) return
+    setConfirmingId(null)
     setDeleting(contactId)
     const res = await fetch(`/api/admin/clients/${clientId}/contacts/${contactId}`, { method: 'DELETE' })
     setDeleting(null)
@@ -190,7 +204,7 @@ export function ContactsSection({ clientId, contacts, onUpdate, onError, onSucce
                   <UserRound size={13} />
                 </button>
                 <button
-                  type="button" onClick={() => remove(c.id)} disabled={deleting === c.id}
+                  type="button" onClick={() => requestRemove(c.id)} disabled={deleting === c.id}
                   className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 size={13} />
@@ -219,6 +233,17 @@ export function ContactsSection({ clientId, contacts, onUpdate, onError, onSucce
           <Plus size={12} /> Adicionar contato
         </button>
       )}
+
+      <ConfirmDialog
+        open={!!confirmingId}
+        onOpenChange={(open) => !open && setConfirmingId(null)}
+        title="Remover este contato?"
+        description="Esta ação não pode ser desfeita."
+        icon={Trash2}
+        variant="destructive"
+        confirmLabel="Sim, remover"
+        onConfirm={performRemove}
+      />
     </div>
   )
 }
