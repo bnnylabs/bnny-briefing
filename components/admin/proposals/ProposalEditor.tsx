@@ -484,7 +484,7 @@ function EditingView({
   onToggleVisible, onMoveUp, onMoveDown, onDelete, onAddBlock,
 }: EditingViewProps) {
   return (
-    <div className="mx-auto max-w-6xl p-6">
+    <div className="mx-auto max-w-5xl p-6">
       {/* Top bar */}
       <div className="mb-5 flex items-center justify-between">
         <Button

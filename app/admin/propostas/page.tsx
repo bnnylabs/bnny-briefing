@@ -388,7 +388,14 @@ export default function PropostasPage() {
                 onValueChange={(v) => setForm((f) => ({ ...f, template_id: v }))}
               >
                 <SelectTrigger id="template_id">
-                  <SelectValue placeholder="Selecione um modelo" />
+                  {/* Render name manually — SelectValue would display full SelectItem content */}
+                  <span className={form.template_id ? 'text-foreground' : 'text-muted-foreground/60'}>
+                    {form.template_id === TEMPLATE_BLANK
+                      ? 'Em branco'
+                      : form.template_id
+                        ? (templates.find((t) => t.id === form.template_id)?.name ?? 'Selecione um modelo')
+                        : 'Selecione um modelo'}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {templates.map((t) => (

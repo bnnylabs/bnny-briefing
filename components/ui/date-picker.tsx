@@ -19,17 +19,9 @@ interface DatePickerProps {
   onChange: (date: Date | null) => void
   placeholder?: string
   className?: string
-  /** Disable past dates relative to today. Useful for validity dates. */
   disablePast?: boolean
 }
 
-/**
- * Single-date picker following the same pattern as DateRangePicker:
- * Button trigger with formatted date + Popover with the shadcn Calendar.
- *
- * Used wherever the rest of the app needs a date — never use the native
- * <input type="date"> which has a non-themable browser-default skin.
- */
 export function DatePicker({
   value,
   onChange,
@@ -39,6 +31,15 @@ export function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
 
+  // Controlled month so navigation always works regardless of Portal/Dialog context.
+  const [month, setMonth] = React.useState<Date>(() => value ?? new Date())
+
+  // When the popover opens, jump to the selected date's month (or current month).
+  const handleOpenChange = (next: boolean) => {
+    if (next) setMonth(value ?? new Date())
+    setOpen(next)
+  }
+
   const today = React.useMemo(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
@@ -46,7 +47,7 @@ export function DatePicker({
   }, [])
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -83,6 +84,8 @@ export function DatePicker({
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
+          month={month}
+          onMonthChange={setMonth}
           selected={value ?? undefined}
           onSelect={(d) => {
             onChange(d ?? null)
@@ -98,15 +101,12 @@ export function DatePicker({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
-/** Convert "YYYY-MM-DD" or null to a Date object. */
 export function parseIsoDate(iso: string | null | undefined): Date | null {
   if (!iso) return null
-  // Append T00:00:00 to avoid TZ-shifting the date.
   const d = new Date(`${iso}T00:00:00`)
   return isNaN(d.getTime()) ? null : d
 }
 
-/** Convert a Date back to "YYYY-MM-DD" for storage. */
 export function toIsoDate(d: Date | null): string | null {
   if (!d) return null
   const yyyy = d.getFullYear()
