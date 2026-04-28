@@ -48,7 +48,8 @@ interface ClientLite {
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('pt-BR', {
+  // Append T00:00:00 to avoid UTC→local TZ shift that pushes the date one day back.
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
