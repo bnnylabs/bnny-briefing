@@ -2,14 +2,14 @@
 
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import {
   ArrowLeft, Check, AlertCircle, Loader2, Eye, Plus, Trash2,
-  ChevronDown, ChevronUp, FileText, DollarSign, List, AlignLeft,
+  ChevronDown, ChevronUp, FileText, DollarSign, List, AlignLeft, Clock,
 } from 'lucide-react'
 
 import { Badge }    from '@/components/ui/badge'
 import { Button }   from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { Input }    from '@/components/ui/input'
 import { Card }     from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -20,6 +20,8 @@ import {
 import { useToast, ToastContainer } from '@/components/toast'
 import { cn } from '@/lib/utils'
 import { DatePicker, parseIsoDate, toIsoDate } from '@/components/ui/date-picker'
+import { formatDistanceToNow } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 import {
   formatProposalNumber,
@@ -37,6 +39,18 @@ import {
 import { formatSavedAgo, useAutoSave, type AutoSaveStatus } from './useAutoSave'
 import { BlockReadOnly } from './BlockReadOnly'
 import type { BlockContentInvestment } from '@/lib/proposal-types'
+
+// ─── Constants ────────────────────────────────────────────────────────────
+
+const STATUS_COLORS: Record<ProposalStatus, string> = {
+  draft:    'border-border bg-muted text-muted-foreground',
+  sent:     'border-info/30 bg-info/10 text-info',
+  viewed:   'border-warning/30 bg-warning/10 text-warning',
+  approved: 'border-success/30 bg-success/10 text-success',
+  rejected: 'border-destructive/30 bg-destructive/10 text-destructive',
+  revised:  'border-warning/30 bg-warning/10 text-warning',
+  expired:  'border-border bg-muted text-muted-foreground/70',
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -221,6 +235,20 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
     setBlocks((arr) => [...arr, data.block as ProposalBlock])
   }
 
+  // Status changing
+  const [editingStatus, setEditingStatus] = useState(false)
+  const changeStatus = async (next: ProposalStatus) => {
+    setEditingStatus(false)
+    if (next === proposal.status) return
+    setProposal((p) => ({ ...p, status: next }))
+    const res = await fetch(`/api/proposals/${slug}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: next }),
+    })
+    if (!res.ok) { toast('Erro ao mudar status', 'error'); return }
+    toast(`Status: ${PROPOSAL_STATUS_LABELS_PT[next]}`, 'success', 1500)
+  }
+
   const status = proposal.status as ProposalStatus
   const sorted = [...blocks].sort((a, b) => a.position - b.position)
 
@@ -246,71 +274,112 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
       <ToastContainer toasts={toasts} remove={remove} />
 
       <div className="mx-auto max-w-5xl p-6">
-        {/* Page header */}
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button
+
+        {/* ── Page header (matches client detail pattern) ────────────── */}
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <IconButton
+              icon={<ArrowLeft className="h-4 w-4" />}
+              label="Voltar"
+              size="icon"
               onClick={() => router.push('/admin/propostas')}
-              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <div>
+            />
+
+            <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground sm:flex">
+              <FileText className="h-5 w-5" />
+            </div>
+
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs font-semibold tabular-nums text-muted-foreground">
+                <Input
+                  value={proposal.title}
+                  onChange={(e) => patchProposal({ title: e.target.value })}
+                  placeholder="Sem título"
+                  className="h-auto border-0 bg-transparent p-0 font-mono text-xl font-bold tracking-tight shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/40"
+                />
+
+                {/* Clickable status badge */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setEditingStatus((e) => !e)}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80',
+                      STATUS_COLORS[status],
+                    )}
+                  >
+                    {PROPOSAL_STATUS_LABELS_PT[status]}
+                    <ChevronDown size={10} className={cn('transition-transform', editingStatus && 'rotate-180')} />
+                  </button>
+                  {editingStatus && (
+                    <div className="absolute left-0 top-full z-10 mt-1 w-40 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                      {(Object.keys(PROPOSAL_STATUS_LABELS_PT) as ProposalStatus[]).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => changeStatus(s)}
+                          className={cn(
+                            'flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-muted',
+                            status === s && 'font-semibold',
+                          )}
+                        >
+                          <span className={cn('h-1.5 w-1.5 rounded-full border', STATUS_COLORS[s])} />
+                          {PROPOSAL_STATUS_LABELS_PT[s]}
+                          {status === s && <Check size={10} className="ml-auto" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                <span className="font-mono tabular-nums">
                   {formatProposalNumber(proposal.number, proposal.version_suffix)}
                 </span>
-                <Badge variant={proposalStatusVariant(status)} className="text-[11px]">
-                  {PROPOSAL_STATUS_LABELS_PT[status]}
-                </Badge>
-                {proposal.clients?.company && (
-                  <span className="text-xs text-muted-foreground">· {proposal.clients.company}</span>
-                )}
+                {proposal.clients?.company && (<>
+                  <span>·</span>
+                  <span>para {proposal.clients.company}</span>
+                </>)}
+                <span>·</span>
+                <span>criada {formatDistanceToNow(new Date(proposal.created_at), { locale: ptBR, addSuffix: true })}</span>
               </div>
-              <SaveIndicator status={combinedStatus} lastSavedAt={combinedSavedAt} />
             </div>
           </div>
-          <Button onClick={() => { proposalSave.flush(); blocksSave.flush(); setMode('document') }}>
-            <Eye className="mr-1.5 h-4 w-4" />Visualizar proposta
-          </Button>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <SaveIndicator status={combinedStatus} lastSavedAt={combinedSavedAt} />
+            <Button onClick={() => { proposalSave.flush(); blocksSave.flush(); setMode('document') }}>
+              <Eye className="mr-1.5 h-4 w-4" />Visualizar proposta
+            </Button>
+          </div>
         </div>
 
-        {/* Two-column layout matching client detail */}
+        {/* ── 2-column layout ─────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px] lg:items-start">
 
           {/* ── Left column ──────────────────────────────────────────── */}
           <div className="flex flex-col gap-5">
 
-            {/* Informações */}
+            {/* Informações — title removed, now in page header */}
             <Card className="p-5">
               <CardHeader icon={<FileText className="h-4 w-4" />} title="Informações" />
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <FieldLabel>Título do projeto</FieldLabel>
-                  <Input
-                    value={proposal.title}
-                    onChange={(e) => patchProposal({ title: e.target.value })}
-                    placeholder="Ex: Identidade Visual — 2026"
-                    className="mt-1.5"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <FieldLabel>Cliente</FieldLabel>
-                    <div className="mt-1.5 text-sm font-medium text-foreground">
-                      {proposal.clients?.company ?? '—'}
-                    </div>
+                  <FieldLabel>Cliente</FieldLabel>
+                  <div className="mt-1.5 text-sm font-medium text-foreground">
+                    {proposal.clients?.company ?? '—'}
                   </div>
-                  <div>
-                    <FieldLabel>Validade</FieldLabel>
-                    <div className="mt-1.5">
-                      <DatePicker
-                        value={parseIsoDate(proposal.valid_until)}
-                        onChange={(d) => patchProposal({ valid_until: toIsoDate(d) })}
-                        placeholder="Sem validade"
-                        disablePast
-                      />
-                    </div>
+                </div>
+                <div>
+                  <FieldLabel>Validade</FieldLabel>
+                  <div className="mt-1.5">
+                    <DatePicker
+                      value={parseIsoDate(proposal.valid_until)}
+                      onChange={(d) => patchProposal({ valid_until: toIsoDate(d) })}
+                      placeholder="Sem validade"
+                      disablePast
+                    />
                   </div>
                 </div>
               </div>
@@ -361,6 +430,22 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
               <MissingSection label="Investimento" type="investment" onAdd={addBlock} />
             )}
 
+            {/* Detalhes — fills empty sidebar space, mirrors client Métricas */}
+            <Card className="p-5">
+              <CardHeader icon={<Clock className="h-4 w-4" />} title="Detalhes" />
+              <div className="space-y-3 text-xs">
+                <DetalheRow label="Criada em" value={fmtDateLong(proposal.created_at)} />
+                <DetalheRow
+                  label="Atualizada"
+                  value={formatDistanceToNow(new Date(proposal.updated_at), { locale: ptBR, addSuffix: true })}
+                />
+                {proposal.valid_until && (
+                  <DetalheRow label="Validade" value={fmtDate(proposal.valid_until)} />
+                )}
+                <DetalheRow label="Idioma" value={proposal.language === 'pt-BR' ? 'Português' : 'English'} />
+              </div>
+            </Card>
+
           </div>
         </div>
       </div>
@@ -379,6 +464,23 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
       </Dialog>
     </div>
   )
+}
+
+// ─── Detalhe row ──────────────────────────────────────────────────────────
+
+function DetalheRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right text-foreground">{value}</span>
+    </div>
+  )
+}
+
+// ─── Date helper for Detalhes ─────────────────────────────────────────────
+
+function fmtDateLong(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })
 }
 
 // ─── Missing section placeholder ──────────────────────────────────────────
@@ -526,8 +628,11 @@ function InvestimentoCard({ block, onChange }: { block: ProposalBlock; onChange:
   const content = block.content as BlockContentInvestment
   const terms = (content.payment_terms as PaymentTerm[] | undefined) ?? []
 
+  const [focused, setFocused] = useState(false)
+
   const updateTotal = (raw: string) => {
-    const num = parseFloat(raw.replace(/\./g, '').replace(',', '.'))
+    // Strip everything except digits, comma, period
+    const num = parseFloat(raw.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'))
     onChange({ ...content, total_amount: isNaN(num) ? 0 : num })
   }
 
@@ -538,7 +643,12 @@ function InvestimentoCard({ block, onChange }: { block: ProposalBlock; onChange:
     onChange({ ...content, payment_terms: next })
   }
 
-  const displayAmount = content.total_amount > 0 ? String(content.total_amount).replace('.', ',') : ''
+  // Display: raw editable value when focused, formatted "3.000,00" when blurred
+  const displayAmount = focused
+    ? (content.total_amount > 0 ? String(content.total_amount).replace('.', ',') : '')
+    : (content.total_amount > 0
+        ? content.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '')
 
   return (
     <Card className="p-5">
@@ -553,7 +663,9 @@ function InvestimentoCard({ block, onChange }: { block: ProposalBlock; onChange:
             <Input
               value={displayAmount}
               onChange={(e) => updateTotal(e.target.value)}
-              placeholder="3.000,00"
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              placeholder="0,00"
               className="font-mono text-lg font-bold tabular-nums"
             />
           </div>
