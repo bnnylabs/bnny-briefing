@@ -61,6 +61,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if ('internal_notes' in body) patch.internal_notes = body.internal_notes
     if ('public_settings' in body) patch.public_settings = body.public_settings
 
+    // Auto-stamp sent_at on the first draft → sent transition.
+    // The client trusts the server's clock — never honor a sent_at
+    // sent by the request body.
+    if (patch.status === 'sent' && proposal.status === 'draft' && !proposal.sent_at) {
+      patch.sent_at = new Date().toISOString()
+    }
+
     const updated = await updateProposal(proposal.id, patch)
     return NextResponse.json({ proposal: updated })
   } catch (e) {

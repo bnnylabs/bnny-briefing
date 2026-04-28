@@ -243,6 +243,7 @@ export interface UpdateProposalPatch {
   payment_terms?: PaymentTerm[]
   internal_notes?: string | null
   public_settings?: Record<string, unknown>
+  sent_at?: string | null
 }
 
 /**

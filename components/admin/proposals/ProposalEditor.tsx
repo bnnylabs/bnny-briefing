@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Check, AlertCircle, Loader2, Eye, Plus, Trash2,
   ChevronDown, ChevronUp, FileText, DollarSign, List, AlignLeft, Clock,
-  Sparkles, Lock,
+  Sparkles, Lock, Send, Link as LinkIcon,
 } from 'lucide-react'
 
 import { Badge }    from '@/components/ui/badge'
@@ -251,6 +251,46 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
     toast(`Status: ${PROPOSAL_STATUS_LABELS_PT[next]}`, 'success', 1500)
   }
 
+  // ── Send + public link ────────────────────────────────────────────────
+  // 'Enviar proposta' transitions draft → sent, server stamps sent_at,
+  // and the public URL is auto-copied to the clipboard so the owner can
+  // immediately paste it to the client (WhatsApp, email, etc.).
+
+  const publicUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/proposta/${slug}`
+    : `/proposta/${slug}`
+
+  const copyPublicLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicUrl)
+      toast('Link copiado', 'success', 1500)
+    } catch {
+      toast('Não foi possível copiar', 'error')
+    }
+  }
+
+  const handleSend = async () => {
+    // Flush any pending edits before changing status — protects the owner
+    // from sending a proposal where their last typed character hasn't
+    // landed in the DB yet.
+    proposalSave.flush(); blocksSave.flush()
+
+    setProposal((p) => ({
+      ...p,
+      status: 'sent',
+      sent_at: p.sent_at ?? new Date().toISOString(),
+    }))
+    const res = await fetch(`/api/proposals/${slug}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'sent' }),
+    })
+    if (!res.ok) { toast('Erro ao enviar', 'error'); return }
+    toast('Proposta marcada como enviada — link copiado', 'success', 2000)
+    // Best-effort copy. Failures are silent (owner can still hit the
+    // 'Copiar link' button explicitly).
+    try { await navigator.clipboard.writeText(publicUrl) } catch {}
+  }
+
   const status = proposal.status as ProposalStatus
   const sorted = [...blocks].sort((a, b) => a.position - b.position)
 
@@ -369,7 +409,21 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Enviar — only visible on draft */}
+            {status === 'draft' && (
+              <Button onClick={handleSend} variant="outline">
+                <Send className="mr-1.5 h-4 w-4" />Enviar proposta
+              </Button>
+            )}
+
+            {/* Copiar link — visible once the proposal has been shipped */}
+            {(status === 'sent' || status === 'viewed' || status === 'approved') && (
+              <Button onClick={copyPublicLink} variant="outline">
+                <LinkIcon className="mr-1.5 h-4 w-4" />Copiar link
+              </Button>
+            )}
+
             <Button onClick={() => { proposalSave.flush(); blocksSave.flush(); setMode('document') }}>
               <Eye className="mr-1.5 h-4 w-4" />Visualizar proposta
             </Button>
