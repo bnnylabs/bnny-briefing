@@ -7,7 +7,7 @@ import {
   Check, CheckCircle2, ChevronDown,
   Clipboard, ClipboardCheck, ClipboardList, Clock, Copy, Download, ExternalLink,
   Eye, FileText, Image as ImageIcon, Link as LinkIcon,
-  Lock, Mail, MoreHorizontal, Paperclip, Pencil, Plus, RefreshCw, Save, Send,
+  Lock, Mail, Maximize2, MoreHorizontal, Paperclip, Pencil, Plus, RefreshCw, Save, Send,
   ScrollText, Sparkles, Star, StickyNote, Trash2, Unlock, Users, X,
 } from 'lucide-react'
 import { SOCIAL_NETWORKS } from './SocialIcons'
@@ -260,7 +260,7 @@ export default function ClientePerfilPage() {
   const [aiProfile, setAiProfile] = useState<Record<string, string>>({})
   const [editingAi, setEditingAi] = useState(false)
   const [savingAi, setSavingAi] = useState(false)
-  const [aiExpanded, setAiExpanded] = useState(false)
+  const [aiModalOpen, setAiModalOpen] = useState(false)
   const [analyzeUrl, setAnalyzeUrl] = useState('')
   const [extraText, setExtraText] = useState('')
   const [detectedSocials, setDetectedSocials] = useState<SocialLinks>({})
@@ -384,7 +384,7 @@ export default function ClientePerfilPage() {
       if (data.analysis) {
         setAiProfile(data.analysis)
         setEditingAi(true)
-        setAiExpanded(true)
+        setAiModalOpen(true)
       }
       if (data.social_links) {
         setDetectedSocials(data.social_links)
@@ -686,12 +686,13 @@ export default function ClientePerfilPage() {
           {/* ── Left column ───────────────────────────────────────────── */}
           <div className="flex flex-col gap-4">
 
-            {/* AI Profile card */}
+            {/* AI Profile card — always compact. Heavy content (long
+                fields, IA analyzer, edit form) lives inside a Dialog
+                opened via the Maximize2 button. This keeps the page
+                layout stable: clicking 'edit' or 'view full' no
+                longer pushes everything below this card down. */}
             <Card className={cn('p-5', hasAiProfile && 'border-primary/30')}>
-              <div
-                className={cn('flex items-center justify-between gap-3', hasAiProfile && 'cursor-pointer')}
-                onClick={() => hasAiProfile && setAiExpanded(e => !e)}
-              >
+              <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-[15px] font-bold tracking-tight">
                   <Bot className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
                   Perfil de IA
@@ -701,117 +702,191 @@ export default function ClientePerfilPage() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  {hasAiProfile && !editingAi && (
-                    <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); setEditingAi(true); setAiExpanded(true) }}>
+                <div className="flex items-center gap-1">
+                  {hasAiProfile && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setEditingAi(true); setAiModalOpen(true) }}
+                    >
                       <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
                     </Button>
                   )}
-                  {hasAiProfile && <ChevronDown className={cn('h-5 w-5 text-muted-foreground transition-transform', aiExpanded && 'rotate-180')} />}
+                  <IconButton
+                    icon={<Maximize2 className="h-4 w-4" />}
+                    label="Ver perfil completo"
+                    size="icon"
+                    onClick={() => { setEditingAi(false); setAiModalOpen(true) }}
+                  />
                 </div>
               </div>
 
-              {/* Mini-summary — only when collapsed */}
-              {hasAiProfile && !aiExpanded && (
-                <div className="mt-2 space-y-0.5">
+              {hasAiProfile ? (
+                /* Compact summary — uppercase label + value below.
+                   Same pattern used by 'Sobre' card (sidebar) and
+                   'Informações' inside cliente detail. truncate keeps
+                   long values from overflowing; full text is in the
+                   Dialog. */
+                <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
                   {['segment', 'tone_of_voice', 'brand_personality', 'price_positioning']
                     .filter(k => aiProfile[k])
                     .map(k => (
-                      <div key={k} className="flex items-baseline gap-1.5 text-xs">
-                        <span className="shrink-0 text-muted-foreground">{AI_FIELDS.find(f => f.key === k)?.label}:</span>
-                        <span className="truncate text-foreground">{String(aiProfile[k])}</span>
+                      <div key={k} className="min-w-0">
+                        <div className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          {AI_FIELDS.find(f => f.key === k)?.label}
+                        </div>
+                        <div className="truncate text-sm" title={String(aiProfile[k])}>
+                          {String(aiProfile[k])}
+                        </div>
                       </div>
                     ))}
                 </div>
-              )}
-
-              {/* Subtitle */}
-              {!hasAiProfile && (
-                <p className="mt-1 text-xs text-muted-foreground">Analise o site ou preencha manualmente</p>
-              )}
-              {hasAiProfile && aiExpanded && (
-                <p className="mt-1 text-xs text-muted-foreground">Clique para recolher</p>
-              )}
-
-              <div className={cn(hasAiProfile && 'mt-4')}>
-              {(!hasAiProfile || aiExpanded) && (
-                <div>
-                  <div className={cn('rounded-lg bg-muted/40 p-4', hasAiProfile && 'mb-4')}>
-                    <div className="flex flex-col gap-2">
-                      <Input value={analyzeUrl} onChange={e => setAnalyzeUrl(e.target.value)} placeholder="URL do site (opcional)" />
-                      <textarea value={extraText} onChange={e => setExtraText(e.target.value)}
-                        placeholder="Informações extras sobre o cliente (opcional)"
-                        className="min-h-[64px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-                      <Button onClick={analyzeWithAI} disabled={analyzing}>
-                        {analyzing ? <><Clock className="mr-1.5 h-4 w-4 animate-spin" />Analisando com IA...</>
-                          : hasAiProfile ? <><RefreshCw className="mr-1.5 h-4 w-4" />Re-analisar com IA</>
-                          : <><Sparkles className="mr-1.5 h-4 w-4" />Analisar com IA</>}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Detected socials banner */}
-                  {Object.keys(detectedSocials).length > 0 && (
-                    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
-                      <span className="text-xs font-medium text-primary">Redes detectadas:</span>
-                      {Object.entries(detectedSocials).map(([k, v]) => v ? (
-                        <a key={k} href={v} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-primary underline underline-offset-2 hover:text-primary capitalize">{k}</a>
-                      ) : null)}
-                      <span className="text-[11px] text-muted-foreground ml-auto">Serão salvas ao salvar o perfil</span>
-                    </div>
-                  )}
-
-                  {hasAiProfile && (
-                    <div className="overflow-hidden rounded-lg border border-border bg-card">
-                      {(() => {
-                        const short = AI_FIELDS.filter(f => !f.long && (editingAi || aiProfile[f.key]))
-                        return short.length > 0 ? (
-                          <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-b border-border/60 bg-muted/20 p-4 sm:grid-cols-2">
-                            {short.map(f => (
-                              <div key={f.key} className="min-w-0">
-                                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{f.label}</div>
-                                {editingAi
-                                  ? <input type="text" value={aiProfile[f.key] ?? ''} onChange={e => setAiProfile(p => ({ ...p, [f.key]: e.target.value }))}
-                                      className="block w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-                                  : <div className="break-words text-sm leading-relaxed">{String(aiProfile[f.key] ?? '—')}</div>}
-                              </div>
-                            ))}
-                          </div>
-                        ) : null
-                      })()}
-                      {(() => {
-                        const long = AI_FIELDS.filter(f => f.long && (editingAi || aiProfile[f.key]))
-                        return long.length > 0 ? (
-                          <div className="divide-y divide-border/60">
-                            {long.map(f => (
-                              <div key={f.key} className="p-4">
-                                <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{f.label}</div>
-                                {editingAi
-                                  ? <textarea value={aiProfile[f.key] ?? ''} onChange={e => setAiProfile(p => ({ ...p, [f.key]: e.target.value }))}
-                                      className="block min-h-[72px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-                                  : <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{String(aiProfile[f.key])}</div>}
-                              </div>
-                            ))}
-                          </div>
-                        ) : null
-                      })()}
-                      {editingAi && (
-                        <div className="flex gap-2 border-t border-border/60 bg-muted/20 px-4 py-3">
-                          <Button variant="outline" onClick={() => { setEditingAi(false); if (client.analysis) setAiProfile(client.analysis as Record<string, string>) }} className="flex-1">
-                            Cancelar
-                          </Button>
-                          <Button onClick={saveAiProfile} disabled={savingAi} className="flex-1">
-                            {savingAi ? 'Salvando…' : <><Save className="mr-1.5 h-4 w-4" />Salvar</>}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+              ) : (
+                <div className="flex flex-col items-start gap-3 py-1">
+                  <p className="text-sm text-muted-foreground">
+                    Análise da marca pra usar em propostas e briefings — tom de voz, personalidade, posicionamento.
+                  </p>
+                  <Button onClick={() => setAiModalOpen(true)}>
+                    <Sparkles className="mr-1.5 h-4 w-4" /> Configurar perfil
+                  </Button>
                 </div>
               )}
-              </div>
             </Card>
+
+            {/* AI Profile dialog — heavy view, holds the IA analyzer,
+                the full grid of short fields, the long-text fields,
+                detected socials banner, and the edit form. Opens via
+                'Editar' (jumps straight into edit mode) or via the
+                expand IconButton (view mode). */}
+            <Dialog open={aiModalOpen} onOpenChange={(open) => {
+              setAiModalOpen(open)
+              if (!open) {
+                // Cancel any in-flight edit when dialog closes — same
+                // behavior as the inline 'Cancelar' button used to have.
+                if (editingAi && client?.analysis) {
+                  setAiProfile(client.analysis as Record<string, string>)
+                }
+                setEditingAi(false)
+              }
+            }}>
+              <DialogContent wide className="max-h-[88vh] overflow-y-auto p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
+                  <div className="text-lg font-bold tracking-tight">Perfil de IA</div>
+                  {hasAiProfile && (
+                    <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+                      <Check size={10} /> Salvo
+                    </span>
+                  )}
+                </div>
+                <p className="mb-5 text-sm text-muted-foreground">
+                  {client.company} · análise da marca usada como contexto pela IA
+                  ao redigir propostas, briefings e mensagens pra esse cliente.
+                </p>
+
+                {/* Analyzer */}
+                <div className="mb-4 rounded-lg bg-muted/40 p-4">
+                  <div className="flex flex-col gap-2">
+                    <Input value={analyzeUrl} onChange={e => setAnalyzeUrl(e.target.value)} placeholder="URL do site (opcional)" />
+                    <textarea
+                      value={extraText}
+                      onChange={e => setExtraText(e.target.value)}
+                      placeholder="Informações extras sobre o cliente (opcional)"
+                      className="min-h-[64px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                    <Button onClick={analyzeWithAI} disabled={analyzing}>
+                      {analyzing
+                        ? <><Clock className="mr-1.5 h-4 w-4 animate-spin" />Analisando com IA...</>
+                        : hasAiProfile
+                          ? <><RefreshCw className="mr-1.5 h-4 w-4" />Re-analisar com IA</>
+                          : <><Sparkles className="mr-1.5 h-4 w-4" />Analisar com IA</>}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Detected socials banner */}
+                {Object.keys(detectedSocials).length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
+                    <span className="text-xs font-medium text-primary">Redes detectadas:</span>
+                    {Object.entries(detectedSocials).map(([k, v]) => v ? (
+                      <a key={k} href={v} target="_blank" rel="noopener noreferrer"
+                        className="text-xs capitalize text-primary underline underline-offset-2 hover:text-primary">{k}</a>
+                    ) : null)}
+                    <span className="ml-auto text-[11px] text-muted-foreground">Serão salvas ao salvar o perfil</span>
+                  </div>
+                )}
+
+                {hasAiProfile && (
+                  <div className="overflow-hidden rounded-lg border border-border bg-card">
+                    {(() => {
+                      const short = AI_FIELDS.filter(f => !f.long && (editingAi || aiProfile[f.key]))
+                      return short.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-b border-border/60 bg-muted/20 p-4 sm:grid-cols-2">
+                          {short.map(f => (
+                            <div key={f.key} className="min-w-0">
+                              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{f.label}</div>
+                              {editingAi
+                                ? <input
+                                    type="text"
+                                    value={aiProfile[f.key] ?? ''}
+                                    onChange={e => setAiProfile(p => ({ ...p, [f.key]: e.target.value }))}
+                                    className="block w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  />
+                                : <div className="break-words text-sm leading-relaxed">{String(aiProfile[f.key] ?? '—')}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null
+                    })()}
+                    {(() => {
+                      const long = AI_FIELDS.filter(f => f.long && (editingAi || aiProfile[f.key]))
+                      return long.length > 0 ? (
+                        <div className="divide-y divide-border/60">
+                          {long.map(f => (
+                            <div key={f.key} className="p-4">
+                              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{f.label}</div>
+                              {editingAi
+                                ? <textarea
+                                    value={aiProfile[f.key] ?? ''}
+                                    onChange={e => setAiProfile(p => ({ ...p, [f.key]: e.target.value }))}
+                                    className="block min-h-[72px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  />
+                                : <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{String(aiProfile[f.key])}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null
+                    })()}
+                    {editingAi && (
+                      <div className="flex gap-2 border-t border-border/60 bg-muted/20 px-4 py-3">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setEditingAi(false)
+                            if (client.analysis) setAiProfile(client.analysis as Record<string, string>)
+                          }}
+                          className="flex-1"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={async () => {
+                            await saveAiProfile()
+                            // saveAiProfile flips editingAi off; close
+                            // dialog so user lands back on the page.
+                            setAiModalOpen(false)
+                          }}
+                          disabled={savingAi}
+                          className="flex-1"
+                        >
+                          {savingAi ? 'Salvando…' : <><Save className="mr-1.5 h-4 w-4" />Salvar</>}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
 
             {/* Contacts card */}
             <Card className="p-5">
