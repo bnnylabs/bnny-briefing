@@ -219,6 +219,142 @@ export async function getTemplateById(
   return (data as ProposalTemplate) ?? null
 }
 
+/** Patch shape — every field optional so PATCH endpoints can be partial. */
+export interface TemplatePatch {
+  name?: string
+  description?: string | null
+  type?: string | null
+  default_blocks?: ProposalTemplate['default_blocks']
+  default_payment_terms?: PaymentTerm[]
+  is_default?: boolean
+}
+
+/**
+ * Create a new template. Empty arrays/null are normalized so the row always
+ * matches the schema's NOT NULL DEFAULT '[]' contract.
+ */
+export async function createTemplate(
+  patch: TemplatePatch & { name: string },
+): Promise<ProposalTemplate> {
+  const row = {
+    name: patch.name,
+    description: patch.description ?? null,
+    type: patch.type ?? null,
+    default_blocks: patch.default_blocks ?? [],
+    default_payment_terms: patch.default_payment_terms ?? [],
+    is_default: patch.is_default ?? false,
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('proposal_templates')
+    .insert(row)
+    .select('*')
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  // If this template was created as default, demote any others.
+  if (row.is_default && data?.id) {
+    await supabaseAdmin
+      .from('proposal_templates')
+      .update({ is_default: false })
+      .neq('id', data.id)
+  }
+
+  return data as ProposalTemplate
+}
+
+/** Patch a template by id. Returns the fresh row. */
+export async function updateTemplate(
+  id: string,
+  patch: TemplatePatch,
+): Promise<ProposalTemplate | null> {
+  // Drop undefined keys — Supabase would otherwise overwrite with null.
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.name !== undefined) update.name = patch.name
+  if (patch.description !== undefined) update.description = patch.description
+  if (patch.type !== undefined) update.type = patch.type
+  if (patch.default_blocks !== undefined) update.default_blocks = patch.default_blocks
+  if (patch.default_payment_terms !== undefined) {
+    update.default_payment_terms = patch.default_payment_terms
+  }
+  if (patch.is_default !== undefined) update.is_default = patch.is_default
+
+  const { data, error } = await supabaseAdmin
+    .from('proposal_templates')
+    .update(update)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+
+  // If we just promoted this template to default, demote everyone else.
+  if (patch.is_default === true) {
+    await supabaseAdmin
+      .from('proposal_templates')
+      .update({ is_default: false })
+      .neq('id', id)
+  }
+
+  return (data as ProposalTemplate) ?? null
+}
+
+/** Delete a template. proposals.template_id is set to NULL via FK ON DELETE SET NULL. */
+export async function deleteTemplate(id: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('proposal_templates')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Duplicate a template — same blocks, same payment terms, name suffixed
+ * with " (cópia)". The copy is never default, even if the source was.
+ */
+export async function duplicateTemplate(
+  id: string,
+): Promise<ProposalTemplate | null> {
+  const source = await getTemplateById(id)
+  if (!source) return null
+
+  return createTemplate({
+    name: `${source.name} (cópia)`,
+    description: source.description,
+    type: source.type,
+    default_blocks: source.default_blocks,
+    default_payment_terms: source.default_payment_terms,
+    is_default: false,
+  })
+}
+
+/**
+ * Set one template as default and demote every other one in a single call.
+ * Returns the promoted row.
+ */
+export async function setDefaultTemplate(
+  id: string,
+): Promise<ProposalTemplate | null> {
+  // Demote everyone else first so the unique-default contract holds even if
+  // the next call fails.
+  await supabaseAdmin
+    .from('proposal_templates')
+    .update({ is_default: false })
+    .neq('id', id)
+
+  const { data, error } = await supabaseAdmin
+    .from('proposal_templates')
+    .update({ is_default: true, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*')
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  return (data as ProposalTemplate) ?? null
+}
+
 // ─── Activity ────────────────────────────────────────────────────────────
 
 export async function logProposalActivity(
