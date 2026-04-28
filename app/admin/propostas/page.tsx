@@ -32,6 +32,7 @@ import {
   proposalStatusVariant,
   PROPOSAL_STATUS_LABELS_PT,
   type ProposalStatus,
+  type ProposalTemplate,
   type ProposalWithClient,
 } from '@/lib/proposal-types'
 
@@ -118,14 +119,20 @@ export default function PropostasPage() {
 
   const [proposals, setProposals] = useState<ProposalWithClient[]>([])
   const [clients, setClients] = useState<ClientLite[]>([])
+  const [templates, setTemplates] = useState<ProposalTemplate[]>([])
   const [loading, setLoading] = useState(true)
 
   const [showNew, setShowNew] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  // Special sentinel meaning "start blank, no template".
+  const TEMPLATE_BLANK = '__blank__'
+
   const [form, setForm] = useState({
     client_id: '',
     title: '',
     valid_until: '',
+    template_id: '' as string, // empty until we set the default after templates load
   })
 
   const fetchProposals = useCallback(async () => {
@@ -171,13 +178,33 @@ export default function PropostasPage() {
     }
   }, [])
 
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/proposal-templates', { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        setTemplates(data.templates ?? [])
+      }
+    } catch {
+      // Silent — modal falls back to "Em branco" only
+    }
+  }, [])
+
   useEffect(() => {
     fetchProposals()
     fetchClients()
-  }, [fetchProposals, fetchClients])
+    fetchTemplates()
+  }, [fetchProposals, fetchClients, fetchTemplates])
 
   const openNew = () => {
-    setForm({ client_id: '', title: '', valid_until: '' })
+    // Default to the first default template if available, else blank.
+    const defaultTemplate = templates.find((t) => t.is_default) ?? templates[0]
+    setForm({
+      client_id: '',
+      title: '',
+      valid_until: '',
+      template_id: defaultTemplate?.id ?? TEMPLATE_BLANK,
+    })
     setShowNew(true)
   }
 
@@ -196,6 +223,10 @@ export default function PropostasPage() {
           client_id: form.client_id,
           title: form.title.trim(),
           valid_until: form.valid_until || null,
+          template_id:
+            form.template_id && form.template_id !== TEMPLATE_BLANK
+              ? form.template_id
+              : null,
         }),
       })
       if (res.ok) {
@@ -304,6 +335,40 @@ export default function PropostasPage() {
           </DialogHeader>
 
           <form onSubmit={handleCreate} className="space-y-4 p-6 pt-4">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="template_id"
+                className="text-[10px] uppercase tracking-widest text-muted-foreground"
+              >
+                Modelo
+              </Label>
+              <Select
+                value={form.template_id}
+                onValueChange={(v) => setForm((f) => ({ ...f, template_id: v }))}
+              >
+                <SelectTrigger id="template_id">
+                  <SelectValue placeholder="Selecione um modelo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                      {t.description ? ` · ${t.description}` : ''}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={TEMPLATE_BLANK}>
+                    Em branco · Começar do zero
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {form.template_id && form.template_id !== TEMPLATE_BLANK && (
+                <p className="text-[11px] leading-relaxed text-muted-foreground/80">
+                  A proposta abrirá com o cabeçalho e as fases já preenchidas.
+                  Você só ajusta o que for diferente.
+                </p>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <Label
                 htmlFor="client_id"

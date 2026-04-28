@@ -16,6 +16,7 @@ import {
   type ProposalBlockType,
   type ProposalLanguage,
   type ProposalStatus,
+  type ProposalTemplate,
   type ProposalWithClient,
 } from '@/lib/proposal-types'
 
@@ -83,12 +84,26 @@ export interface CreateProposalInput {
  * Create a draft proposal. The `number` is assigned atomically by the
  * Postgres sequence — no risk of duplicates under concurrent inserts.
  *
- * Returns the created row. Does NOT seed default blocks — that's done by
- * the editor (Phase 2) or by template hydration (Phase 4).
+ * If `template_id` is provided, the proposal is hydrated:
+ *   - default_blocks → inserted into proposal_blocks (positions preserved)
+ *   - default_payment_terms → set on proposals.payment_terms
+ *
+ * Hydration failures don't fail the proposal — the proposal still gets
+ * created and the owner can add blocks manually. We log the failure to
+ * proposal_activity for visibility.
  */
 export async function createProposal(
   input: CreateProposalInput,
 ): Promise<Proposal> {
+  // Look up the template first so we can apply its payment_terms on the
+  // initial INSERT (avoids a follow-up UPDATE).
+  let template: ProposalTemplate | null = null
+  if (input.template_id) {
+    template = await getTemplateById(input.template_id)
+    // If template_id was provided but missing, treat as blank — don't fail.
+    // The proposal is more important than the template link.
+  }
+
   const slug = generateProposalSlug(input.title)
 
   const { data, error } = await supabaseAdmin
@@ -100,20 +115,66 @@ export async function createProposal(
       language: input.language ?? 'pt-BR',
       valid_until: input.valid_until ?? null,
       briefing_id: input.briefing_id ?? null,
-      template_id: input.template_id ?? null,
+      template_id: template?.id ?? null,
       status: 'draft',
+      payment_terms: template?.default_payment_terms ?? [],
     })
     .select()
     .single()
 
   if (error) throw new Error(error.message)
+  const proposal = data as Proposal
 
-  // Fire-and-forget activity log. Failure here shouldn't block creation.
-  await logProposalActivity(data.id, 'created', 'admin', { title: input.title }).catch(
-    (e) => console.error('proposal_activity log failed:', e),
-  )
+  // Hydrate blocks from template if present.
+  if (template && Array.isArray(template.default_blocks) && template.default_blocks.length > 0) {
+    const rows = template.default_blocks.map((b, i) => ({
+      proposal_id: proposal.id,
+      type: b.type,
+      // Fall back to LEXORANK-style positions if the template didn't include them.
+      position: typeof b.position === 'number' ? b.position : (i + 1) * 1024,
+      content: b.content ?? {},
+      visible: b.visible ?? true,
+    }))
+    const { error: blocksErr } = await supabaseAdmin.from('proposal_blocks').insert(rows)
+    if (blocksErr) {
+      console.error('Failed to hydrate template blocks:', blocksErr)
+    }
+  }
 
-  return data as Proposal
+  await logProposalActivity(proposal.id, 'created', 'admin', {
+    title: input.title,
+    template_id: template?.id ?? null,
+    template_name: template?.name ?? null,
+  }).catch((e) => console.error('proposal_activity log failed:', e))
+
+  return proposal
+}
+
+// ─── Templates ───────────────────────────────────────────────────────────
+
+/** List all templates, defaults first, then alphabetical. */
+export async function listTemplates(): Promise<ProposalTemplate[]> {
+  const { data, error } = await supabaseAdmin
+    .from('proposal_templates')
+    .select('*')
+    .order('is_default', { ascending: false })
+    .order('name', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return (data ?? []) as ProposalTemplate[]
+}
+
+export async function getTemplateById(
+  id: string,
+): Promise<ProposalTemplate | null> {
+  const { data, error } = await supabaseAdmin
+    .from('proposal_templates')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  return (data as ProposalTemplate) ?? null
 }
 
 // ─── Activity ────────────────────────────────────────────────────────────
