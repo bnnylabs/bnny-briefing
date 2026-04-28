@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
+import { isAuthed } from '@/lib/auth'
 
 /**
  * POST /api/proposals/rewrite
@@ -21,11 +22,6 @@ import { supabaseAdmin } from '@/lib/supabase'
  * Response:
  *   { text: string }                                      // texto reescrito
  */
-
-function isAuthed(req: NextRequest) {
-  const cookie = req.cookies.get('bnny_auth')
-  return cookie?.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
-}
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 

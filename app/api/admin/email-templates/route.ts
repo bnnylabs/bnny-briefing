@@ -26,11 +26,7 @@ import {
   type TemplateType,
 } from '@/lib/email-defaults'
 import { getAllTemplates, invalidateTemplateCache } from '@/lib/email-templates'
-
-function isAuthed(req: NextRequest) {
-  const cookie = req.cookies.get('bnny_auth')
-  return cookie?.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
-}
+import { isAuthed } from '@/lib/auth'
 
 const VALID_TYPES = new Set<string>(TEMPLATE_TYPES)
 const VALID_LANGS = new Set<string>(TEMPLATE_LANGUAGES)

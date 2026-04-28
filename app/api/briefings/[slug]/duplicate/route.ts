@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateSlug } from '@/lib/briefing-types'
-
-function isAuthed(req: NextRequest) {
-  const cookie = req.cookies.get('bnny_auth')
-  return cookie?.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
-}
+import { isAuthed } from '@/lib/auth'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   if (!isAuthed(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

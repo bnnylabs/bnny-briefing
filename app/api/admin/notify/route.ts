@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendReminderToClient, sendBriefingToClient, sendWhatsApp } from '@/lib/email'
 import { resolveBriefingRecipients, type BriefingRecipient } from '@/lib/briefing-recipients'
-
-function isAuthed(req: NextRequest) {
-  const cookie = req.cookies.get('bnny_auth')
-  return cookie?.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
-}
+import { isAuthed } from '@/lib/auth'
 
 function getBaseUrl(req: NextRequest) {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL

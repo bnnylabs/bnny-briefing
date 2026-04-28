@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-
-function isAuthed(req: NextRequest) {
-  const cookie = req.cookies.get('bnny_auth')
-  return cookie?.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
-}
+import { isAuthed } from '@/lib/auth'
 
 // Notes can be unpinned/repinned via PATCH and removed via DELETE.
 // Body text remains immutable after creation (no PUT) — that's still

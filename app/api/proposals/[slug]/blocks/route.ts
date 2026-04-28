@@ -5,11 +5,7 @@ import {
   listBlocks,
 } from '@/lib/proposals'
 import type { ProposalBlockContent, ProposalBlockType } from '@/lib/proposal-types'
-
-function isAuthed(req: NextRequest) {
-  const cookie = req.cookies.get('bnny_auth')
-  return cookie?.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
-}
+import { isAuthed } from '@/lib/auth'
 
 interface Ctx {
   params: Promise<{ slug: string }>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createProposal, listProposals } from '@/lib/proposals'
 import type { ProposalLanguage } from '@/lib/proposal-types'
+import { isAuthed } from '@/lib/auth'
 
 /**
  * /api/proposals — Phase 1 of v0.10 (Propostas).
@@ -8,14 +9,9 @@ import type { ProposalLanguage } from '@/lib/proposal-types'
  * GET  → list all proposals (admin)
  * POST → create a draft proposal (admin)
  *
- * Authentication mirrors the briefings route: cookie `bnny_auth` must
- * equal `ADMIN_PASSWORD`. Same model the rest of the admin uses.
+ * Authentication via the centralized lib/auth helpers — the bnny_auth
+ * cookie carries an HMAC-signed session token, not the password itself.
  */
-
-function isAuthed(req: NextRequest) {
-  const cookie = req.cookies.get('bnny_auth')
-  return cookie?.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
-}
 
 export async function GET(req: NextRequest) {
   if (!isAuthed(req)) {

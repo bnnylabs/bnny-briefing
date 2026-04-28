@@ -1,6 +1,7 @@
 import { cookies, headers } from 'next/headers'
 import type { Metadata } from 'next'
 import { AdminShell } from '@/components/admin/AdminShell'
+import { verifySessionToken } from '@/lib/auth'
 
 export const metadata: Metadata = {
   title: 'Admin',
@@ -34,8 +35,7 @@ export default async function AdminLayout({
   const isPreview = pathname.startsWith('/admin/preview')
 
   const auth = cookieStore.get('bnny_auth')
-  const isAuthed =
-    !!auth && auth.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
+  const isAuthed = verifySessionToken(auth?.value)
 
   if (isPreview || !isAuthed) {
     return <>{children}</>

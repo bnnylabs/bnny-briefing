@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { isAuthed } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
-
-function isAuthed(req: NextRequest) {
-  const cookie = req.cookies.get('bnny_auth')
-  return cookie?.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
-}
 
 const BUCKET = 'briefing-files'
 const MAX_BYTES = 2 * 1024 * 1024 // 2 MB ceiling — logos should be small

@@ -6,6 +6,7 @@ import type {
   ProposalBlockType,
   ProposalTemplate,
 } from '@/lib/proposal-types'
+import { isAuthed } from '@/lib/auth'
 
 /**
  * POST /api/proposal-templates/build
@@ -29,11 +30,6 @@ import type {
  *     }
  *   }
  */
-
-function isAuthed(req: NextRequest) {
-  const cookie = req.cookies.get('bnny_auth')
-  return cookie?.value === (process.env.ADMIN_PASSWORD || 'bnny2024')
-}
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
