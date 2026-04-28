@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
@@ -31,7 +32,22 @@ import {
 import { useToast, ToastContainer } from '@/components/toast'
 import { fullVersion, APP_VERSION } from '@/lib/version'
 import { Logo } from '@/components/brand/Logo'
-import { EmailsTab } from './EmailsTab'
+
+// EmailsTab is a 600+ LOC client component that only renders when the
+// user activates the 'Emails' tab. Lazy-load it so the initial config
+// page bundle (which lands the user on 'Geral' by default) doesn't
+// carry that weight.
+const EmailsTab = dynamic(
+  () => import('./EmailsTab').then((m) => ({ default: m.EmailsTab })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-40 items-center justify-center">
+        <div className="spinner" />
+      </div>
+    ),
+  },
+)
 
 type SettingsBag = {
   // Geral
