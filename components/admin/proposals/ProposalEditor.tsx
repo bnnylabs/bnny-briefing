@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Check, AlertCircle, Loader2, Eye, Plus, Trash2,
@@ -428,13 +429,14 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
             />
 
             {/* Client avatar (or fallback icon) */}
-            <div className="hidden h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/40 sm:block">
+            <div className="relative hidden h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/40 sm:block">
               {proposal.clients?.avatar_url ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
+                <Image
                   src={proposal.clients.avatar_url}
                   alt={proposal.clients.company}
-                  className="h-full w-full object-cover"
+                  fill
+                  className="object-cover"
+                  sizes="48px"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-muted-foreground">

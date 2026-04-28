@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import Image from 'next/image'
 import { Camera, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -90,14 +91,29 @@ export function AvatarUpload({
     <div className={cn('group relative shrink-0 select-none', sizes.container, className)}>
       {/* Avatar display */}
       <div className={cn(
-        'flex h-full w-full items-center justify-center overflow-hidden font-semibold',
+        'relative flex h-full w-full items-center justify-center overflow-hidden font-semibold',
         radius,
         hasImage ? 'bg-transparent' : 'bg-muted text-muted-foreground',
         sizes.text,
       )}>
         {hasImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={localUrl!} alt={name} className="h-full w-full object-cover" />
+          // Parent <div> is fixed-sized (sizes.container) so 'fill' is
+          // the right choice — gives us responsive optimization without
+          // having to thread numeric width/height through the size map.
+          // 'unoptimized' for blob URLs (preview right after upload),
+          // since next/image's optimizer can't fetch them.
+          localUrl!.startsWith('blob:') ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={localUrl!} alt={name} className="h-full w-full object-cover" />
+          ) : (
+            <Image
+              src={localUrl!}
+              alt={name}
+              fill
+              className="object-cover"
+              sizes={`${size}px`}
+            />
+          )
         ) : (
           <span>{initials}</span>
         )}

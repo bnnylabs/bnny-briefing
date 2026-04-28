@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   FileText, Plus, Search, MoreHorizontal,
   Inbox, Send, CheckCircle2, DollarSign,
@@ -229,10 +230,11 @@ function ProposalRow({
         {/* Avatar — client logo or initials fallback */}
         <div className="shrink-0">
           {proposal.clients?.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={proposal.clients.avatar_url}
               alt={company}
+              width={36}
+              height={36}
               className="h-9 w-9 rounded-md object-cover"
             />
           ) : (

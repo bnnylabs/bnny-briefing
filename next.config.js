@@ -10,6 +10,21 @@ const nextConfig = {
   // version on every response — small but unnecessary surface area.
   poweredByHeader: false,
 
+  // ── Image optimization ──────────────────────────────────────────────
+  // Avatars are stored in Supabase Storage. Allowlist that origin so
+  // <Image /> can serve optimized variants (AVIF/WebP, responsive
+  // sizes, lazy by default) instead of <img> tags going straight to
+  // the source.
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/**',
+      },
+    ],
+  },
+
   // ── Bundle size ──────────────────────────────────────────────────────
   // experimental.optimizePackageImports rewrites named imports from these
   // packages to deep imports at build time. Tree-shaking already works
