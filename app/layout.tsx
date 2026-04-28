@@ -43,8 +43,19 @@ export const viewport: Viewport = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Pre-warm the connection to Supabase. The very first API call (avatar
+  // fetch, list query) would otherwise pay the full DNS + TCP + TLS
+  // handshake in serial. Adding a preconnect hint lets the browser
+  // start that work in parallel with parsing the rest of the document.
+  const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
+
   return (
     <html lang="pt-BR" className={`${inter.variable} ${geistMono.variable}`}>
+      <head>
+        {supabaseOrigin && (
+          <link rel="preconnect" href={supabaseOrigin} crossOrigin="anonymous" />
+        )}
+      </head>
       <body>
         {/* delayDuration shorter than default (700ms) so icon-only buttons
             give quick feedback without feeling sluggish. */}
