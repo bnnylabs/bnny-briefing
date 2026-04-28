@@ -69,18 +69,115 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let body: {
     template_id?: string
+    client_id?: string
+    /** Optional explicit override — if absent, derived from client_id. */
     client_company?: string
     client_contact_name?: string | null
     context?: string
-    url?: string
   }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { template_id, client_company, client_contact_name, context, url } = body
-  if (!context?.trim() && !url?.trim()) {
-    return NextResponse.json({ error: 'context or url is required' }, { status: 400 })
+  const { template_id, client_id, context } = body
+  if (!context?.trim() && !client_id) {
+    return NextResponse.json({ error: 'context or client_id is required' }, { status: 400 })
+  }
+
+  // ─── Load client data automatically ────────────────────────────────────
+  // The client is already cadastrado with website, social handles, segments
+  // and a saved AI profile (analysis). Pull all of that to build the prompt
+  // without asking the user to paste URLs again.
+
+  let clientCompany = body.client_company ?? ''
+  let clientContactName = body.client_contact_name ?? null
+  let autoContext = ''
+
+  if (client_id) {
+    const { data: clientRaw } = await supabaseAdmin
+      .from('clients')
+      .select(
+        'company, website, tags, analysis, ' +
+        'social_instagram, social_linkedin, social_facebook, social_youtube, ' +
+        'social_tiktok, social_twitter, social_pinterest, social_other',
+      )
+      .eq('id', client_id)
+      .maybeSingle()
+
+    const client = clientRaw as {
+      company: string | null
+      website: string | null
+      tags: string[] | null
+      analysis: Record<string, unknown> | null
+      social_instagram: string | null
+      social_linkedin: string | null
+      social_facebook: string | null
+      social_youtube: string | null
+      social_tiktok: string | null
+      social_twitter: string | null
+      social_pinterest: string | null
+      social_other: string | null
+    } | null
+
+    if (client) {
+      clientCompany = clientCompany || (client.company as string) || ''
+
+      // Build auto-context from cadastrado client data
+      const parts: string[] = []
+
+      if (Array.isArray(client.tags) && client.tags.length > 0) {
+        parts.push(`Segmentos/tags: ${(client.tags as string[]).join(', ')}`)
+      }
+
+      // The AI profile is the richest source — already curated by the owner.
+      if (client.analysis && typeof client.analysis === 'object') {
+        const analysisStr = JSON.stringify(client.analysis, null, 2)
+        // Cap to keep prompt size sane
+        parts.push(`Perfil de IA do cliente:\n${analysisStr.slice(0, 2000)}`)
+      }
+
+      // List social handles (just the URLs, no fetching — too noisy)
+      const socials = [
+        client.social_instagram && `Instagram: ${client.social_instagram}`,
+        client.social_linkedin  && `LinkedIn: ${client.social_linkedin}`,
+        client.social_twitter   && `X/Twitter: ${client.social_twitter}`,
+        client.social_facebook  && `Facebook: ${client.social_facebook}`,
+        client.social_youtube   && `YouTube: ${client.social_youtube}`,
+        client.social_tiktok    && `TikTok: ${client.social_tiktok}`,
+      ].filter(Boolean) as string[]
+      if (socials.length > 0) {
+        parts.push(`Redes sociais: ${socials.join(' · ')}`)
+      }
+
+      // Fetch the website text (1 fetch only — socials usually need auth)
+      if (client.website) {
+        const fetched = await fetchUrlText(client.website as string)
+        if (fetched) parts.push(`Conteúdo do site (${client.website}):\n${fetched}`)
+      }
+
+      // Resolve primary contact from client_contacts if not explicitly provided
+      if (!clientContactName) {
+        const { data: primary } = await supabaseAdmin
+          .from('client_contacts')
+          .select('name')
+          .eq('client_id', client_id)
+          .eq('is_primary', true)
+          .maybeSingle()
+        if (primary?.name) clientContactName = primary.name as string
+      }
+
+      if (parts.length > 0) autoContext = parts.join('\n\n')
+    }
+  }
+
+  const contextBlock = [
+    autoContext.trim(),
+    context?.trim() ? `Notas adicionais do owner:\n${context.trim()}` : '',
+  ].filter(Boolean).join('\n\n')
+
+  // Fail safe: if absolutely nothing to work with, bail.
+  if (!contextBlock) {
+    return NextResponse.json({ error: 'No context available for AI generation' }, { status: 400 })
   }
 
   // Load template to get the base structure for the AI to adapt
@@ -99,24 +196,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const baseHeader = (headerBlock?.content as { body?: string })?.body ?? ''
   const basePhases: Phase[] = (phasesBlock?.content as { phases?: Phase[] })?.phases ?? []
 
-  // Optionally enrich context with URL content
-  let urlContent = ''
-  if (url?.trim()) {
-    const fetched = await fetchUrlText(url.trim())
-    if (fetched) urlContent = `\n\nConteúdo do site/rede social do cliente:\n${fetched}`
-  }
-
-  const contextBlock = [context?.trim(), urlContent].filter(Boolean).join('\n')
-
   // Determine how to address the client contact
-  const addressee = client_contact_name?.trim()
-    ? `você, ${client_contact_name.trim()}`
+  const addressee = clientContactName?.trim()
+    ? `você, ${clientContactName.trim()}`
     : 'você'
 
   const prompt = `Você é redator de uma agência criativa chamada Bnny Labs. Escreve propostas comerciais em português brasileiro com tom profissional, direto e humano. NÃO escreve como IA: nada de inflação corporativa, nada de palavras-da-moda, nada de "jornada transformadora".
 
-CLIENTE: ${client_company ?? 'o cliente'}
-${client_contact_name ? `CONTATO PRINCIPAL: ${client_contact_name}` : ''}
+CLIENTE: ${clientCompany || 'o cliente'}
+${clientContactName ? `CONTATO PRINCIPAL: ${clientContactName}` : ''}
 
 CONTEXTO DO PROJETO:
 ${contextBlock}

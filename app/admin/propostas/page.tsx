@@ -138,7 +138,6 @@ export default function PropostasPage() {
     valid_until: '',
     template_id: '' as string,
     context: '',
-    url: '',
   })
 
   const fetchProposals = useCallback(async () => {
@@ -211,7 +210,6 @@ export default function PropostasPage() {
       valid_until: '',
       template_id: defaultTemplate?.id ?? TEMPLATE_BLANK,
       context: '',
-      url: '',
     })
     setShowNew(true)
   }
@@ -222,25 +220,24 @@ export default function PropostasPage() {
       toast('Preencha cliente e título', 'error')
       return
     }
-    const hasContext = form.context.trim() || form.url.trim()
     const useTemplate = form.template_id && form.template_id !== TEMPLATE_BLANK
+    // AI runs whenever a template is selected and a client is set —
+    // the client's saved data (site, redes, perfil de IA) already provides
+    // enough context, even without notes typed by the owner.
+    const useAI = useTemplate && form.client_id
 
-    // Step 1: AI generation (if context provided and a template is selected)
+    // Step 1: AI generation
     let contentOverrides: Record<string, unknown> | undefined
-    if (hasContext && useTemplate) {
+    if (useAI) {
       setGenerating(true)
       try {
-        const selectedClient = clients.find((c) => c.id === form.client_id)
-        const primaryContactName = selectedClient?.primary_contact?.name ?? null
         const genRes = await fetch('/api/proposals/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             template_id: form.template_id,
-            client_company: selectedClient?.company ?? '',
-            client_contact_name: primaryContactName,
+            client_id: form.client_id,
             context: form.context,
-            url: form.url || undefined,
           }),
         })
         if (genRes.ok) {
@@ -512,31 +509,15 @@ export default function PropostasPage() {
                 id="context"
                 value={form.context}
                 onChange={(e) => setForm((f) => ({ ...f, context: e.target.value }))}
-                placeholder="Cole notas da reunião, resumo ou qualquer contexto sobre o cliente e o projeto…"
+                placeholder="Notas da reunião, transcrição, ou qualquer detalhe extra sobre o projeto…"
                 rows={3}
                 className="flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary/30 transition-all duration-150"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="url"
-                className="text-[10px] uppercase tracking-widest text-muted-foreground"
-              >
-                Site ou rede social
-              </Label>
-              <Input
-                id="url"
-                value={form.url}
-                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-                placeholder="https://instagram.com/cliente ou site do cliente"
-                type="url"
-              />
-            </div>
-
-            {(form.context.trim() || form.url.trim()) && form.template_id !== TEMPLATE_BLANK && (
+            {form.template_id !== TEMPLATE_BLANK && form.client_id && (
               <p className="text-[11px] leading-relaxed text-success/90">
-                ✦ A proposta será personalizada com IA antes de abrir.
+                ✦ A IA usará os dados do cliente automaticamente (site, redes, perfil) {form.context.trim() && 'e o contexto acima'}.
               </p>
             )}
 
@@ -550,7 +531,7 @@ export default function PropostasPage() {
                 Cancelar
               </Button>
               <Button type="submit" disabled={saving || generating}>
-                {generating ? 'Personalizando…' : saving ? 'Criando…' : (form.context.trim() || form.url.trim()) && form.template_id !== TEMPLATE_BLANK ? 'Criar com IA' : 'Criar rascunho'}
+                {generating ? 'Personalizando…' : saving ? 'Criando…' : form.client_id && form.template_id !== TEMPLATE_BLANK ? 'Criar com IA' : 'Criar rascunho'}
               </Button>
             </DialogFooter>
           </form>

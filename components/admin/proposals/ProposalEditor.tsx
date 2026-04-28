@@ -384,15 +384,14 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
             {/* IA Assistente — primary action, fills the content below */}
             <IACard
               proposal={proposal}
-              onPersonalize={async (context, url) => {
-                if (!proposal.template_id && !context.trim() && !url.trim()) return
+              onPersonalize={async (context) => {
                 const res = await fetch('/api/proposals/generate', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     template_id: proposal.template_id,
-                    client_company: proposal.clients?.company ?? '',
-                    context, url: url || undefined,
+                    client_id: proposal.client_id,
+                    context,
                   }),
                 })
                 if (!res.ok) { toast('IA indisponível agora', 'error'); return }
@@ -757,20 +756,20 @@ function InvestimentoCard({ block, onChange }: { block: ProposalBlock; onChange:
 
 function IACard({
   proposal, onPersonalize,
-}: { proposal: ProposalWithClient; onPersonalize: (context: string, url: string) => Promise<void> }) {
+}: { proposal: ProposalWithClient; onPersonalize: (context: string) => Promise<void> }) {
   const [context, setContext] = useState('')
-  const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const canSubmit = (context.trim().length > 0 || url.trim().length > 0) && !loading
+  // Always allow regen when there's a client (auto-context from cadastrado data)
+  // — context typed by owner is just a bonus.
+  const canSubmit = !loading && !!proposal.client_id
 
   const handleSubmit = async () => {
     if (!canSubmit) return
     setLoading(true)
     try {
-      await onPersonalize(context, url)
+      await onPersonalize(context)
       setContext('')
-      setUrl('')
     } finally {
       setLoading(false)
     }
@@ -781,13 +780,13 @@ function IACard({
       <CardHeader icon={<Sparkles className="h-4 w-4" />} title="Personalizar com IA" />
       <div className="space-y-3">
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Cole notas, transcrição da reunião ou contexto. A IA reescreve o texto de abertura e as fases para este cliente.
+          A IA usa os dados do cliente automaticamente (site, redes, perfil de IA salvo). Adicione contexto extra abaixo se quiser — notas da reunião, transcrição, detalhes específicos.
         </p>
 
         <textarea
           value={context}
           onChange={(e) => setContext(e.target.value)}
-          placeholder="Notas, transcrição, contexto…"
+          placeholder="Notas, transcrição, contexto adicional (opcional)…"
           rows={3}
           className={cn(
             'flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2.5',
@@ -796,18 +795,10 @@ function IACard({
           )}
         />
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Site ou rede social (opcional)"
-            type="url"
-            className="flex-1"
-          />
+        <div className="flex justify-end">
           <Button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="shrink-0"
           >
             {loading ? (
               <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Personalizando…</>
@@ -819,7 +810,7 @@ function IACard({
 
         {!proposal.template_id && (
           <p className="text-[11px] text-warning">
-            Esta proposta não tem modelo. A IA vai gerar do zero a partir do contexto.
+            Esta proposta não tem modelo. A IA vai gerar do zero a partir do contexto e dos dados do cliente.
           </p>
         )}
       </div>
