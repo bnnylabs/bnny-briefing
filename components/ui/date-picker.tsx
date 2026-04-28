@@ -1,18 +1,37 @@
 'use client'
 
 import * as React from 'react'
+import dynamic from 'next/dynamic'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CalendarIcon, X } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+
+// Calendar pulls in react-day-picker (~25 KB gzipped). It only renders
+// inside an open Popover, so we can defer the actual fetch until the
+// user clicks the trigger. ssr:false because the Popover never opens
+// during SSR anyway.
+const Calendar = dynamic(
+  () => import('@/components/ui/calendar').then((m) => m.Calendar),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="flex h-[260px] w-[252px] items-center justify-center"
+        aria-label="Carregando calendário"
+      >
+        <div className="spinner" />
+      </div>
+    ),
+  },
+)
 
 interface DatePickerProps {
   value: Date | null
