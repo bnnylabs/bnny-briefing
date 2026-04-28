@@ -658,7 +658,7 @@ export default function ClientePerfilPage() {
             </div>
           </div>
           <Button onClick={() => router.push(`/admin/novo?client_id=${id}`)} className="shrink-0">
-            <Plus className="h-4 w-4" /> Novo briefing <ArrowRight className="h-3.5 w-3.5 opacity-70" />
+            <Plus className="h-4 w-4" /> Novo briefing
           </Button>
         </div>
 

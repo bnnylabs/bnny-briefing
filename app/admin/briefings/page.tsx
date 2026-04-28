@@ -523,7 +523,6 @@ export default function AdminPage() {
             <Button onClick={() => router.push('/admin/novo')}>
               <Plus size={14} />
               Novo briefing
-              <ArrowRight size={14} className="opacity-70" />
             </Button>
           </div>
 
