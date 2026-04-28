@@ -85,7 +85,7 @@ const STATUS_LABELS: Record<ClientStatus, string> = {
 const STATUS_COLORS: Record<ClientStatus, string> = {
   lead: 'border-info/30 bg-info/10 text-info',
   active: 'border-success/30 bg-success/10 text-success',
-  recurring: 'border-lime-300 bg-lime-50 text-lime-700',
+  recurring: 'border-primary/30 bg-primary/10 text-primary',
   paused: 'border-warning/30 bg-warning/10 text-warning',
   archived: 'border-border bg-muted text-muted-foreground',
 }
@@ -529,7 +529,7 @@ export default function ClientePerfilPage() {
     const b = briefings.find(br => br.slug === viewingResponses)
     if (!b) return
     const fields = Object.entries(responses).filter(([, v]) => v)
-    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111;padding:48px;max-width:800px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #c8ff00;margin-bottom:32px}.logo{font-size:22px;font-weight:800;letter-spacing:-0.04em}.logo span{color:#c8ff00;background:#111;padding:2px 8px;border-radius:4px}.badge{background:#111;color:#c8ff00;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:inline-block}.cb{background:#f8f8f8;border-radius:12px;padding:20px 24px;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.cf label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;display:block;margin-bottom:3px}.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}.f{margin-bottom:18px}.fl{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}.fv{font-size:14px;color:#111;line-height:1.6;background:#f8f8f8;padding:10px 14px;border-radius:8px;border-left:3px solid #c8ff00}.footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="hdr"><div><div class="logo"><span>Bnny</span> Labs</div></div><div style="text-align:right"><div style="font-size:17px;font-weight:700">${b.type_label}</div><div class="badge">${BRIEFING_STATUS_LABELS[b.status] ?? b.status}</div></div></div><div class="cb"><div class="cf"><label>Empresa</label><span style="font-size:15px;font-weight:700">${client?.company ?? '—'}</span></div><div class="cf"><label>Contato</label><span>${client?.name ?? '—'}</span></div><div class="cf"><label>Email</label><span>${client?.email ?? '—'}</span></div><div class="cf"><label>WhatsApp</label><span>${client?.phone ?? '—'}</span></div><div class="cf"><label>Concluído em</label><span>${fmt(b.completed_at)}</span></div></div><div class="st">Respostas do briefing</div>${fields.map(([k, v]) => `<div class="f"><div class="fl">${k.replace(/_/g, ' ')}</div><div class="fv">${Array.isArray(v) ? (v as string[]).join(', ') : String(v)}</div></div>`).join('')}<div class="footer">Gerado por Bnny Labs · briefing.bnnylabs.com · ${new Date().toLocaleDateString('pt-BR')}</div></body></html>`
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111;padding:48px;max-width:800px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #12fea9;margin-bottom:32px}.logo{font-size:22px;font-weight:800;letter-spacing:-0.04em}.logo span{color:#12fea9;background:#111;padding:2px 8px;border-radius:4px}.badge{background:#111;color:#12fea9;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:inline-block}.cb{background:#f8f8f8;border-radius:12px;padding:20px 24px;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.cf label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;display:block;margin-bottom:3px}.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}.f{margin-bottom:18px}.fl{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}.fv{font-size:14px;color:#111;line-height:1.6;background:#f8f8f8;padding:10px 14px;border-radius:8px;border-left:3px solid #12fea9}.footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="hdr"><div><div class="logo"><span>Bnny</span> Labs</div></div><div style="text-align:right"><div style="font-size:17px;font-weight:700">${b.type_label}</div><div class="badge">${BRIEFING_STATUS_LABELS[b.status] ?? b.status}</div></div></div><div class="cb"><div class="cf"><label>Empresa</label><span style="font-size:15px;font-weight:700">${client?.company ?? '—'}</span></div><div class="cf"><label>Contato</label><span>${client?.name ?? '—'}</span></div><div class="cf"><label>Email</label><span>${client?.email ?? '—'}</span></div><div class="cf"><label>WhatsApp</label><span>${client?.phone ?? '—'}</span></div><div class="cf"><label>Concluído em</label><span>${fmt(b.completed_at)}</span></div></div><div class="st">Respostas do briefing</div>${fields.map(([k, v]) => `<div class="f"><div class="fl">${k.replace(/_/g, ' ')}</div><div class="fv">${Array.isArray(v) ? (v as string[]).join(', ') : String(v)}</div></div>`).join('')}<div class="footer">Gerado por Bnny Labs · briefing.bnnylabs.com · ${new Date().toLocaleDateString('pt-BR')}</div></body></html>`
     const win = window.open('', '_blank')
     if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
   }
@@ -631,7 +631,7 @@ export default function ClientePerfilPage() {
                 {/* Starred toggle */}
                 <button type="button" onClick={toggleStarred} title={client.is_starred ? 'Remover dos favoritos' : 'Favoritar'}
                   className="rounded p-1 text-muted-foreground hover:text-foreground">
-                  <Star size={16} className={cn(client.is_starred && 'fill-lime-400 text-lime-500')} />
+                  <Star size={16} className={cn(client.is_starred && 'fill-primary text-primary')} />
                 </button>
                 {/* Status badge — click to change */}
                 <div className="relative">
@@ -852,11 +852,11 @@ export default function ClientePerfilPage() {
 
                   {/* Detected socials banner */}
                   {Object.keys(detectedSocials).length > 0 && (
-                    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-lime-300/60 bg-lime-50/40 px-3 py-2">
-                      <span className="text-xs font-medium text-lime-700">Redes detectadas:</span>
+                    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
+                      <span className="text-xs font-medium text-primary">Redes detectadas:</span>
                       {Object.entries(detectedSocials).map(([k, v]) => v ? (
                         <a key={k} href={v} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-lime-600 underline underline-offset-2 hover:text-lime-800 capitalize">{k}</a>
+                          className="text-xs text-primary underline underline-offset-2 hover:text-primary capitalize">{k}</a>
                       ) : null)}
                       <span className="text-[11px] text-muted-foreground ml-auto">Serão salvas ao salvar o perfil</span>
                     </div>
@@ -971,7 +971,7 @@ export default function ClientePerfilPage() {
                                             <span className={cn(
                                               'shrink-0 rounded-md border px-1.5 py-0 text-[10px] font-medium',
                                               r.role === 'primary'
-                                                ? 'border-lime-300 bg-lime-50 text-lime-700'
+                                                ? 'border-primary/30 bg-primary/10 text-primary'
                                                 : 'border-border bg-muted/60 text-muted-foreground'
                                             )}>
                                               {r.role === 'primary' ? 'Principal' : 'CC'}
@@ -1246,7 +1246,7 @@ export default function ClientePerfilPage() {
                       {n.details?.to && (
                         <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                           {n.details.role === 'cc' && <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium">CC</span>}
-                          {n.details.role === 'primary' && <span className="rounded-md border border-lime-300 bg-lime-50 px-1.5 py-0.5 text-[10px] font-medium text-lime-700">Principal</span>}
+                          {n.details.role === 'primary' && <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Principal</span>}
                           {n.details.name && <span className="font-medium text-foreground">{n.details.name}</span>}
                           {n.details.name && <span className="text-muted-foreground/50">·</span>}
                           <span>{n.details.to}</span>

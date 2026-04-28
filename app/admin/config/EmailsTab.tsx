@@ -400,7 +400,7 @@ function EmailTemplateEditor({
               className={[
                 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
                 dirty && !saving
-                  ? 'bg-lime-400 text-neutral-900 hover:bg-lime-300'
+                  ? 'bg-primary text-neutral-900 hover:bg-primary/85'
                   : 'cursor-not-allowed bg-muted text-muted-foreground',
               ].join(' ')}
             >

@@ -26,8 +26,8 @@
     --popover:            0 0% 100%;
     --popover-foreground: 0 0% 9%;
 
-    /* Primary: Lime — hsl(82 89% 56%) = #a3e635 */
-    --primary:            82 89% 56%;
+    /* Primary: Mint Teal — hsl(158 99% 53%) = #12fea9 */
+    --primary:            158 99% 53%;
     --primary-foreground: 0 0% 9%;
 
     /* Secondary: cinza claro */
@@ -49,7 +49,7 @@
     /* Semantic status colors — sóbrios, não fluorescentes
        Cada um vem com uma cor "10%" implícita via /10 quando precisar
        de fundo suave (text-success + bg-success/10) */
-    --success:            142 60% 42%;        /* emerald-600-ish */
+    --success:            158 60% 38%;        /* mint-teal-darker */
     --success-foreground: 0 0% 100%;
     --warning:            38 92% 45%;         /* amber-600 */
     --warning-foreground: 0 0% 100%;
@@ -59,17 +59,17 @@
     /* Border: cinza bem sutil */
     --border:             0 0% 90%;
     --input:              0 0% 90%;
-    --ring:               82 89% 40%;
+    --ring:               158 99% 40%;
 
     /* Sidebar — cinza claro levemente diferente */
     --sidebar-background:  0 0% 98%;
     --sidebar-foreground:  0 0% 20%;
-    --sidebar-primary:     82 89% 40%;
+    --sidebar-primary:     158 99% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent:      0 0% 93%;
     --sidebar-accent-foreground: 0 0% 20%;
     --sidebar-border:      0 0% 88%;
-    --sidebar-ring:        82 89% 40%;
+    --sidebar-ring:        158 99% 40%;
 
     /* Legacy vars */
     --bg:           #ffffff;
@@ -80,7 +80,7 @@
     --text:         #171717;
     --text-2:       #737373;
     --text-3:       #a3a3a3;
-    --bnny-green:   #65a30d;
+    --bnny-green:   #12fea9;
     --accent-dim:   rgba(101, 163, 13, 0.1);
     --accent-border:rgba(101, 163, 13, 0.25);
     --red:          #ef4444;
@@ -107,7 +107,7 @@
 .spinner {
   width: 18px; height: 18px;
   border: 2px solid rgba(101, 163, 13, 0.2);
-  border-top-color: #65a30d;
+  border-top-color: #12fea9;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   display: inline-block;

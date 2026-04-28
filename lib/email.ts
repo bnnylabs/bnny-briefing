@@ -53,7 +53,7 @@ const T = {
   muted: '#737373',
   border: '#e5e5e5',
   borderSubtle: '#f0f0f0',
-  primaryFallback: '#a3e635', // lime-400
+  primaryFallback: '#12fea9', // mint-teal
   primaryFg: '#0a0a0a',
 }
 

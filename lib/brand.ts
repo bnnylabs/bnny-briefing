@@ -19,7 +19,7 @@ export interface Brand {
   emailFromName: string
   /** Footer text appended to email templates. */
   emailSignature: string
-  /** Hex like "#a3e635" — currently informational only; we apply via CSS later. */
+  /** Hex like "#12fea9" — currently informational only; we apply via CSS later. */
   primaryColor: string | null
 }
 

@@ -367,8 +367,8 @@ export default function ConfigPage() {
                 label="Cor primária (HEX)"
                 value={settings.brand_primary_color}
                 onChange={(v) => update('brand_primary_color', v)}
-                placeholder="#a3e635"
-                hint="Aplicada nos botões primários e CTAs. Padrão: #a3e635"
+                placeholder="#12fea9"
+                hint="Aplicada nos botões primários e CTAs. Padrão: #12fea9"
               />
             </SectionCard>
 

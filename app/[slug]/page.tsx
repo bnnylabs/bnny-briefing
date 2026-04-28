@@ -314,7 +314,7 @@ export default function BriefingFormPage() {
             </div>
             <button
               onClick={() => { setEditingMode(true); setIsUpdate(true); setCurrentSection(0) }}
-              style={{ width: '100%', background: '#a3e635', color: '#0a0a0a', fontWeight: 600, padding: '12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'transform 0.05s' }}
+              style={{ width: '100%', background: '#12fea9', color: '#0a0a0a', fontWeight: 600, padding: '12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'transform 0.05s' }}
             >
               <Pencil size={14} strokeWidth={2} />
               {isEN ? 'Edit my answers' : 'Editar minhas respostas'}

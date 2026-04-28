@@ -67,7 +67,7 @@ type SortKey = 'recent' | 'name' | 'briefings'
 const STATUS_COLORS: Record<string, string> = {
   lead: 'border-info/30 bg-info/10 text-info',
   active: 'border-success/30 bg-success/10 text-success',
-  recurring: 'border-lime-300 bg-lime-50 text-lime-700',
+  recurring: 'border-primary/30 bg-primary/10 text-primary',
   paused: 'border-warning/30 bg-warning/10 text-warning',
   archived: 'border-border bg-muted text-muted-foreground',
 }
@@ -503,7 +503,7 @@ export default function ClientesPage() {
                             <span className="hidden sm:inline">{(c.primary_contact?.email ?? c.email) && ` · ${c.primary_contact?.email ?? c.email}`}</span>
                           </span>
                         )}
-                        {c.is_starred && <Star size={11} className="shrink-0 fill-lime-400 text-lime-500" />}
+                        {c.is_starred && <Star size={11} className="shrink-0 fill-primary text-primary" />}
                         {c.analysis && Object.keys(c.analysis).length > 0 && (
                           <Bot size={11} className="shrink-0 text-muted-foreground/50" />
                         )}

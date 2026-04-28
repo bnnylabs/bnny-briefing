@@ -102,7 +102,7 @@ export function NotesSection({ clientId, notes, onUpdate, onError }: Props) {
             <div key={note.id}
               className={cn(
                 'group relative rounded-lg border bg-card p-3 text-sm',
-                note.is_pinned ? 'border-lime-300/60 bg-lime-50/40' : 'border-border',
+                note.is_pinned ? 'border-primary/30 bg-primary/10' : 'border-border',
               )}>
               {/* Pin toggle */}
               <button
@@ -113,7 +113,7 @@ export function NotesSection({ clientId, notes, onUpdate, onError }: Props) {
                 className={cn(
                   'absolute right-2 top-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100',
                   note.is_pinned
-                    ? 'text-lime-600 opacity-100 hover:bg-lime-100'
+                    ? 'text-primary opacity-100 hover:bg-primary/15'
                     : 'text-muted-foreground hover:bg-muted',
                 )}
               >
@@ -128,7 +128,7 @@ export function NotesSection({ clientId, notes, onUpdate, onError }: Props) {
               <div className="mt-2 text-[10px] text-muted-foreground">
                 {fmtDate(note.created_at)}
                 {note.is_pinned && (
-                  <span className="ml-2 inline-flex items-center gap-0.5 text-lime-600">
+                  <span className="ml-2 inline-flex items-center gap-0.5 text-primary">
                     <Pin size={8} /> Fixada
                   </span>
                 )}
