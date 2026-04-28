@@ -725,7 +725,12 @@ export default function ClientePerfilPage() {
                       {client.tags.map(tag => (
                         <span key={tag} className="group inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-2 py-0.5 text-[11px]">
                           {tag}
-                          <button type="button" onClick={() => removeTag(tag)} className="opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            aria-label={`Remover tag ${tag}`}
+                            className="opacity-0 transition-opacity group-hover:opacity-100"
+                          >
                             <X size={10} />
                           </button>
                         </span>
@@ -735,8 +740,22 @@ export default function ClientePerfilPage() {
                           <Input value={newTag} onChange={e => setNewTag(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') addTag(); if (e.key === 'Escape') setEditingTags(false) }}
                             placeholder="Novo segmento…" className="h-6 w-36 px-2 text-xs" autoFocus />
-                          <button type="button" onClick={addTag} className="rounded p-0.5 text-muted-foreground hover:text-foreground"><Check size={12} /></button>
-                          <button type="button" onClick={() => setEditingTags(false)} className="rounded p-0.5 text-muted-foreground hover:text-foreground"><X size={12} /></button>
+                          <button
+                            type="button"
+                            onClick={addTag}
+                            aria-label="Adicionar tag"
+                            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <Check size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingTags(false)}
+                            aria-label="Cancelar edição de tags"
+                            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <X size={12} />
+                          </button>
                         </div>
                       ) : (
                         <button type="button" onClick={() => setEditingTags(true)}
@@ -1009,8 +1028,11 @@ export default function ClientePerfilPage() {
                           />
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button type="button"
-                                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                              <button
+                                type="button"
+                                aria-label="Mais ações"
+                                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
                                 <MoreHorizontal size={15} />
                               </button>
                             </DropdownMenuTrigger>
@@ -1214,8 +1236,11 @@ export default function ClientePerfilPage() {
           onClick={() => { setActivityBriefing(null); setActivityHistory([]) }}>
           <div className="relative w-full max-w-md rounded-xl bg-card border border-border p-6 shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1 duration-200 max-h-[88vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}>
-            <button onClick={() => { setActivityBriefing(null); setActivityHistory([]) }}
-              className="absolute right-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            <button
+              onClick={() => { setActivityBriefing(null); setActivityHistory([]) }}
+              aria-label="Fechar histórico"
+              className="absolute right-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
               <X size={15} />
             </button>
             <div className="mb-5">

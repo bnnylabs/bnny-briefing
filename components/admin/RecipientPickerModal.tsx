@@ -117,8 +117,11 @@ export function RecipientPickerModal({
         className="relative w-full max-w-md rounded-xl bg-card border border-border p-6 shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1 duration-200 max-h-[88vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={onClose}
-          className="absolute right-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        <button
+          onClick={onClose}
+          aria-label="Fechar"
+          className="absolute right-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
           <X size={15} />
         </button>
 
@@ -176,8 +179,11 @@ export function RecipientPickerModal({
                     </div>
                     <div className="truncate text-xs text-muted-foreground">{r.email}</div>
                   </div>
-                  <button onClick={() => removeAdHoc(r.email)}
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                  <button
+                    onClick={() => removeAdHoc(r.email)}
+                    aria-label={`Remover ${r.email}`}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
                     <X size={12} />
                   </button>
                 </div>

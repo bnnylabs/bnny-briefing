@@ -198,13 +198,18 @@ export function ContactsSection({ clientId, contacts, onUpdate, onError, onSucce
                   </button>
                 )}
                 <button
-                  type="button" onClick={() => startEdit(c)}
+                  type="button"
+                  onClick={() => startEdit(c)}
+                  aria-label={`Editar ${c.name || 'contato'}`}
                   className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <UserRound size={13} />
                 </button>
                 <button
-                  type="button" onClick={() => requestRemove(c.id)} disabled={deleting === c.id}
+                  type="button"
+                  onClick={() => requestRemove(c.id)}
+                  disabled={deleting === c.id}
+                  aria-label={`Remover ${c.name || 'contato'}`}
                   className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 size={13} />
