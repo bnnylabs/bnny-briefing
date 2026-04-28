@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@/lib/utils'
 import type { BlockContentHeader } from '@/lib/proposal-types'
 
 interface HeaderEditorProps {
@@ -23,7 +24,12 @@ export function HeaderEditor({ content, onChange }: HeaderEditorProps) {
         onChange={(e) => onChange({ body: e.target.value })}
         placeholder="Foi um prazer conversar com você sobre…"
         rows={4}
-        className="w-full resize-y rounded-md border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        className={cn(
+          'flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2.5',
+          'text-sm text-foreground placeholder:text-muted-foreground/50',
+          'focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary/30',
+          'transition-all duration-150',
+        )}
       />
     </div>
   )

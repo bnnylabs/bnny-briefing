@@ -3,6 +3,8 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { IconButton } from '@/components/ui/icon-button'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import type { BlockContentPhases, ProposalPhase } from '@/lib/proposal-types'
 
 interface PhasesEditorProps {
@@ -56,22 +58,20 @@ export function PhasesEditor({ content, onChange }: PhasesEditorProps) {
           {phases.map((phase, i) => (
             <div
               key={i}
-              className="rounded-md border border-border bg-card p-3 space-y-2.5"
+              className="space-y-2.5 rounded-md border border-border bg-card p-3"
             >
               <div className="flex items-start gap-2">
-                <input
-                  type="text"
+                <Input
                   value={phase.number}
                   onChange={(e) => update(i, { number: e.target.value })}
                   placeholder="1.0"
-                  className="w-16 rounded-md border border-border bg-background px-2 py-1.5 font-mono text-xs tabular-nums text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-16 font-mono text-xs tabular-nums"
                 />
-                <input
-                  type="text"
+                <Input
                   value={phase.title}
                   onChange={(e) => update(i, { title: e.target.value })}
                   placeholder="Título da fase"
-                  className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="flex-1 font-semibold"
                 />
                 <IconButton
                   variant="ghost"
@@ -82,19 +82,23 @@ export function PhasesEditor({ content, onChange }: PhasesEditorProps) {
                   className="text-muted-foreground hover:text-destructive"
                 />
               </div>
-              <input
-                type="text"
+              <Input
                 value={phase.duration}
                 onChange={(e) => update(i, { duration: e.target.value })}
                 placeholder="3 a 4 dias úteis"
-                className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="text-xs"
               />
               <textarea
                 value={phase.description}
                 onChange={(e) => update(i, { description: e.target.value })}
                 placeholder="O que acontece nesta fase…"
                 rows={2}
-                className="w-full resize-y rounded-md border border-border bg-background px-2.5 py-1.5 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className={cn(
+                  'flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2',
+                  'text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50',
+                  'focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary/30',
+                  'transition-all duration-150',
+                )}
               />
             </div>
           ))}

@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DatePicker, parseIsoDate, toIsoDate } from '@/components/ui/date-picker'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -457,14 +458,14 @@ export function ProposalEditor({
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
               Validade
             </label>
-            <Input
-              type="date"
-              value={proposal.valid_until ?? ''}
-              onChange={(e) =>
-                patchProposal({ valid_until: e.target.value || null })
-              }
-              className="h-8 w-40 text-xs"
-            />
+            <div className="w-56">
+              <DatePicker
+                value={parseIsoDate(proposal.valid_until)}
+                onChange={(d) => patchProposal({ valid_until: toIsoDate(d) })}
+                placeholder="Sem validade"
+                disablePast
+              />
+            </div>
           </div>
         </div>
 

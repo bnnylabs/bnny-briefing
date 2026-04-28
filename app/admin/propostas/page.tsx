@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { DatePicker, parseIsoDate, toIsoDate } from '@/components/ui/date-picker'
 
 import { useToast, ToastContainer } from '@/components/toast'
 import { cn } from '@/lib/utils'
@@ -352,12 +353,27 @@ export default function PropostasPage() {
                 <SelectContent>
                   {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                      {t.description ? ` · ${t.description}` : ''}
+                      <div className="flex flex-col gap-0.5 py-0.5">
+                        <span className="text-sm font-medium leading-tight">
+                          {t.name}
+                        </span>
+                        {t.description && (
+                          <span className="text-[11px] leading-tight text-muted-foreground">
+                            {t.description}
+                          </span>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                   <SelectItem value={TEMPLATE_BLANK}>
-                    Em branco · Começar do zero
+                    <div className="flex flex-col gap-0.5 py-0.5">
+                      <span className="text-sm font-medium leading-tight">
+                        Em branco
+                      </span>
+                      <span className="text-[11px] leading-tight text-muted-foreground">
+                        Começar do zero
+                      </span>
+                    </div>
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -423,13 +439,13 @@ export default function PropostasPage() {
               >
                 Validade <span className="text-muted-foreground/60">(opcional)</span>
               </Label>
-              <Input
-                id="valid_until"
-                type="date"
-                value={form.valid_until}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, valid_until: e.target.value }))
+              <DatePicker
+                value={parseIsoDate(form.valid_until)}
+                onChange={(d) =>
+                  setForm((f) => ({ ...f, valid_until: toIsoDate(d) ?? '' }))
                 }
+                placeholder="Sem validade"
+                disablePast
               />
             </div>
 

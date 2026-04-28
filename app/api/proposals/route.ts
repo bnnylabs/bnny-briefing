@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     language?: ProposalLanguage
     valid_until?: string | null
     briefing_id?: string | null
+    template_id?: string | null
   }
   try {
     body = await req.json()
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
       language: body.language,
       valid_until: body.valid_until ?? null,
       briefing_id: body.briefing_id ?? null,
+      template_id: body.template_id ?? null,
     })
     return NextResponse.json({ proposal }, { status: 201 })
   } catch (e) {
