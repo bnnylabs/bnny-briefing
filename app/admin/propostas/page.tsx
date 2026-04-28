@@ -44,6 +44,7 @@ interface ClientLite {
   name: string
   company: string
   avatar_url: string | null
+  primary_contact?: { name: string; email: string | null } | null
 }
 
 function fmtDate(iso: string | null): string {
@@ -169,11 +170,12 @@ export default function PropostasPage() {
         // Existing endpoint returns { clients: [...] } with full Client objects;
         // we only need a lite view for the dropdown.
         const list: ClientLite[] = (data.clients ?? []).map(
-          (c: { id: string; name: string; company: string; avatar_url: string | null }) => ({
+          (c: { id: string; name: string; company: string; avatar_url: string | null; primary_contact?: { name: string; email: string | null } | null }) => ({
             id: c.id,
             name: c.name,
             company: c.company,
             avatar_url: c.avatar_url,
+            primary_contact: c.primary_contact ?? null,
           }),
         )
         setClients(list)
@@ -229,12 +231,14 @@ export default function PropostasPage() {
       setGenerating(true)
       try {
         const selectedClient = clients.find((c) => c.id === form.client_id)
+        const primaryContactName = selectedClient?.primary_contact?.name ?? null
         const genRes = await fetch('/api/proposals/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             template_id: form.template_id,
             client_company: selectedClient?.company ?? '',
+            client_contact_name: primaryContactName,
             context: form.context,
             url: form.url || undefined,
           }),
@@ -388,7 +392,7 @@ export default function PropostasPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
+                    <SelectItem key={t.id} value={t.id} textValue={t.name}>
                       <div className="flex flex-col gap-0.5 py-0.5">
                         <span className="text-sm font-medium leading-tight">
                           {t.name}
@@ -401,11 +405,9 @@ export default function PropostasPage() {
                       </div>
                     </SelectItem>
                   ))}
-                  <SelectItem value={TEMPLATE_BLANK}>
+                  <SelectItem value={TEMPLATE_BLANK} textValue="Em branco">
                     <div className="flex flex-col gap-0.5 py-0.5">
-                      <span className="text-sm font-medium leading-tight">
-                        Em branco
-                      </span>
+                      <span className="text-sm font-medium leading-tight">Em branco</span>
                       <span className="text-[11px] leading-tight text-muted-foreground">
                         Começar do zero
                       </span>

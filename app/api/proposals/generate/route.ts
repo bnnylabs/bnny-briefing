@@ -70,7 +70,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: {
     template_id?: string
     client_company?: string
-    client_name?: string
+    client_contact_name?: string | null
     context?: string
     url?: string
   }
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { template_id, client_company, context, url } = body
+  const { template_id, client_company, client_contact_name, context, url } = body
   if (!context?.trim() && !url?.trim()) {
     return NextResponse.json({ error: 'context or url is required' }, { status: 400 })
   }
@@ -108,40 +108,47 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const contextBlock = [context?.trim(), urlContent].filter(Boolean).join('\n')
 
-  const prompt = `Você é um assistente de uma agência criativa chamada Bnny Labs, especializada em identidade visual, design digital e gestão de redes sociais. Você auxilia na criação de propostas comerciais profissionais em português brasileiro.
+  // Determine how to address the client contact
+  const addressee = client_contact_name?.trim()
+    ? `você, ${client_contact_name.trim()}`
+    : 'você'
 
-Personalize os textos desta proposta para o cliente "${client_company ?? 'o cliente'}".
+  const prompt = `Você é redator de uma agência criativa chamada Bnny Labs. Escreve propostas comerciais em português brasileiro com tom profissional, direto e humano — sem clichês corporativos.
 
-CONTEXTO FORNECIDO PELO OWNER:
+CLIENTE: ${client_company ?? 'o cliente'}
+${client_contact_name ? `CONTATO PRINCIPAL: ${client_contact_name}` : ''}
+
+CONTEXTO DO PROJETO:
 ${contextBlock}
 
-TEXTOS BASE DO TEMPLATE (adaptar para este cliente):
+TEMPLATE BASE (adaptar para este cliente específico):
 
-Texto de abertura base:
+Abertura base:
 "${baseHeader}"
 
-Fases base:
+Fases:
 ${basePhases.map((p) => `${p.number} — ${p.title} (${p.duration}): ${p.description}`).join('\n')}
 
-INSTRUÇÕES:
-1. Reescreva o texto de abertura usando detalhes específicos do contexto. Mantenha o tom profissional e caloroso. Máximo de 3 frases. Comece mencionando o cliente pelo nome.
-2. Reescreva as DESCRIÇÕES das fases tornando-as mais específicas para este projeto. Mantenha os títulos, números e durações EXATAMENTE iguais ao template — mude só a descrição.
-3. Retorne APENAS JSON válido, sem markdown, sem texto adicional.
+INSTRUÇÕES DE ESCRITA:
+1. Reescreva a ABERTURA com máximo de 2-3 frases. Comece com "Foi um prazer conversar com ${addressee}." e adicione UMA frase específica sobre o negócio do cliente (use detalhes concretos do contexto, não generalidades). Termine com o objetivo principal do projeto.
+2. Evite: "excelência", "inovação", "transformação", "soluções", listas de 3 adjetivos, linguagem corporativa genérica.
+3. Reescreva as DESCRIÇÕES das fases tornando-as concretas para este cliente. Mantenha títulos, números e durações EXATAMENTE iguais.
+4. Retorne APENAS JSON válido, sem markdown.
 
-JSON esperado:
+JSON:
 {
-  "header": { "body": "texto personalizado de abertura" },
+  "header": { "body": "abertura personalizada" },
   "phases": {
     "phases": [
-      { "number": "1.0", "title": "igual ao template", "duration": "igual ao template", "description": "descrição personalizada" }
+      { "number": "1.0", "title": "igual ao template", "duration": "igual ao template", "description": "descrição personalizada e concreta" }
     ]
   }
 }`
 
   try {
     const msg = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 1500,
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     })
 
