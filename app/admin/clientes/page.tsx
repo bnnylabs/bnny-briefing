@@ -67,7 +67,7 @@ type SortKey = 'recent' | 'name' | 'briefings'
 const STATUS_COLORS: Record<string, string> = {
   lead: 'border-info/30 bg-info/10 text-info',
   active: 'border-success/30 bg-success/10 text-success',
-  recurring: 'border-primary/30 bg-primary/10 text-primary',
+  recurring: 'border-primary bg-primary text-primary-foreground',
   paused: 'border-warning/30 bg-warning/10 text-warning',
   archived: 'border-border bg-muted text-muted-foreground',
 }

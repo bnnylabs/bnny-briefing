@@ -736,7 +736,7 @@ export default function AdminPage() {
                                           <span className={cn(
                                             'shrink-0 rounded-md border px-1.5 py-0 text-[10px] font-medium',
                                             r.role === 'primary'
-                                              ? 'border-primary/30 bg-primary/10 text-primary'
+                                              ? 'border-success/30 bg-success/10 text-success'
                                               : 'border-border bg-muted/60 text-muted-foreground'
                                           )}>
                                             {r.role === 'primary' ? 'Principal' : 'CC'}
@@ -1072,7 +1072,7 @@ export default function AdminPage() {
                           <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">CC</span>
                         )}
                         {n.details.role === 'primary' && (
-                          <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Principal</span>
+                          <span className="rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success">Principal</span>
                         )}
                         {n.details.name && <span className="font-medium text-foreground">{n.details.name}</span>}
                         {n.details.name && <span className="text-muted-foreground/50">·</span>}

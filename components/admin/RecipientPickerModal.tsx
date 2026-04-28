@@ -150,8 +150,8 @@ export function RecipientPickerModal({
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-sm font-medium">{c.name}</span>
                       {c.is_primary && (
-                        <span className="inline-flex items-center gap-0.5 rounded-md border border-primary/30 bg-primary/10 px-1 py-0 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                          <Star size={8} className="fill-primary text-primary" /> Principal
+                        <span className="inline-flex items-center gap-0.5 rounded-md border border-success/30 bg-success/10 px-1 py-0 text-[10px] font-semibold uppercase tracking-wide text-success">
+                          <Star size={8} className="fill-success text-success" /> Principal
                         </span>
                       )}
                       {!c.is_primary && c.receives_copies && (
