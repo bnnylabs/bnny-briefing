@@ -5,6 +5,7 @@
  * supabaseAdmin which holds the service key.
  */
 
+import { cache } from 'react'
 import { supabaseAdmin } from '@/lib/supabase'
 import {
   generateProposalSlug,
@@ -72,10 +73,15 @@ export async function listProposals(): Promise<ProposalWithClient[]> {
   return ((data ?? []) as ProposalWithClient[]).map(withComputedStatus)
 }
 
-/** Fetch a single proposal by slug, joined with client. Returns null if missing. */
-export async function getProposalBySlug(
+/** Fetch a single proposal by slug, joined with client. Returns null if missing.
+ *
+ * Wrapped with React.cache so multiple consumers in the same server
+ * request share a single Supabase query. Specifically, generateMetadata
+ * and the page component both call this with the same slug; without
+ * cache() that would be two round-trips. */
+export const getProposalBySlug = cache(async (
   slug: string,
-): Promise<ProposalWithClient | null> {
+): Promise<ProposalWithClient | null> => {
   const { data, error } = await supabaseAdmin
     .from('proposals')
     .select(
@@ -92,7 +98,7 @@ export async function getProposalBySlug(
   if (error) throw new Error(error.message)
   if (!data) return null
   return withComputedStatus(data as ProposalWithClient)
-}
+})
 
 // ─── Create ──────────────────────────────────────────────────────────────
 
