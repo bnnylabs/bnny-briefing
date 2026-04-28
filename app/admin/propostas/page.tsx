@@ -7,6 +7,7 @@ import {
   FileText, Plus, Search, MoreHorizontal,
   Inbox, Send, CheckCircle2, DollarSign,
   Eye, XCircle, Clock, RefreshCw, ArrowRight,
+  Settings,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -580,10 +581,19 @@ export default function PropostasPage() {
         {/* Page header */}
         <div className="mb-5 flex items-center justify-between">
           <h1 className="font-mono text-xl font-bold tracking-tight">Propostas</h1>
-          <Button onClick={openNew}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            Nova proposta
-          </Button>
+          <div className="flex items-center gap-2">
+            <IconButton
+              icon={<Settings className="h-4 w-4" />}
+              label="Configurações de Propostas"
+              size="icon"
+              variant="outline"
+              onClick={() => router.push('/admin/config/propostas')}
+            />
+            <Button onClick={openNew}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Nova proposta
+            </Button>
+          </div>
         </div>
 
         {/* Metric cards */}
