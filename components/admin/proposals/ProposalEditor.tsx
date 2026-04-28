@@ -416,6 +416,13 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
     <div className="min-h-screen bg-background">
       <ToastContainer toasts={toasts} remove={remove} />
 
+      {/* Auto-save progress bar — thin mint-teal line at the very top
+          of the viewport, only visible while a save is actually in
+          flight. Mirrors the textual 'Salvando…' indicator in the page
+          header but gives a peripheral signal that doesn't compete for
+          attention with the main content. */}
+      {combinedStatus === 'saving' && <div className="save-progress" aria-hidden="true" />}
+
       <div className="mx-auto max-w-5xl p-6">
 
         {/* ── Page header ─────────────────────────────────────────────── */}
