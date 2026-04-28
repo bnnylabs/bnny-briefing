@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import {
   Copy,
   FileText,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Plus,
+  Sparkles,
   Star,
   Trash2,
 } from 'lucide-react'
@@ -71,6 +73,21 @@ export function ModelosTab({ toast }: ModelosTabProps) {
 
   // Delete confirm dialog
   const [confirmDelete, setConfirmDelete] = React.useState<ProposalTemplate | null>(null)
+
+  // AI builder dialog state
+  const [aiOpen, setAiOpen] = React.useState(false)
+  const [aiDescription, setAiDescription] = React.useState('')
+  const [aiName, setAiName] = React.useState('')
+  const [aiBuilding, setAiBuilding] = React.useState(false)
+  const [aiCreating, setAiCreating] = React.useState(false)
+  const [aiDraft, setAiDraft] = React.useState<{
+    name: string
+    description: string | null
+    type: string | null
+    default_blocks: ProposalTemplate['default_blocks']
+    default_payment_terms: ProposalTemplate['default_payment_terms']
+    is_default: boolean
+  } | null>(null)
 
   // ─── Load ─────────────────────────────────────────────────────────────
   const load = React.useCallback(async () => {
@@ -189,6 +206,65 @@ export function ModelosTab({ toast }: ModelosTabProps) {
     }
   }
 
+  // ─── AI builder ───────────────────────────────────────────────────────
+  function openAiBuilder() {
+    setAiDescription('')
+    setAiName('')
+    setAiDraft(null)
+    setAiOpen(true)
+  }
+
+  async function buildWithAi() {
+    const desc = aiDescription.trim()
+    if (!desc) return
+    setAiBuilding(true)
+    try {
+      const res = await fetch('/api/proposal-templates/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: desc,
+          name: aiName.trim() || undefined,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'IA indisponível')
+      }
+      const data = await res.json()
+      setAiDraft(data.template)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Falha ao gerar', 'error')
+    } finally {
+      setAiBuilding(false)
+    }
+  }
+
+  async function commitAiDraft() {
+    if (!aiDraft) return
+    setAiCreating(true)
+    try {
+      const res = await fetch('/api/proposal-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aiDraft),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Falha ao criar')
+      }
+      const data = await res.json()
+      toast('Modelo criado pela IA', 'success')
+      setAiOpen(false)
+      // Lead the owner straight to the editor to review/tweak
+      router.push(`/admin/config/propostas/modelos/${data.template.id}`)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Erro ao salvar', 'error')
+    } finally {
+      setAiCreating(false)
+    }
+  }
+
   // ─── Render ────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -207,10 +283,16 @@ export function ModelosTab({ toast }: ModelosTabProps) {
             Estrutura padrão de blocos copiada quando você cria uma proposta nova
           </p>
         </div>
-        <Button size="sm" onClick={openCreate} className="shrink-0">
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Novo modelo
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button size="sm" variant="outline" onClick={openAiBuilder}>
+            <Sparkles className="mr-1 h-3.5 w-3.5" />
+            Construir com IA
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            Novo modelo
+          </Button>
+        </div>
       </div>
 
       {templates.length === 0 ? (
@@ -306,6 +388,127 @@ export function ModelosTab({ toast }: ModelosTabProps) {
             <Button onClick={saveMeta} disabled={metaSaving || !metaForm.name.trim()}>
               {metaSaving ? 'Salvando…' : metaMode === 'create' ? 'Criar e abrir editor' : 'Salvar'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── AI builder dialog ──────────────────────────────────────── */}
+      <Dialog
+        open={aiOpen}
+        onOpenChange={(o) => {
+          if (!o && !aiBuilding && !aiCreating) setAiOpen(false)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Construir modelo com IA
+            </DialogTitle>
+            <DialogDescription>
+              {aiDraft
+                ? 'Revise a proposta de modelo. Você pode criar e editar depois, ou tentar outra descrição.'
+                : 'Descreva o tipo de projeto e a IA monta a estrutura completa pra você.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {!aiDraft ? (
+            <div className="space-y-4 px-6 py-4">
+              <FieldGroup
+                label="Descrição"
+                required
+                hint="Quanto mais contexto, melhor. Ex: tipo de cliente, duração, fases, condições de pagamento."
+              >
+                <textarea
+                  value={aiDescription}
+                  onChange={(e) => setAiDescription(e.target.value)}
+                  rows={5}
+                  placeholder="Modelo pra projetos de identidade visual completos: logo + paleta + tipografia + manual de marca. Duração de 4 a 6 semanas. Cliente B2B. Pagamento à vista com desconto ou parcelado em 3x."
+                  className={cn(
+                    'flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2.5',
+                    'text-sm text-foreground placeholder:text-muted-foreground/50',
+                    'focus:border-primary/30 focus:outline-none focus:ring-2 focus:ring-ring/30',
+                  )}
+                  autoFocus
+                />
+              </FieldGroup>
+              <FieldGroup
+                label="Nome do modelo"
+                hint="Opcional — a IA escolhe um se você não preencher"
+              >
+                <Input
+                  value={aiName}
+                  onChange={(e) => setAiName(e.target.value)}
+                  placeholder="Identidade Visual Completa"
+                />
+              </FieldGroup>
+            </div>
+          ) : (
+            <div className="space-y-3 px-6 py-4">
+              <Card className="border-primary/30 bg-primary/5 p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="text-sm font-semibold">{aiDraft.name}</span>
+                  {aiDraft.type && (
+                    <Badge variant="muted" className="font-mono text-[10px] uppercase">
+                      {aiDraft.type}
+                    </Badge>
+                  )}
+                </div>
+                {aiDraft.description && (
+                  <p className="mb-3 text-xs text-muted-foreground">{aiDraft.description}</p>
+                )}
+                <DraftSummary
+                  blocks={aiDraft.default_blocks}
+                  paymentTerms={aiDraft.default_payment_terms}
+                />
+              </Card>
+              <p className="text-[11px] text-muted-foreground">
+                Após criar, você abre o editor pra revisar cada bloco e ajustar o que quiser.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            {!aiDraft ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setAiOpen(false)}
+                  disabled={aiBuilding}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={buildWithAi}
+                  disabled={aiBuilding || !aiDescription.trim()}
+                >
+                  {aiBuilding ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Gerando…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                      Gerar
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setAiDraft(null)}
+                  disabled={aiCreating}
+                >
+                  Tentar outra descrição
+                </Button>
+                <Button onClick={commitAiDraft} disabled={aiCreating}>
+                  {aiCreating ? 'Criando…' : 'Criar e abrir editor'}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -458,6 +661,70 @@ function FieldGroup({ label, hint, required, children }: FieldGroupProps) {
       </Label>
       {children}
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  )
+}
+
+interface DraftSummaryProps {
+  blocks: ProposalTemplate['default_blocks']
+  paymentTerms: ProposalTemplate['default_payment_terms']
+}
+
+function DraftSummary({ blocks, paymentTerms }: DraftSummaryProps) {
+  const blockLabels: Record<string, string> = {
+    header: 'Abertura',
+    phases: 'Fases',
+    investment: 'Investimento',
+    terms: 'Termos',
+    next_steps: 'Próximos passos',
+    custom: 'Bloco livre',
+    attachments: 'Anexos',
+  }
+
+  // Count phases / next_steps for at-a-glance richness
+  const phasesBlock = blocks.find((b) => b.type === 'phases')
+  const phaseCount = Array.isArray((phasesBlock?.content as { phases?: unknown[] } | undefined)?.phases)
+    ? ((phasesBlock?.content as { phases: unknown[] }).phases.length)
+    : 0
+
+  const nextBlock = blocks.find((b) => b.type === 'next_steps')
+  const stepCount = Array.isArray((nextBlock?.content as { items?: unknown[] } | undefined)?.items)
+    ? ((nextBlock?.content as { items: unknown[] }).items.length)
+    : 0
+
+  return (
+    <div className="space-y-1.5 text-[11px] text-muted-foreground">
+      <div className="flex items-start gap-2">
+        <span className="font-mono uppercase tracking-widest text-muted-foreground/70">Blocos</span>
+        <span className="flex-1">
+          {blocks.map((b, i) => (
+            <span key={i}>
+              {blockLabels[b.type] ?? b.type}
+              {b.type === 'phases' && phaseCount > 0 && ` (${phaseCount})`}
+              {b.type === 'next_steps' && stepCount > 0 && ` (${stepCount})`}
+              {i < blocks.length - 1 && ' · '}
+            </span>
+          ))}
+        </span>
+      </div>
+      {paymentTerms.length > 0 && (
+        <div className="flex items-start gap-2">
+          <span className="font-mono uppercase tracking-widest text-muted-foreground/70">
+            Pagamento
+          </span>
+          <span className="flex-1">
+            {paymentTerms.map((p, i) => (
+              <span key={i}>
+                {p.label}
+                {'discount_percent' in p && typeof p.discount_percent === 'number'
+                  ? ` (${p.discount_percent}% off)`
+                  : ''}
+                {i < paymentTerms.length - 1 && ' · '}
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
