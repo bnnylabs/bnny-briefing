@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
 import { isAuthed } from '@/lib/auth'
+import { anthropic } from '@/lib/anthropic'
 
 /**
  * POST /api/proposals/rewrite
@@ -23,7 +23,6 @@ import { isAuthed } from '@/lib/auth'
  *   { text: string }                                      // texto reescrito
  */
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 type RewriteKind = 'header_body' | 'phase_description' | 'investment_intro' | 'generic'
 

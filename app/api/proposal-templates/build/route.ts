@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import type {
   PaymentTerm,
   ProposalBlockContent,
@@ -7,6 +6,7 @@ import type {
   ProposalTemplate,
 } from '@/lib/proposal-types'
 import { isAuthed } from '@/lib/auth'
+import { anthropic } from '@/lib/anthropic'
 
 /**
  * POST /api/proposal-templates/build
@@ -30,8 +30,6 @@ import { isAuthed } from '@/lib/auth'
  *     }
  *   }
  */
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // ─── Tool schema — forces structured output ─────────────────────────────
 //

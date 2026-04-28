@@ -18,11 +18,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { lookup as dnsLookup } from 'node:dns/promises'
 import { requireAuth } from '@/lib/auth'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+import { anthropic } from '@/lib/anthropic'
 
 // ─── SSRF defense ────────────────────────────────────────────────────────
 //

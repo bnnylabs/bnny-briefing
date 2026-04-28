@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateSlug } from '@/lib/briefing-types'
 import { sendBriefingToClient, sendWhatsApp } from '@/lib/email'
 import { resolveBriefingRecipients } from '@/lib/briefing-recipients'
 import { isAuthed } from '@/lib/auth'
+import { anthropic } from '@/lib/anthropic'
 
 function getBaseUrl(req: NextRequest) {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL
@@ -21,7 +21,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ briefings: data })
 }
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 
 async function translatePrefilledToEN(prefilled: Record<string, unknown>): Promise<Record<string, unknown>> {

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase'
 import type { ProposalTemplate } from '@/lib/proposal-types'
 import { isAuthed } from '@/lib/auth'
+import { anthropic } from '@/lib/anthropic'
 
 /**
  * POST /api/proposals/generate
@@ -15,8 +15,6 @@ import { isAuthed } from '@/lib/auth'
  * Does NOT create the proposal — the client does that in a second call
  * so the owner always has a chance to review before the proposal exists.
  */
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 /**
  * Fetch the text content of a URL for use as additional context.
