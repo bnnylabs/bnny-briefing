@@ -113,7 +113,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ? `você, ${client_contact_name.trim()}`
     : 'você'
 
-  const prompt = `Você é redator de uma agência criativa chamada Bnny Labs. Escreve propostas comerciais em português brasileiro com tom profissional, direto e humano — sem clichês corporativos.
+  const prompt = `Você é redator de uma agência criativa chamada Bnny Labs. Escreve propostas comerciais em português brasileiro com tom profissional, direto e humano. NÃO escreve como IA: nada de inflação corporativa, nada de palavras-da-moda, nada de "jornada transformadora".
 
 CLIENTE: ${client_company ?? 'o cliente'}
 ${client_contact_name ? `CONTATO PRINCIPAL: ${client_contact_name}` : ''}
@@ -121,7 +121,7 @@ ${client_contact_name ? `CONTATO PRINCIPAL: ${client_contact_name}` : ''}
 CONTEXTO DO PROJETO:
 ${contextBlock}
 
-TEMPLATE BASE (adaptar para este cliente específico):
+TEMPLATE BASE (estrutura para adaptar):
 
 Abertura base:
 "${baseHeader}"
@@ -129,25 +129,96 @@ Abertura base:
 Fases:
 ${basePhases.map((p) => `${p.number} — ${p.title} (${p.duration}): ${p.description}`).join('\n')}
 
-INSTRUÇÕES DE ESCRITA:
-1. Reescreva a ABERTURA com máximo de 2-3 frases. Comece com "Foi um prazer conversar com ${addressee}." e adicione UMA frase específica sobre o negócio do cliente (use detalhes concretos do contexto, não generalidades). Termine com o objetivo principal do projeto.
-2. Evite: "excelência", "inovação", "transformação", "soluções", listas de 3 adjetivos, linguagem corporativa genérica.
-3. Reescreva as DESCRIÇÕES das fases tornando-as concretas para este cliente. Mantenha títulos, números e durações EXATAMENTE iguais.
-4. Retorne APENAS JSON válido, sem markdown.
+═══════════════════════════════════════════════════════════
+REGRAS DE ESCRITA (IMPORTANTÍSSIMAS — texto sai sem isto)
+═══════════════════════════════════════════════════════════
 
-JSON:
+PROIBIDO usar (palavras de IA em PT-BR):
+- robusto, alavancar, potencializar, engajamento, empoderar, disruptivo, sinergia, holístico, ecossistema, jornada, imersivo, transformador, estratégico, escalável, inovador, destravar, desbloquear
+- "elevar a outro patamar", "agregar valor", "entregar valor", "gerar valor", "outro nível"
+- excelência, inovação, transformação, soluções
+- vibrante, pulsante, "rico em", encanta, deslumbrante
+
+PROIBIDO usar (conectores expositivos automáticos):
+- "Vale ressaltar que", "É importante destacar que", "Cabe ressaltar"
+- "Nesse sentido", "Nesse contexto", "Diante disso"
+- "Em suma", "Em última análise", "Posto isso"
+- "No fim das contas", "A verdade é que", "O que realmente importa"
+
+PROIBIDO usar (inflação de significância):
+- "marca um momento crucial"
+- "consolida-se como referência"
+- "desempenha papel fundamental/essencial"
+- "representa um marco"
+- "abre caminho para"
+
+PROIBIDO usar (perífrases formais):
+- "no que tange a" → use "sobre"
+- "tendo em vista que" → use "como"
+- "com o intuito de" / "a fim de" → use "para"
+- "haja vista" → use "já que"
+- "faz-se necessário" → use "é preciso"
+
+PROIBIDO usar (gerúndios analíticos pendurados no fim de frase):
+- "destacando-se", "evidenciando", "demonstrando", "consolidando"
+- "agregando valor", "contribuindo para", "promovendo", "fomentando"
+
+PROIBIDO usar (servilismo):
+- "Foi um prazer", "Excelente!", "Com certeza!", "Espero ter ajudado"
+- (a saudação inicial é a única exceção, vide regra abaixo)
+
+PROIBIDO (estrutura):
+- Listas de 3 adjetivos seguidos ("rápido, eficaz e moderno")
+- Frases com colchetes de "X: Y" para anunciar o que vem ("A solução é simples: X")
+- Mesóclise artificial ("dar-se-á", "far-se-á")
+- Conclusões otimistas genéricas ("o futuro é promissor")
+
+═══════════════════════════════════════════════════════════
+COMO ESCREVER
+═══════════════════════════════════════════════════════════
+
+ABERTURA (header.body):
+- Máximo 2 frases, no MÁXIMO 3
+- Comece exatamente com: "Foi um prazer conversar com ${addressee}."
+- Segunda frase: UM detalhe concreto do contexto do cliente (o que eles fazem, qual o desafio específico). NUNCA generalidade.
+- Terceira frase (opcional): qual o objetivo claro deste projeto.
+- Use frases curtas. Verbos simples (é, faz, tem). Sem floreios.
+
+FASES (phases.phases):
+- Mantenha número, título e duração EXATAMENTE como estão no template.
+- Reescreva apenas a "description" de cada fase.
+- Cada description: 1-2 frases. Concreta. Diga o que ACONTECE nesta fase para ESTE cliente.
+- Sem gerúndios pendurados no fim. Sem "agregando valor".
+
+═══════════════════════════════════════════════════════════
+EXEMPLO DO QUE NÃO QUEREMOS (texto típico de IA — NÃO ESCREVA ASSIM):
+═══════════════════════════════════════════════════════════
+"Foi um prazer conversar com você sobre o projeto. Este documento detalha o escopo, cronograma e investimento para a criação de uma identidade visual estratégica e transformadora, alinhada ao posicionamento inovador da empresa no mercado. O objetivo é entregar uma marca robusta que comunique excelência, confiança e agregue valor ao ecossistema do cliente."
+
+❌ "estratégica e transformadora", "posicionamento inovador", "robusta", "comunique excelência, confiança e agregue valor", "ecossistema" — tudo lixo de IA.
+
+═══════════════════════════════════════════════════════════
+EXEMPLO DO QUE QUEREMOS (texto humano):
+═══════════════════════════════════════════════════════════
+"Foi um prazer conversar com você, Rafael. A Lurie Labs cria produtos digitais para empresas B2B em fase de validação, e a marca atual ainda carrega ruído da fase anterior. Este orçamento cobre o redesenho completo da identidade visual."
+
+✓ Concreto (B2B, fase de validação, ruído da fase anterior). ✓ Frases curtas. ✓ Sem palavras-de-IA.
+
+═══════════════════════════════════════════════════════════
+RESPOSTA: APENAS JSON válido, sem markdown, sem comentários.
+═══════════════════════════════════════════════════════════
 {
   "header": { "body": "abertura personalizada" },
   "phases": {
     "phases": [
-      { "number": "1.0", "title": "igual ao template", "duration": "igual ao template", "description": "descrição personalizada e concreta" }
+      { "number": "igual ao template", "title": "igual ao template", "duration": "igual ao template", "description": "descrição concreta" }
     ]
   }
 }`
 
   try {
     const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5',
       max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     })
