@@ -2,7 +2,18 @@
 
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { Eye, Paperclip } from 'lucide-react'
 import { getTemplate, BriefingType, BriefingLanguage } from '@/lib/briefing-types'
+
+// ─────────────────────────────────────────────────────────────────────────
+// Preview popup — opens in a new window from the admin novo flow.
+// Renders a frozen mock of the public briefing page so the owner can
+// sanity-check fields, copy and ordering before sending. All inputs are
+// non-interactive on purpose.
+//
+// Migrated from inline `style={{ var(--*) }}` to Tailwind tokens —
+// matches the public briefing rewrite of v0.10.45.
+// ─────────────────────────────────────────────────────────────────────────
 
 function PreviewContent() {
   const params = useSearchParams()
@@ -13,92 +24,115 @@ function PreviewContent() {
   const isEN = lang === 'en-US'
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>
-          <span style={{ color: 'var(--accent)' }}>Bnny</span> Labs
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background px-5">
+        <div className="text-base font-bold tracking-tight">
+          <span className="text-primary">Bnny</span> Labs
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 12, color: 'var(--accent)', background: 'var(--accent-dim)', padding: '3px 10px', borderRadius: 6, border: '1px solid var(--accent-border)', fontWeight: 600 }}>
-            👁 Preview — não é o briefing real
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+            <Eye className="h-3 w-3" />
+            {isEN ? 'Preview — not the real briefing' : 'Preview — não é o briefing real'}
           </span>
-          <button onClick={() => window.close()} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-2)', padding: '5px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            Fechar
+          <button
+            onClick={() => window.close()}
+            className="rounded-md border border-border bg-transparent px-3 py-1 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {isEN ? 'Close' : 'Fechar'}
           </button>
         </div>
       </header>
-      <div style={{ height: 3, background: 'var(--border)' }}>
-        <div style={{ height: '100%', background: 'var(--accent)', width: '14%' }} />
+
+      <div className="h-[3px] bg-border">
+        <div className="h-full w-[14%] bg-primary" />
       </div>
-      <div style={{ maxWidth: 600, margin: '0 auto', padding: '28px 20px 120px' }}>
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{template.label}</div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2, marginBottom: 10 }}>
-            {isEN ? template.label + ' Briefing' : 'Briefing de ' + template.label}
+
+      <div className="mx-auto max-w-[600px] px-5 pb-30 pt-7">
+        <div className="mb-7">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+            {template.label}
+          </div>
+          <h1 className="mb-2.5 text-2xl font-bold leading-tight tracking-tight">
+            {isEN ? `${template.label} Briefing` : `Briefing de ${template.label}`}
           </h1>
-          <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.7 }}>
+          <p className="text-sm leading-relaxed text-muted-foreground">
             {isEN
-              ? <span>Hello! We prepared this form for <strong style={{ color: 'var(--text)' }}>{company}</strong>. Some fields are pre-filled.</span>
-              : <span>Olá! Preparamos este formulário para <strong style={{ color: 'var(--text)' }}>{company}</strong>. Alguns campos já foram preenchidos.</span>
+              ? <>Hello! We prepared this form for <strong className="text-foreground">{company}</strong>. Some fields are pre-filled.</>
+              : <>Olá! Preparamos este formulário para <strong className="text-foreground">{company}</strong>. Alguns campos já foram preenchidos.</>
             }
           </p>
-          <div style={{ marginTop: 14, padding: '12px 14px', background: 'rgba(200,255,0,0.06)', border: '1px solid var(--accent-border)', borderRadius: 10, fontSize: 13, color: 'var(--text-2)' }}>
+          <div className="mt-3.5 rounded-lg border border-primary/25 bg-primary/5 px-3.5 py-3 text-[13px] leading-snug text-muted-foreground">
             {isEN
-              ? <span>✦ Fields in <span style={{ background: 'rgba(200,255,0,0.1)', color: 'var(--accent)', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999 }}>green</span> were pre-filled automatically.</span>
-              : <span>✦ Campos em <span style={{ background: 'rgba(200,255,0,0.1)', color: 'var(--accent)', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999 }}>verde</span> foram preenchidos automaticamente.</span>
+              ? <>✦ Fields with the <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-bold text-primary">AUTO</span> tag were pre-filled automatically.</>
+              : <>✦ Campos com a tag <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-bold text-primary">AUTO</span> foram preenchidos automaticamente.</>
             }
           </div>
         </div>
 
         {template.sections.map((section, si) => (
-          <div key={si} style={{ marginBottom: 40 }}>
-            <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
-              {isEN ? 'Section ' + (si+1) + ' of ' + template.sections.length : 'Seção ' + (si+1) + ' de ' + template.sections.length}
+          <div key={si} className="mb-10">
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
+              {isEN ? `Section ${si + 1} of ${template.sections.length}` : `Seção ${si + 1} de ${template.sections.length}`}
             </div>
-            <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 22, letterSpacing: '-0.01em', paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
+            <h2 className="mb-5 border-b border-border pb-3.5 text-[17px] font-bold tracking-tight">
               {section.title}
             </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="flex flex-col gap-5">
               {section.fields.map(field => (
                 <div key={field.id}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                      {field.label}{field.required && <span style={{ color: 'var(--accent)', marginLeft: 4 }}>*</span>}
+                  <div className="mb-2 flex items-center gap-2">
+                    <label className="text-sm font-semibold text-foreground">
+                      {field.label}
+                      {field.required && <span className="ml-1 text-primary">*</span>}
                     </label>
                   </div>
-                  {field.hint && <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 8 }}>{field.hint}</div>}
+                  {field.hint && (
+                    <div className="mb-2 text-xs leading-snug text-muted-foreground/70">{field.hint}</div>
+                  )}
                   {field.type === 'radio' && field.options && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div className="flex flex-col gap-2">
                       {field.options.map(opt => (
-                        <div key={opt} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-3)', minHeight: 48 }}>
-                          <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid var(--border)', flexShrink: 0 }} />
-                          <span style={{ fontSize: 15, color: 'var(--text-2)' }}>{opt}</span>
+                        <div
+                          key={opt}
+                          className="flex min-h-[48px] items-center gap-3 rounded-lg border border-border bg-muted px-3.5 py-3"
+                        >
+                          <div className="h-[18px] w-[18px] shrink-0 rounded-full border-2 border-border" />
+                          <span className="text-[15px] text-muted-foreground">{opt}</span>
                         </div>
                       ))}
                     </div>
                   )}
                   {field.type === 'multiselect' && field.options && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    <div className="flex flex-wrap gap-2">
                       {field.options.map(opt => (
-                        <div key={opt} style={{ padding: '9px 14px', borderRadius: 999, fontSize: 14, border: '1px solid var(--border)', background: 'var(--bg-3)', color: 'var(--text-2)' }}>{opt}</div>
+                        <div
+                          key={opt}
+                          className="rounded-full border border-border bg-muted px-3.5 py-2 text-sm text-muted-foreground"
+                        >
+                          {opt}
+                        </div>
                       ))}
                     </div>
                   )}
                   {field.type === 'textarea' && (
-                    <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', minHeight: 80, color: 'var(--text-3)', fontSize: 14, lineHeight: 1.6 }}>
+                    <div className="min-h-[80px] rounded-lg border border-border bg-muted px-3.5 py-3 text-sm leading-relaxed text-muted-foreground/70">
                       {field.placeholder || ''}
                     </div>
                   )}
                   {field.type === 'text' && (
-                    <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', height: 48, color: 'var(--text-3)', fontSize: 14 }}>
+                    <div className="flex h-12 items-center rounded-lg border border-border bg-muted px-3.5 text-sm text-muted-foreground/70">
                       {field.placeholder || ''}
                     </div>
                   )}
                   {field.type === 'file' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 16px', border: '2px dashed var(--border-2)', borderRadius: 12, background: 'var(--bg-3)', minHeight: 80 }}>
-                      <div style={{ fontSize: 24 }}>📎</div>
-                      <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{isEN ? 'Tap to attach files' : 'Toque para anexar arquivos'}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Imagens, PDFs · máx. 10MB</div>
+                    <div className="flex min-h-[80px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted px-4 py-5">
+                      <Paperclip className="h-5 w-5 text-muted-foreground" />
+                      <div className="text-sm text-muted-foreground">
+                        {isEN ? 'Tap to attach files' : 'Toque para anexar arquivos'}
+                      </div>
+                      <div className="text-xs text-muted-foreground/70">
+                        {isEN ? 'Images, PDFs · max. 10MB' : 'Imagens, PDFs · máx. 10MB'}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -106,11 +140,12 @@ function PreviewContent() {
             </div>
           </div>
         ))}
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px 20px', background: 'var(--bg)', borderTop: '1px solid var(--border)', display: 'flex', gap: 12, maxWidth: 600, margin: '0 auto' }}>
-          <div style={{ flex: 1, padding: '14px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', textAlign: 'center', fontSize: 15, fontWeight: 500 }}>
+
+        <div className="fixed bottom-0 left-0 right-0 mx-auto flex max-w-[600px] gap-3 border-t border-border bg-background px-5 py-4">
+          <div className="flex-1 rounded-xl border border-border bg-transparent px-4 py-3.5 text-center text-[15px] font-medium text-muted-foreground/70">
             {isEN ? '← Back' : '← Anterior'}
           </div>
-          <div style={{ flex: 1, padding: '14px', borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#000', textAlign: 'center', fontSize: 15, fontWeight: 700, opacity: 0.6 }}>
+          <div className="flex-1 rounded-xl bg-primary/60 px-4 py-3.5 text-center text-[15px] font-bold text-primary-foreground opacity-60">
             {isEN ? 'Next →' : 'Próximo →'}
           </div>
         </div>
@@ -121,7 +156,11 @@ function PreviewContent() {
 
 export default function PreviewPage() {
   return (
-    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><div className="spinner" /></div>}>
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center">
+        <div className="spinner" />
+      </div>
+    }>
       <PreviewContent />
     </Suspense>
   )

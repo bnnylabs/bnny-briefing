@@ -71,30 +71,6 @@
     --sidebar-accent-foreground: 0 0% 20%;
     --sidebar-border:      0 0% 88%;
     --sidebar-ring:        158 99% 40%;
-
-    /* ── Legacy aliases ─────────────────────────────────────────────────
-       Several inline-styled pages predate the Tailwind token migration
-       and reference these variables directly via `var(--bg-3)` etc.
-       Kept as semantic aliases pointing at the new HSL tokens so:
-         - The pages keep working (no visual regression)
-         - A future rebrand only needs to touch the HSL tokens above
-         - New code should NOT use these — use Tailwind classes (bg-muted,
-           text-muted-foreground, etc) or the HSL tokens directly.
-
-       These are removed once the legacy pages migrate to Tailwind. */
-    --bg:             hsl(var(--background));
-    --bg-2:           hsl(var(--secondary));
-    --bg-3:           hsl(var(--muted));
-    --border-legacy:  hsl(var(--border));
-    --border-2:       hsl(var(--border));
-    --text:           hsl(var(--foreground));
-    --text-2:         hsl(var(--muted-foreground));
-    --text-3:         hsl(var(--muted-foreground) / 0.7);
-    --bnny-green:     hsl(var(--primary));
-    --accent-dim:     hsl(var(--primary) / 0.1);
-    --accent-border:  hsl(var(--primary) / 0.25);
-    --red:            hsl(var(--destructive));
-    --yellow:         hsl(var(--warning));
   }
 }
 
