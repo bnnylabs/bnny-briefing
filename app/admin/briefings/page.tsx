@@ -7,6 +7,7 @@ import { useToast, ToastContainer } from '@/components/toast'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { IconButton } from '@/components/ui/icon-button'
 import { Pencil, FileText, Bell, BellRing, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight, ScrollText, MoreHorizontal } from 'lucide-react'
 import {
@@ -95,32 +96,30 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function Modal({ onClose, children, wide }: { onClose: () => void; children: React.ReactNode; wide?: boolean }) {
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', h)
-    // Lock body scroll while modal open
-    const orig = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', h)
-      document.body.style.overflow = orig
-    }
-  }, [onClose])
+// Wrapper preserved for backwards-compat with the 7 callsites below.
+// Internally now uses Radix Dialog, which gives us focus-trap, proper
+// portal rendering, accessible aria attributes, keyboard handling and
+// scroll-lock for free — all of which the previous custom Modal had to
+// re-implement (and missed focus-trap entirely).
+//
+// API kept identical: { onClose, children, wide }. Radix's onOpenChange
+// fires with `open=false` for both Esc and overlay click, which is
+// exactly what we forward as onClose.
+function Modal({
+  onClose,
+  children,
+  wide,
+}: {
+  onClose: () => void
+  children: React.ReactNode
+  wide?: boolean
+}) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in-0 duration-150"
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className={`relative bg-card border border-border rounded-xl w-full ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[88vh] overflow-y-auto shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1 duration-200 p-6`}
-        onClick={e => e.stopPropagation()}>
-        <button
-          onClick={onClose}
-          aria-label="Fechar"
-          className="absolute top-3.5 right-3.5 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-          <X size={15} strokeWidth={2} />
-        </button>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent wide={wide} className="max-h-[88vh] overflow-y-auto p-6">
         {children}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
