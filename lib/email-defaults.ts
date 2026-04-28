@@ -22,6 +22,8 @@ export type TemplateType =
   | 'briefing_confirmation'
   | 'briefing_completed_admin'
   | 'briefing_updated_admin'
+  | 'proposal_sent_to_client'
+  | 'proposal_viewed_admin'
 
 export type TemplateLanguage = 'pt-BR' | 'en-US'
 
@@ -31,6 +33,8 @@ export const TEMPLATE_TYPES: readonly TemplateType[] = [
   'briefing_confirmation',
   'briefing_completed_admin',
   'briefing_updated_admin',
+  'proposal_sent_to_client',
+  'proposal_viewed_admin',
 ] as const
 
 export const TEMPLATE_LANGUAGES: readonly TemplateLanguage[] = ['pt-BR', 'en-US'] as const
@@ -46,6 +50,8 @@ export const TEMPLATE_VARIABLES: Record<TemplateType, readonly string[]> = {
   briefing_confirmation: ['client_name', 'company', 'type_label', 'editing_hours'],
   briefing_completed_admin: ['client_name', 'company', 'type_label', 'completed_at'],
   briefing_updated_admin: ['company', 'type_label', 'changes_count'],
+  proposal_sent_to_client: ['client_name', 'company', 'proposal_title', 'proposal_number', 'valid_until', 'total_amount'],
+  proposal_viewed_admin: ['client_name', 'company', 'proposal_title', 'proposal_number', 'viewed_at'],
 }
 
 /**
@@ -60,6 +66,8 @@ export const TEMPLATE_BLOCKS: Record<TemplateType, readonly string[]> = {
   briefing_confirmation: ['editing_window'],
   briefing_completed_admin: ['meta_card'],
   briefing_updated_admin: ['changes'],
+  proposal_sent_to_client: ['fallback_link'],
+  proposal_viewed_admin: ['meta_card'],
 }
 
 /**
@@ -86,6 +94,14 @@ export const TEMPLATE_LABELS: Record<TemplateType, { 'pt-BR': string; 'en-US': s
   briefing_updated_admin: {
     'pt-BR': 'Notificação de atualização (admin)',
     'en-US': 'Update notification (admin)',
+  },
+  proposal_sent_to_client: {
+    'pt-BR': 'Envio de proposta (cliente)',
+    'en-US': 'Proposal sent (client)',
+  },
+  proposal_viewed_admin: {
+    'pt-BR': 'Cliente abriu a proposta (admin)',
+    'en-US': 'Client opened proposal (admin)',
   },
 }
 
@@ -238,6 +254,58 @@ Our team will review your answers and reach out shortly to move things forward.
       cta_text: 'View in admin →',
     },
   },
+  proposal_sent_to_client: {
+    'pt-BR': {
+      subject: 'Orçamento {proposal_number} — {proposal_title}',
+      preheader: 'Orçamento preparado pela Bnny Labs',
+      title: 'Seu orçamento está pronto',
+      body_markdown: `Olá, **{client_name}**!
+
+Foi um prazer conversar com você sobre a **{company}**. Preparei o orçamento {proposal_number} com o escopo, cronograma e investimento alinhados ao que conversamos.
+
+O documento detalha cada fase do projeto e as opções de pagamento. Esta estimativa é válida até **{valid_until}** e pode variar com mudanças no escopo.
+
+Qualquer dúvida, é só responder este e-mail.
+
+{{fallback_link}}`,
+      cta_text: 'Ver orçamento →',
+    },
+    'en-US': {
+      subject: 'Proposal {proposal_number} — {proposal_title}',
+      preheader: 'Proposal prepared by Bnny Labs',
+      title: 'Your proposal is ready',
+      body_markdown: `Hello, **{client_name}**!
+
+It was a pleasure talking to you about **{company}**. I've prepared proposal {proposal_number} with the scope, timeline, and investment aligned to what we discussed.
+
+The document details each project phase and payment options. This estimate is valid through **{valid_until}** and may vary with scope changes.
+
+Any questions, just reply to this email.
+
+{{fallback_link}}`,
+      cta_text: 'View proposal →',
+    },
+  },
+  proposal_viewed_admin: {
+    'pt-BR': {
+      subject: '{company} abriu a proposta {proposal_number}',
+      preheader: 'Cliente acabou de visualizar o orçamento',
+      title: 'Cliente abriu a proposta',
+      body_markdown: `**{client_name}** da **{company}** acabou de abrir o orçamento {proposal_number} — *{proposal_title}*.
+
+{{meta_card}}`,
+      cta_text: 'Ver no painel →',
+    },
+    'en-US': {
+      subject: '{company} opened proposal {proposal_number}',
+      preheader: 'Client just viewed the proposal',
+      title: 'Client opened the proposal',
+      body_markdown: `**{client_name}** from **{company}** just opened proposal {proposal_number} — *{proposal_title}*.
+
+{{meta_card}}`,
+      cta_text: 'View in admin →',
+    },
+  },
 }
 
 /**
@@ -256,5 +324,12 @@ export function getSampleVariables(language: TemplateLanguage): Record<string, s
     editing_hours: '48',
     completed_at: new Date().toLocaleString(isEN ? 'en-US' : 'pt-BR'),
     changes_count: '3',
+    proposal_title: isEN ? 'Visual Identity Proposal' : 'Proposta de Identidade Visual',
+    proposal_number: '#001',
+    valid_until: new Date(Date.now() + 7 * 86_400_000).toLocaleDateString(
+      isEN ? 'en-US' : 'pt-BR',
+    ),
+    total_amount: 'R$ 3.000,00',
+    viewed_at: new Date().toLocaleString(isEN ? 'en-US' : 'pt-BR'),
   }
 }

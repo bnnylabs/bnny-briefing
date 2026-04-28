@@ -292,24 +292,37 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
   }
 
   const handleSend = async () => {
-    // Flush any pending edits before changing status — protects the owner
-    // from sending a proposal where their last typed character hasn't
-    // landed in the DB yet.
+    // Flush any pending edits before sending — protects the owner from
+    // shipping a proposal where their last typed character hasn't landed
+    // in the DB yet.
     proposalSave.flush(); blocksSave.flush()
 
+    // Optimistic UI: pretend it worked. If the API rejects (most often
+    // because the client has no email cadastrado), we roll back below.
+    const prevStatus = proposal.status
+    const prevSentAt = proposal.sent_at
     setProposal((p) => ({
       ...p,
       status: 'sent',
       sent_at: p.sent_at ?? new Date().toISOString(),
     }))
-    const res = await fetch(`/api/proposals/${slug}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'sent' }),
+
+    const res = await fetch(`/api/proposals/${slug}/send`, {
+      method: 'POST',
     })
-    if (!res.ok) { toast('Erro ao enviar', 'error'); return }
-    toast('Proposta marcada como enviada — link copiado', 'success', 2000)
-    // Best-effort copy. Failures are silent (owner can still hit the
-    // 'Copiar link' button explicitly).
+
+    if (!res.ok) {
+      // Roll back the optimistic change.
+      setProposal((p) => ({ ...p, status: prevStatus, sent_at: prevSentAt }))
+      const { error } = await res.json().catch(() => ({ error: 'Erro ao enviar' }))
+      toast(error || 'Erro ao enviar proposta', 'error', 4000)
+      return
+    }
+
+    toast('Proposta enviada — e-mail despachado e link copiado', 'success', 2500)
+
+    // Best-effort copy of the public link as a convenience (so the owner
+    // can also forward by WhatsApp etc.).
     try { await navigator.clipboard.writeText(publicUrl) } catch {}
   }
 

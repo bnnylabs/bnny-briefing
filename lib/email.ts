@@ -667,6 +667,150 @@ export async function sendClientConfirmation({
   }
 }
 
+/**
+ * Email to client — proposal published, here's the link.
+ *
+ * Fired from POST /api/proposals/[slug]/send when the owner clicks
+ * "Enviar proposta" in the editor. The CTA points to the public view at
+ * /p/[slug]; the fallback link block renders the same URL as a copy/paste
+ * fallback for clients whose mail clients strip CTA buttons.
+ */
+export async function sendProposalToClient({
+  clientName,
+  clientEmail,
+  company,
+  proposalTitle,
+  proposalNumber,
+  validUntil,
+  totalAmount,
+  link,
+  language = 'pt-BR',
+}: {
+  clientName: string
+  clientEmail: string
+  company: string
+  proposalTitle: string
+  proposalNumber: string
+  validUntil: string
+  totalAmount: string
+  link: string
+  language?: string
+}) {
+  const lang: TemplateLanguage = language === 'en-US' ? 'en-US' : 'pt-BR'
+  const vars: TemplateVars = {
+    client_name: clientName,
+    company,
+    proposal_title: proposalTitle,
+    proposal_number: proposalNumber,
+    valid_until: validUntil,
+    total_amount: totalAmount,
+  }
+
+  const composed = await composeEmail({
+    type: 'proposal_sent_to_client',
+    language: lang,
+    vars,
+    blocks: {
+      fallback_link: renderFallbackLinkBlock(link, lang),
+    },
+    ctaHref: link,
+  })
+
+  try {
+    const result = await getResend().emails.send({
+      from: FROM,
+      to: clientEmail,
+      subject: composed.subject,
+      html: composed.html,
+      text: composed.text,
+    })
+    return { ok: true, id: result.data?.id }
+  } catch (error) {
+    console.error('sendProposalToClient failed:', error)
+    return { ok: false, error }
+  }
+}
+
+/**
+ * Email to admin (owner) — client just opened the proposal.
+ *
+ * Fired from POST /api/p/[slug]/view the first time a client lands on the
+ * public proposal page. Idempotency is handled upstream — this function
+ * just builds + sends. If the same client refreshes the page, the view
+ * tracker won't re-fire because status has already moved to 'viewed'.
+ */
+export async function sendProposalViewedToAdmin({
+  adminEmail,
+  clientName,
+  company,
+  proposalTitle,
+  proposalNumber,
+  baseUrl,
+  language = 'pt-BR',
+}: {
+  adminEmail: string
+  clientName: string
+  company: string
+  proposalTitle: string
+  proposalNumber: string
+  baseUrl: string
+  language?: string
+}) {
+  const lang: TemplateLanguage = language === 'en-US' ? 'en-US' : 'pt-BR'
+  const localeForDate = lang === 'en-US' ? 'en-US' : 'pt-BR'
+  const adminUrl = `${baseUrl}/admin/propostas`
+  const viewedAt = new Date().toLocaleString(localeForDate)
+
+  const vars: TemplateVars = {
+    client_name: clientName,
+    company,
+    proposal_title: proposalTitle,
+    proposal_number: proposalNumber,
+    viewed_at: viewedAt,
+  }
+
+  const composed = await composeEmail({
+    type: 'proposal_viewed_admin',
+    language: lang,
+    vars,
+    blocks: {
+      meta_card: renderMetaCard([
+        {
+          label: lang === 'en-US' ? 'Client' : 'Cliente',
+          value: clientName,
+        },
+        {
+          label: lang === 'en-US' ? 'Company' : 'Empresa',
+          value: company,
+        },
+        {
+          label: lang === 'en-US' ? 'Proposal' : 'Proposta',
+          value: `${proposalNumber} — ${proposalTitle}`,
+        },
+        {
+          label: lang === 'en-US' ? 'Opened at' : 'Aberta em',
+          value: viewedAt,
+        },
+      ]),
+    },
+    ctaHref: adminUrl,
+  })
+
+  try {
+    const result = await getResend().emails.send({
+      from: FROM,
+      to: adminEmail,
+      subject: composed.subject,
+      html: composed.html,
+      text: composed.text,
+    })
+    return { ok: true, id: result.data?.id }
+  } catch (error) {
+    console.error('sendProposalViewedToAdmin failed:', error)
+    return { ok: false, error }
+  }
+}
+
 // ─── Preview pipeline (used by the editor's live preview API) ───────────
 
 /**
@@ -760,6 +904,33 @@ export async function composePreview({
       ctaHref = sampleAdminUrl
       break
     }
+    case 'proposal_sent_to_client':
+      blocks = { fallback_link: renderFallbackLinkBlock(sampleLink, language) }
+      ctaHref = sampleLink
+      break
+    case 'proposal_viewed_admin':
+      blocks = {
+        meta_card: renderMetaCard([
+          {
+            label: language === 'en-US' ? 'Client' : 'Cliente',
+            value: sampleVars.client_name,
+          },
+          {
+            label: language === 'en-US' ? 'Company' : 'Empresa',
+            value: sampleVars.company,
+          },
+          {
+            label: language === 'en-US' ? 'Proposal' : 'Proposta',
+            value: `${sampleVars.proposal_number} — ${sampleVars.proposal_title}`,
+          },
+          {
+            label: language === 'en-US' ? 'Opened at' : 'Aberta em',
+            value: sampleVars.viewed_at,
+          },
+        ]),
+      }
+      ctaHref = sampleAdminUrl
+      break
   }
 
   return composeEmail({
