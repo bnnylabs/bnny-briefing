@@ -445,27 +445,29 @@ export default function ClientesPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-16 text-center text-muted-foreground">
-            <User className="mx-auto mb-3 h-10 w-10 opacity-40" />
-            <div className="mb-1.5 text-base font-semibold text-foreground">
-              {search
-                ? 'Nenhum resultado'
-                : filter !== 'all'
-                ? 'Nenhum cliente neste filtro'
-                : 'Nenhum cliente ainda'}
+          <Card className={search || filter !== 'all' ? 'p-10' : 'p-12'}>
+            <div className="text-center text-muted-foreground">
+              <User className="mx-auto mb-3 h-10 w-10 opacity-40" />
+              <div className="mb-1.5 text-base font-semibold text-foreground">
+                {search
+                  ? 'Nenhum resultado'
+                  : filter !== 'all'
+                  ? 'Nenhum cliente neste filtro'
+                  : 'Nenhum cliente ainda'}
+              </div>
+              <div className="mb-5 text-sm">
+                {!search &&
+                  filter === 'all' &&
+                  'Crie seu primeiro cliente para começar'}
+              </div>
+              {!search && filter === 'all' && (
+                <Button onClick={() => setShowNew(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Criar primeiro cliente
+                </Button>
+              )}
             </div>
-            <div className="mb-5 text-sm">
-              {!search &&
-                filter === 'all' &&
-                'Crie seu primeiro cliente para começar'}
-            </div>
-            {!search && filter === 'all' && (
-              <Button onClick={() => setShowNew(true)}>
-                <Plus className="mr-1.5 h-4 w-4" />
-                Criar primeiro cliente
-              </Button>
-            )}
-          </div>
+          </Card>
         ) : (
           <div className="flex flex-col gap-2">
             {filtered.map((c) => (

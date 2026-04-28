@@ -6,6 +6,7 @@ import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 import { useToast, ToastContainer } from '@/components/toast'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { IconButton } from '@/components/ui/icon-button'
 import { Pencil, FileText, Bell, BellRing, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight, ScrollText, MoreHorizontal } from 'lucide-react'
 import {
@@ -652,33 +653,35 @@ export default function AdminPage() {
                 ))}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-20 text-muted-foreground">
-                <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-40" />
-                <div className="font-semibold text-foreground mb-1">
-                  {search || dateFrom || dateTo || statusFilter !== 'all' ? 'Nenhum resultado' : 'Nenhum briefing ainda'}
+              <Card className={search || dateFrom || dateTo || statusFilter !== 'all' ? 'p-10' : 'p-12'}>
+                <div className="text-center text-muted-foreground">
+                  <ClipboardList className="mx-auto mb-3 h-10 w-10 opacity-40" />
+                  <div className="mb-1.5 text-base font-semibold text-foreground">
+                    {search || dateFrom || dateTo || statusFilter !== 'all' ? 'Nenhum resultado' : 'Nenhum briefing ainda'}
+                  </div>
+                  <div className="mb-5 text-sm">
+                    {search || dateFrom || dateTo || statusFilter !== 'all' ? 'Tente ajustar os filtros' : 'Crie o primeiro briefing para começar'}
+                  </div>
+                  {search || dateFrom || dateTo || statusFilter !== 'all' ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearch('')
+                        setDateFrom('')
+                        setDateTo('')
+                        setStatusFilter('all')
+                      }}
+                    >
+                      Limpar filtros
+                    </Button>
+                  ) : (
+                    <Button onClick={() => router.push('/admin/novo')}>
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Criar primeiro briefing
+                    </Button>
+                  )}
                 </div>
-                <div className="text-sm mb-5">
-                  {search || dateFrom || dateTo || statusFilter !== 'all' ? 'Tente ajustar os filtros' : 'Crie o primeiro briefing para começar'}
-                </div>
-                {search || dateFrom || dateTo || statusFilter !== 'all' ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSearch('')
-                      setDateFrom('')
-                      setDateTo('')
-                      setStatusFilter('all')
-                    }}
-                  >
-                    Limpar filtros
-                  </Button>
-                ) : (
-                  <Button onClick={() => router.push('/admin/novo')}>
-                    <Plus size={14} />
-                    Criar briefing
-                  </Button>
-                )}
-              </div>
+              </Card>
             ) : (
               <div className="flex flex-col gap-2">
                 {filtered.map(b => (
