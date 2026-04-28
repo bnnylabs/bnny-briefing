@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, ReactNode } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
-  Activity, ArrowLeft, ArrowRight, BarChart2, Bell, BellRing, Bot, Briefcase, Building2,
+  Activity, ArrowRight, BarChart2, Bell, BellRing, Bot, Briefcase, Building2,
   Check, CheckCircle2, ChevronDown,
   Clipboard, ClipboardCheck, ClipboardList, Clock, Copy, Download, ExternalLink,
   Eye, FileText, Image as ImageIcon, Link as LinkIcon,
@@ -29,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { Badge } from '@/components/ui/badge'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -618,10 +619,20 @@ export default function ClientePerfilPage() {
       <ToastContainer toasts={toasts} remove={remove} />
 
       <div className="mx-auto max-w-5xl p-6">
+        {/* Breadcrumbs — sit above the hero header for navigation context.
+            Replaces the previous standalone <ArrowLeft> back button: gives
+            the user the same 'go back' affordance plus a clear sense of
+            where they are in the hierarchy, and keeps the hero card
+            visually flush with the rest of the page (no protruding icon
+            button breaking the left edge alignment). */}
+        <Breadcrumbs items={[
+          { label: 'Clientes', href: '/admin/clientes' },
+          { label: client.company },
+        ]} />
+
         {/* ── Page header ─────────────────────────────────────────────── */}
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <IconButton icon={<ArrowLeft className="h-4 w-4" />} label="Voltar" size="icon" onClick={() => router.push('/admin/clientes')} />
             <AvatarUpload
               url={client.avatar_url}
               name={client.company}
