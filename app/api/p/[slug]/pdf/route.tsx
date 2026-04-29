@@ -3,7 +3,7 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { getProposalBySlug, listBlocks } from '@/lib/proposals'
 import { getStudioIdentity } from '@/lib/studio-identity'
 import { formatProposalNumber } from '@/lib/proposal-types'
-import { ProposalPdfDocument, type ProposalPdfData } from '@/lib/proposal-pdf'
+import { ProposalPdfDocument, registerFonts, type ProposalPdfData } from '@/lib/proposal-pdf'
 
 /**
  * GET /api/p/[slug]/pdf
@@ -93,6 +93,14 @@ export async function GET(
     validUntil: validUntilStr,
     lang,
   }
+
+  // Register Geist Mono before rendering. Idempotent — fontsRegistered
+  // flag inside the module short-circuits subsequent calls. Origin is
+  // resolved from the request because the .woff2 files live in
+  // /public/fonts/ and Font.register needs an absolute URL to fetch
+  // them. NextRequest.nextUrl gives us protocol+host correctly even
+  // behind Vercel's edge proxy.
+  registerFonts(req.nextUrl.origin)
 
   // Render. This produces a Node Buffer; we wrap into a fresh ArrayBuffer
   // copy so NextResponse can serialize it cleanly across runtimes.

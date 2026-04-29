@@ -20,6 +20,8 @@ import {
   Page,
   Text,
   View,
+  Svg,
+  Path,
   StyleSheet,
   Font,
 } from '@react-pdf/renderer'
@@ -36,13 +38,47 @@ import type { StudioIdentity } from '@/lib/studio-identity'
 
 // ─── Fonts ──────────────────────────────────────────────────────────────
 //
-// We use built-in PDF fonts (Helvetica, Courier) instead of registering
-// custom ones. Trade-off: bundle stays small + no font-fetch latency,
-// but we don't ship the brand mono font. For a commercial PDF this is
-// acceptable — clients will see consistent system-like type.
+// Geist Mono is registered lazily — once per process, idempotent. The
+// font files live in /public/fonts/ (committed in v0.10.84) and are
+// fetched by Font.register over HTTP using the request's origin URL
+// resolved by the API route. We can't hardcode the URL because:
+//   - localhost dev runs on http://localhost:3000
+//   - production runs on https://briefing.bnnylabs.com
+//   - each Vercel preview gets a unique URL
+// So registerFonts() is exported and called from the route with the
+// concrete origin in hand.
 //
-// If we ever want JetBrains Mono / Geist Mono in the PDF, register
-// here with Font.register({ family, src: <URL or buffer> }).
+// On Font.register failure (network blip, font file missing), the PDF
+// renderer falls back to whatever the next available family is in the
+// stack. Since fontFamily on each style includes 'Helvetica' as the
+// final fallback, the worst case is "PDF still works, looks like before".
+
+const FONT_FAMILY_MONO = 'GeistMono'
+
+let fontsRegistered = false
+
+/**
+ * Register Geist Mono once per process. Safe to call repeatedly —
+ * subsequent calls are no-ops. Pass the absolute origin (https://host)
+ * so Font.register can fetch the .woff2 from /public/fonts/.
+ */
+export function registerFonts(origin: string) {
+  if (fontsRegistered) return
+  try {
+    Font.register({
+      family: FONT_FAMILY_MONO,
+      fonts: [
+        { src: `${origin}/fonts/GeistMono-Regular.woff2`, fontWeight: 400 },
+        { src: `${origin}/fonts/GeistMono-Bold.woff2`, fontWeight: 700 },
+      ],
+    })
+    fontsRegistered = true
+  } catch (e) {
+    // Don't throw — better to render with Helvetica than fail the PDF.
+    // The error is logged so we notice in production logs.
+    console.error('[proposal-pdf] Font.register failed:', e)
+  }
+}
 
 // ─── Colors ─────────────────────────────────────────────────────────────
 // Subset of the brand palette translated to print-safe colors.
@@ -76,22 +112,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 32,
   },
-  logoText: {
-    fontSize: 18,
-    fontFamily: 'Helvetica-Bold',
-    letterSpacing: -0.6,
-    color: COLORS.text,
-  },
   proposalLabel: {
     fontSize: 8,
-    fontFamily: 'Courier-Bold',
+    fontFamily: 'GeistMono',
+    fontWeight: 700,
     letterSpacing: 1.2,
     color: COLORS.muted,
     textAlign: 'right',
   },
   proposalNumber: {
     fontSize: 10,
-    fontFamily: 'Courier-Bold',
+    fontFamily: 'GeistMono',
+    fontWeight: 700,
     color: COLORS.text,
     textAlign: 'right',
     marginTop: 2,
@@ -100,7 +132,8 @@ const styles = StyleSheet.create({
   // Title
   title: {
     fontSize: 28,
-    fontFamily: 'Courier-Bold',
+    fontFamily: 'GeistMono',
+    fontWeight: 700,
     letterSpacing: -0.5,
     color: COLORS.text,
     marginBottom: 24,
@@ -113,7 +146,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 9,
-    fontFamily: 'Courier',
+    fontFamily: 'GeistMono',
     color: COLORS.muted,
     marginBottom: 6,
   },
@@ -137,7 +170,7 @@ const styles = StyleSheet.create({
   },
   phaseNumber: {
     fontSize: 9,
-    fontFamily: 'Courier',
+    fontFamily: 'GeistMono',
     color: COLORS.muted,
     marginBottom: 4,
   },
@@ -154,7 +187,7 @@ const styles = StyleSheet.create({
   },
   phaseDuration: {
     fontSize: 9,
-    fontFamily: 'Courier',
+    fontFamily: 'GeistMono',
     color: COLORS.text,
     backgroundColor: COLORS.badgeBg,
     paddingHorizontal: 6,
@@ -170,14 +203,15 @@ const styles = StyleSheet.create({
   // Investment
   totalLabel: {
     fontSize: 9,
-    fontFamily: 'Courier',
+    fontFamily: 'GeistMono',
     color: COLORS.muted,
     marginBottom: 4,
     marginTop: 8,
   },
   totalValue: {
     fontSize: 24,
-    fontFamily: 'Courier-Bold',
+    fontFamily: 'GeistMono',
+    fontWeight: 700,
     color: COLORS.text,
     marginBottom: 16,
   },
@@ -209,7 +243,7 @@ const styles = StyleSheet.create({
   },
   termDiscountPill: {
     fontSize: 9,
-    fontFamily: 'Courier',
+    fontFamily: 'GeistMono',
     color: COLORS.primaryDark,
     backgroundColor: COLORS.badgeBg,
     paddingHorizontal: 6,
@@ -238,7 +272,8 @@ const styles = StyleSheet.create({
   },
   stepNumber: {
     fontSize: 9,
-    fontFamily: 'Courier-Bold',
+    fontFamily: 'GeistMono',
+    fontWeight: 700,
     color: COLORS.muted,
     width: 16,
   },
@@ -258,14 +293,14 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 9,
-    fontFamily: 'Courier',
+    fontFamily: 'GeistMono',
     color: COLORS.muted,
     lineHeight: 1.5,
     marginBottom: 8,
   },
   footerDisclaimer: {
     fontSize: 8.5,
-    fontFamily: 'Courier',
+    fontFamily: 'GeistMono',
     color: COLORS.subtle,
     lineHeight: 1.5,
     marginBottom: 8,
@@ -279,7 +314,7 @@ const styles = StyleSheet.create({
   },
   footerPill: {
     fontSize: 9,
-    fontFamily: 'Courier',
+    fontFamily: 'GeistMono',
     color: COLORS.text,
     backgroundColor: COLORS.badgeBg,
     paddingHorizontal: 6,
@@ -288,7 +323,7 @@ const styles = StyleSheet.create({
   },
   footerLine: {
     fontSize: 8.5,
-    fontFamily: 'Courier',
+    fontFamily: 'GeistMono',
     color: COLORS.subtle,
     marginTop: 8,
   },
@@ -358,6 +393,61 @@ function formatLocation(s: StudioIdentity): string | null {
   if (!parts) return s.country
   if (!s.country) return parts
   return `${parts} — ${s.country}`
+}
+
+// ─── Brand logo ─────────────────────────────────────────────────────────
+//
+// Bnny Labs wordmark — 7 paths, viewBox 217×135. Mirrored from
+// components/brand/Logo.tsx so the PDF carries the actual mark instead
+// of the studio name as plain Helvetica text.
+//
+// Sized at ~80×50 in the PDF — that's about half the on-screen header
+// size, calibrated for A4 print where the page is the foreground.
+//
+// Color is hardcoded to COLORS.text (vs `currentColor` on web) because
+// @react-pdf/renderer's <Svg> doesn't propagate parent text color the
+// same way browsers do. Using a literal keeps the result predictable.
+function BnnyLogo({ width = 80, height = 50 }: { width?: number; height?: number }) {
+  return (
+    <Svg width={width} height={height} viewBox="0 0 217 135">
+      <Path
+        d="M48.5028 45.4325C48.5028 48.0723 47.9805 50.3654 46.9319 52.3157C45.8832 54.266 44.4537 55.8854 42.6353 57.1777C40.817 58.47 38.6962 59.4432 36.273 60.1051C33.8498 60.7671 31.2853 61.0941 28.5872 61.0941H0V0H32.6363C34.6746 0 36.5204 0.460983 38.1739 1.37507C39.8273 2.2931 41.2293 3.48298 42.3879 4.94474C43.5465 6.40649 44.438 8.07312 45.0742 9.93675C45.7065 11.8004 46.0246 13.7113 46.0246 15.6577C46.0246 18.5851 45.3216 21.3353 43.9156 23.9199C42.5097 26.5006 40.4046 28.4509 37.5926 29.7709C40.9505 30.8031 43.6093 32.6392 45.5651 35.279C47.521 37.9188 48.4989 41.3033 48.4989 45.4325H48.5028ZM13.5494 12.0486V24.6961H26.8513C28.3398 24.6961 29.6594 24.18 30.8179 23.1477C31.9765 22.1154 32.5538 20.5078 32.5538 18.329C32.5538 16.3235 32.0433 14.7712 31.0261 13.6837C30.005 12.5963 28.7796 12.0486 27.3501 12.0486H13.5494ZM34.7021 42.5956C34.7021 40.7044 34.1797 39.0969 33.1311 37.777C32.0825 36.4571 30.7629 35.7991 29.1645 35.7991H13.5494V49.1361H28.5872C30.3506 49.1361 31.8115 48.5333 32.9662 47.3276C34.1248 46.122 34.7021 44.546 34.7021 42.5956Z"
+        fill={COLORS.text}
+      />
+      <Path
+        d="M65.4748 26.1578V61.0941H52.5028V0H65.4748L87.2049 35.8818V0H100.177V61.0941H87.2049L65.4748 26.1578Z"
+        fill={COLORS.text}
+      />
+      <Path
+        d="M117.149 26.1578V61.0941H104.177V0H117.149L138.879 35.8818V0H151.851V61.0941H138.879L117.149 26.1578Z"
+        fill={COLORS.text}
+      />
+      <Path
+        d="M168.522 0.256104L181.533 28.0727L194.721 0.256104H208.479L186.961 40.1883V60.838H176.027V40.0189L154.851 0.256104H168.526H168.522Z"
+        fill={COLORS.text}
+      />
+      <Path
+        d="M0 134.62V74.0386H13.459V123.313H39.1478V134.62H0Z"
+        fill={COLORS.text}
+      />
+      <Path
+        d="M61.2205 74.0383H76.7375L96.8141 134.62H83.9913L79.8008 123.013H58.0747L53.9706 134.62H41.1478L61.2244 74.0383H61.2205ZM76.0384 111.409L68.981 89.9915L61.7507 111.409H76.0384Z"
+        fill={COLORS.text}
+      />
+      <Path
+        d="M147.321 119.093C147.321 121.709 146.798 123.986 145.75 125.917C144.701 127.851 143.272 129.459 141.453 130.74C139.635 132.02 137.514 132.989 135.091 133.639C132.668 134.293 130.103 134.62 127.405 134.62H98.8141V74.0386H131.45C133.489 74.0386 135.335 74.4956 136.988 75.4018C138.641 76.312 140.043 77.494 141.202 78.9439C142.361 80.3938 143.252 82.0447 143.888 83.8926C144.521 85.7405 144.839 87.6356 144.839 89.5662C144.839 92.4661 144.136 95.1965 142.73 97.7575C141.324 100.319 139.219 102.253 136.407 103.561C139.765 104.586 142.423 106.406 144.379 109.022C146.335 111.638 147.313 114.995 147.313 119.089L147.321 119.093ZM112.371 85.9847V98.5258H125.673C127.162 98.5258 128.481 98.0136 129.64 96.9892C130.798 95.9648 131.376 94.3731 131.376 92.21C131.376 90.2203 130.865 88.6837 129.848 87.6041C128.827 86.5245 127.602 85.9847 126.172 85.9847H112.371ZM133.524 116.276C133.524 114.4 133.002 112.808 131.953 111.496C130.904 110.188 129.585 109.534 127.986 109.534H112.371V122.761H127.409C129.173 122.761 130.633 122.162 131.788 120.968C132.947 119.774 133.524 118.21 133.524 116.276Z"
+        fill={COLORS.text}
+      />
+      <Path
+        d="M194.599 91.9986L183.336 92.038C181.238 81.6088 159.862 82.2983 163.581 92.9915C166.389 101.069 192.105 94.6306 195.907 111.707C202.132 139.661 152.973 141.761 149.706 119.52C149.541 118.405 149.321 116.135 149.321 116.135L161.095 114.697C161.095 114.697 161.759 118.511 164.092 120.745C169.437 125.855 182.817 125.473 183.724 116.911C183.438 105.982 157.521 113.243 151.936 98.5942C141.242 70.5334 193.692 64.7061 194.595 92.0065L194.599 91.9986Z"
+        fill={COLORS.text}
+      />
+      <Path
+        d="M209.586 118.375H207.509C203.611 118.375 200.451 121.545 200.451 125.456V127.54C200.451 131.45 203.611 134.62 207.509 134.62H209.586C213.484 134.62 216.644 131.45 216.644 127.54V125.456C216.644 121.545 213.484 118.375 209.586 118.375Z"
+        fill={COLORS.text}
+      />
+    </Svg>
+  )
 }
 
 // ─── Block renderers ────────────────────────────────────────────────────
@@ -599,9 +689,11 @@ export function ProposalPdfDocument({ data }: { data: ProposalPdfData }) {
       producer={data.studio.studio_name}
     >
       <Page size="A4" style={styles.page}>
-        {/* Top: logo + proposal number */}
+        {/* Top: brand logo + proposal number. Logo is SVG (paths from
+            components/brand/Logo.tsx) so it renders crisp at any zoom.
+            Replaces the v0.10.82-83 Helvetica-Bold text fallback. */}
         <View style={styles.header} fixed>
-          <Text style={styles.logoText}>{data.studio.studio_name}</Text>
+          <BnnyLogo width={70} height={43} />
           <View>
             <Text style={styles.proposalLabel}>{i18n.proposalLabel}</Text>
             <Text style={styles.proposalNumber}>{data.proposalNumber}</Text>
