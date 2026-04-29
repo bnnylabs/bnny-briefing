@@ -45,19 +45,73 @@ export async function POST(
   }
   const { slug } = await params
 
+  // Optional body — when omitted, falls back to the canonical contact
+  // list (legacy behaviour). When present, the SendDialog UI gives
+  // the owner explicit control over which contacts get the email
+  // for this specific send. Each entry must have email + name + language;
+  // `role` is informational ('primary'/'cc'/'extra').
+  let body: {
+    recipients_override?: Array<{
+      email: string
+      name: string
+      language: 'pt-BR' | 'en-US'
+      role?: 'primary' | 'cc' | 'extra'
+    }>
+  } = {}
+  try {
+    const text = await req.text()
+    if (text.trim()) {
+      body = JSON.parse(text)
+    }
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
   const proposal = await getProposalBySlug(slug)
   if (!proposal) {
     return NextResponse.json({ error: 'Proposta não encontrada' }, { status: 404 })
   }
 
-  // Resolve recipient list from client_contacts (the canonical source since
-  // schema v5). Falls back to the legacy clients.email/name if no contact
-  // rows exist — same behaviour as briefings, so the same client can
-  // receive both kinds of email through the same setup.
-  const recipients = await resolveBriefingRecipients(proposal.client_id, {
-    name: proposal.clients?.name || 'Cliente',
-    email: proposal.clients?.email ?? null,
-  })
+  // Recipients: explicit override from the SendDialog wins. Otherwise
+  // resolve from client_contacts (legacy default — what the editor's
+  // "Enviar" button used to do unconditionally).
+  type LocalRecipient = {
+    email: string
+    name: string
+    role: 'primary' | 'cc' | 'extra'
+    language: string
+  }
+  let recipients: LocalRecipient[]
+  if (Array.isArray(body.recipients_override) && body.recipients_override.length > 0) {
+    // Validate the override before using it. Empty array would have
+    // already bailed via the length check above.
+    const cleaned = body.recipients_override
+      .filter((r) => r && typeof r.email === 'string' && r.email.includes('@'))
+      .map((r) => ({
+        email: r.email.trim(),
+        name: typeof r.name === 'string' && r.name.trim() ? r.name.trim() : 'Cliente',
+        role: (r.role === 'primary' || r.role === 'cc' || r.role === 'extra'
+          ? r.role
+          : 'cc') as 'primary' | 'cc' | 'extra',
+        language: r.language === 'en-US' ? 'en-US' : 'pt-BR',
+      }))
+    if (cleaned.length === 0) {
+      return NextResponse.json(
+        { error: 'Nenhum destinatário válido' },
+        { status: 400 },
+      )
+    }
+    recipients = cleaned
+  } else {
+    // Resolve recipient list from client_contacts (the canonical source since
+    // schema v5). Falls back to the legacy clients.email/name if no contact
+    // rows exist — same behaviour as briefings, so the same client can
+    // receive both kinds of email through the same setup.
+    recipients = await resolveBriefingRecipients(proposal.client_id, {
+      name: proposal.clients?.name || 'Cliente',
+      email: proposal.clients?.email ?? null,
+    })
+  }
 
   if (recipients.length === 0) {
     return NextResponse.json(
@@ -165,44 +219,59 @@ export async function POST(
   const successes = sendResults.filter((r) => r.ok)
   const failures = sendResults.filter((r) => !r.ok)
 
-  // We treat "primary delivered" as the success criterion. CCs failing
-  // is annoying but doesn't block the publish — they're informational
-  // copies. Primary failing means the actual recipient didn't get the
-  // proposal, which is failure.
-  const primaryDelivered = successes.some((s) => s.recipient.role === 'primary')
-  if (!primaryDelivered) {
+  // "At least one delivery succeeded" is the success criterion.
+  // When the owner uses the SendDialog override, they may pick only
+  // CCs (or only one extra contact) without a primary in the mix —
+  // and that's a valid send. Without override, the canonical flow
+  // always has a primary, so this generalization is backwards-compat.
+  if (successes.length === 0) {
     const firstErr = failures[0]?.error
     const errMsg =
       firstErr instanceof Error
         ? firstErr.message
         : typeof firstErr === 'string'
           ? firstErr
-          : 'Falha ao enviar e-mail pro destinatário principal'
+          : 'Falha ao enviar e-mail pro destinatário'
     return NextResponse.json({ error: errMsg }, { status: 502 })
   }
 
-  // Forwards-compat with single-recipient code paths below.
-  const result = sendResults.find((r) => r.recipient.role === 'primary' && r.ok)!
+  // Forwards-compat: pick a "primary" result for the response payload.
+  // Prefer one tagged 'primary' if available; otherwise the first
+  // successful send. This is just for the `emailId` field returned
+  // to the client — doesn't affect anything else.
+  const result =
+    sendResults.find((r) => r.recipient.role === 'primary' && r.ok) ||
+    sendResults.find((r) => r.ok)!
 
   // Status was already claimed at the top of the handler (atomic update
   // before sending the email). If the email failed AFTER we claimed,
   // we have a tricky state — proposal is 'sent' but no email arrived.
   // In practice this is rare (Resend errors are usually pre-flight, e.g.
   // invalid email), and the activity log captures the failure for the
-  // owner to spot and re-trigger. A future iteration could revert the
-  // claim on Resend failure, but that opens its own race condition
-  // window with concurrent successful re-sends.
+  // owner to spot and re-trigger.
 
-  // Log it (best-effort — failures here are silent).
+  // Log it with full recipient details — when the owner used the
+  // SendDialog override, this is how we reconstruct who got each
+  // version. Includes name + role + language for audit.
   try {
     await supabaseAdmin.from('proposal_activity').insert({
       proposal_id: proposal.id,
       actor_type: 'admin',
       event: 'sent',
       details: {
-        to: successes.map((s) => ({ email: s.recipient.email, role: s.recipient.role })),
-        failed: failures.map((f) => ({ email: f.recipient.email, role: f.recipient.role })),
+        to: successes.map((s) => ({
+          email: s.recipient.email,
+          name: s.recipient.name,
+          role: s.recipient.role,
+          language: s.recipient.language,
+        })),
+        failed: failures.map((f) => ({
+          email: f.recipient.email,
+          name: f.recipient.name,
+          role: f.recipient.role,
+        })),
         primary_email_id: result.id,
+        used_override: Array.isArray(body.recipients_override),
       },
     })
   } catch (e) {

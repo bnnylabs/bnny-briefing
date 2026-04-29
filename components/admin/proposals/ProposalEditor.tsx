@@ -50,6 +50,7 @@ import {
 import { formatSavedAgo, useAutoSave, type AutoSaveStatus } from './useAutoSave'
 import { RewriteButton } from './RewriteButton'
 import { BlockReadOnly } from './BlockReadOnly'
+import { SendDialog, type SendContact, type SendRecipientPayload } from './SendDialog'
 import type { BlockContentInvestment } from '@/lib/proposal-types'
 
 // ─── Constants ────────────────────────────────────────────────────────────
@@ -135,6 +136,14 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
   const [proposal, setProposal]   = useState<ProposalWithClient>(initialProposal)
   const [blocks, setBlocks]       = useState<ProposalBlock[]>(initialBlocks)
   const [deleteTarget, setDeleteTarget] = useState<ProposalBlock | null>(null)
+
+  // ── Send dialog state ──────────────────────────────────────────────────
+  // The "Enviar proposta" button opens this dialog instead of firing
+  // immediately. Lets the owner choose specific recipients and add new
+  // contacts inline. Lazy-loaded contacts — only fetched on open.
+  const [sendOpen, setSendOpen] = useState(false)
+  const [sendContacts, setSendContacts] = useState<SendContact[]>([])
+  const [sendContactsLoading, setSendContactsLoading] = useState(false)
 
   // ── Advanced actions: change client / change template ─────────────────
   // Lazy-fetched lists for the change dialogs. Empty until the owner
@@ -291,14 +300,66 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
     }
   }
 
-  const handleSend = async () => {
-    // Flush any pending edits before sending — protects the owner from
-    // shipping a proposal where their last typed character hasn't landed
-    // in the DB yet.
-    proposalSave.flush(); blocksSave.flush()
+  // Fetch the client's contact list for the SendDialog. Cached in
+  // sendContacts state — refreshed when the dialog opens, and after
+  // an inline contact creation.
+  const refreshSendContacts = useCallback(async () => {
+    setSendContactsLoading(true)
+    try {
+      const res = await fetch(`/api/admin/clients/${proposal.client_id}/contacts`, {
+        cache: 'no-store',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const list: SendContact[] = (data.contacts ?? []).map(
+          (c: {
+            id: string
+            name: string
+            email: string | null
+            language: string
+            is_primary: boolean
+            receives_copies: boolean
+            role?: string | null
+          }) => ({
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            language: (c.language === 'en-US' ? 'en-US' : 'pt-BR') as 'pt-BR' | 'en-US',
+            is_primary: !!c.is_primary,
+            receives_copies: !!c.receives_copies,
+            role: c.role ?? null,
+          }),
+        )
+        setSendContacts(list)
+      } else {
+        toast('Erro ao carregar contatos', 'error')
+      }
+    } catch (e) {
+      console.warn('[ProposalEditor] fetch contacts failed:', e)
+    } finally {
+      setSendContactsLoading(false)
+    }
+  }, [proposal.client_id, toast])
 
-    // Optimistic UI: pretend it worked. If the API rejects (most often
-    // because the client has no email cadastrado), we roll back below.
+  const handleSend = async () => {
+    // Flush any pending edits before opening the dialog so the proposal
+    // the user is about to send reflects what they last typed.
+    proposalSave.flush()
+    blocksSave.flush()
+
+    // Lazy-load contacts on first open. Subsequent opens reuse cache,
+    // unless a new contact was added inline (refreshSendContacts is
+    // called from the dialog's onContactAdded).
+    if (sendContacts.length === 0 && !sendContactsLoading) {
+      await refreshSendContacts()
+    }
+    setSendOpen(true)
+  }
+
+  // Called by SendDialog after the user picks recipients and confirms.
+  // Posts to /api/proposals/[slug]/send with recipients_override and
+  // handles the optimistic UI update + rollback.
+  const executeSend = async (recipients: SendRecipientPayload[]) => {
     const prevStatus = proposal.status
     const prevSentAt = proposal.sent_at
     setProposal((p) => ({
@@ -309,6 +370,8 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
 
     const res = await fetch(`/api/proposals/${slug}/send`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipients_override: recipients }),
     })
 
     if (!res.ok) {
@@ -316,10 +379,15 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
       setProposal((p) => ({ ...p, status: prevStatus, sent_at: prevSentAt }))
       const { error } = await res.json().catch(() => ({ error: 'Erro ao enviar' }))
       toast(error || 'Erro ao enviar proposta', 'error', 4000)
-      return
+      // Re-throw so the dialog can keep itself open with the error
+      throw new Error(error || 'Erro ao enviar proposta')
     }
 
-    toast('Proposta enviada — e-mail despachado e link copiado', 'success', 2500)
+    toast(
+      `Proposta enviada pra ${recipients.length} destinatário${recipients.length > 1 ? 's' : ''}`,
+      'success',
+      2500,
+    )
 
     // Best-effort copy of the public link as a convenience (so the owner
     // can also forward by WhatsApp etc.).
@@ -807,6 +875,17 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Send proposal dialog — opens when user clicks "Enviar proposta".
+          Lazy-loads contacts on first open. v0.10.80. */}
+      <SendDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        clientId={proposal.client_id}
+        contacts={sendContacts}
+        onConfirm={executeSend}
+        onContactAdded={refreshSendContacts}
+      />
     </div>
   )
 }
