@@ -90,6 +90,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // without asking the user to paste URLs again.
 
   let clientCompany = body.client_company ?? ''
+  // Track whether the addressee came from the owner's explicit input
+  // ("Para quem é a abertura?") or fell back to the primary contact.
+  // Drives prompt phrasing — the owner-supplied addressee is treated
+  // as "someone we talked to" (third-person) rather than the email
+  // recipient ("Foi um prazer conversar COM VOCÊ, X").
+  const ownerSuppliedAddressee = !!body.addressee_name?.trim()
   let clientContactName = body.addressee_name?.trim() || null
   let autoContext = ''
 
@@ -198,15 +204,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const baseHeader = (headerBlock?.content as { body?: string })?.body ?? ''
   const basePhases: Phase[] = (phasesBlock?.content as { phases?: Phase[] })?.phases ?? []
 
-  // Determine how to address the client contact
+  // Determine the opening style. Two cases:
+  //
+  //   1. Owner did NOT supply addressee_name → clientContactName came
+  //      from the primary contact OR is null. Treat that person as
+  //      THE recipient of the email — direct vocative is appropriate:
+  //      "Foi um prazer conversar com você, [Nome]."
+  //
+  //   2. Owner SUPPLIED addressee_name → this is someone the owner
+  //      talked TO during sales but is not necessarily a recipient.
+  //      Use third-person framing so the email reads naturally to
+  //      whoever actually receives it (which may be a team that
+  //      wasn't in the meeting):
+  //      "Conversamos com [Nome] sobre o projeto..."
+  //
+  // The 'você' fallback (no name at all) stays as-is — direct
+  // vocative without a name works for any recipient.
+  const useThirdPerson = ownerSuppliedAddressee && !!clientContactName
   const addressee = clientContactName?.trim()
-    ? `você, ${clientContactName.trim()}`
+    ? (useThirdPerson ? clientContactName.trim() : `você, ${clientContactName.trim()}`)
     : 'você'
+  const openingInstruction = useThirdPerson
+    ? `- Comece com: "Conversamos com ${addressee} sobre [o que foi conversado]." OU "Foi um prazer conversar com ${addressee} sobre [o que foi conversado]." — terceira pessoa, porque ${addressee} foi com quem o estúdio falou na venda, mas a proposta vai pra mais gente do time. NÃO use "você, ${addressee}" — quem lê pode não ter participado da conversa.`
+    : `- Comece exatamente com: "Foi um prazer conversar com ${addressee}."`
 
   const prompt = `${buildSharedPreamble(ownerNotes)}
 
 CLIENTE: ${clientCompany || 'o cliente'}
-${clientContactName ? `CONTATO PRINCIPAL: ${clientContactName}` : ''}
+${clientContactName
+  ? useThirdPerson
+    ? `INTERLOCUTOR DA CONVERSA: ${clientContactName} (referenciar em terceira pessoa, NÃO é o destinatário do email)`
+    : `CONTATO PRINCIPAL: ${clientContactName} (destinatário direto do email — usar vocativo)`
+  : ''}
 
 CONTEXTO DO PROJETO (para referência factual):
 ${autoContext.trim() || '(nenhum contexto automatizado disponível — use apenas as instruções do owner acima)'}
@@ -227,7 +256,7 @@ COMO ESCREVER
 
 ABERTURA (header.body):
 - Máximo 2 frases, no MÁXIMO 3
-- Comece exatamente com: "Foi um prazer conversar com ${addressee}."
+${openingInstruction}
 - Segunda frase: UM detalhe concreto do contexto do cliente (o que eles fazem, qual o desafio específico). NUNCA generalidade.
 - Terceira frase (opcional): qual o objetivo claro deste projeto.
 - Use frases curtas. Verbos simples (é, faz, tem). Sem floreios.
