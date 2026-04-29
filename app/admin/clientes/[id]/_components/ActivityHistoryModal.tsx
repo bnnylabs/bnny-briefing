@@ -1,42 +1,26 @@
 'use client'
 
+import { X } from 'lucide-react'
 import {
-  Bell,
-  Check,
-  CheckCircle2,
-  Clock,
-  Eye,
-  Mail,
-  RefreshCw,
-  Send,
-  Trash2,
-  X,
-} from 'lucide-react'
+  BriefingActivityFeed,
+  type ActivityEntry,
+} from '@/components/admin/briefings/BriefingActivityFeed'
 
 /**
  * Modal showing the activity history of a single briefing — sent
  * emails (admin + client), reminders/resends, and recipient-side
  * events (link opened, form started, form submitted).
  *
- * Extracted from the client detail page (v0.10.99). Why an isolated
- * component makes sense:
- *   - ~70L of its own JSX with internal label/icon mapping
- *   - No write actions (read-only feed) — props are flat data
- *   - Same UI shape regardless of which briefing is being inspected
+ * Container: hand-rolled overlay (`fixed inset-0`). Kept as-is when
+ * the briefings list page also got a notification history modal in
+ * v0.10.102 — that one uses Radix Dialog (Modal wrapper). Both share
+ * the same body via BriefingActivityFeed; only the chrome differs.
  *
- * Implementation note: this is a hand-rolled overlay (`fixed inset-0
- * z-50 ...`) rather than the Radix Dialog. Kept as-is during the
- * refactor — switching to Dialog is a separate decision (focus
- * trapping, animation tokens) that doesn't belong in a "no-behavior-
- * change" extraction.
+ * Migrating this one to Radix Dialog is a separate decision (focus
+ * trapping, animation tokens) that doesn't belong in a refactor.
  */
 
-export interface ActivityEntry {
-  type: string
-  status: string
-  sent_at: string
-  details: Record<string, string>
-}
+export type { ActivityEntry }
 
 export interface ActivityHistoryModalProps {
   /** Truthy = open. The label string is rendered as the briefing label. */
@@ -85,87 +69,7 @@ export function ActivityHistoryModal({
             Nenhuma atividade registrada
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {history.map((n, i) => {
-              const isClientEvent = [
-                'link_opened',
-                'form_started',
-                'form_submitted',
-              ].includes(n.type)
-              const lblMap: Record<string, { icon: React.ReactNode; label: string }> = {
-                email_client: { icon: <Send size={13} />, label: 'Email enviado' },
-                email_admin: { icon: <Mail size={13} />, label: 'Notificação ao admin' },
-                reminder: { icon: <Bell size={13} />, label: 'Lembrete enviado' },
-                resend: { icon: <RefreshCw size={13} />, label: 'Reenvio' },
-                link_opened: {
-                  icon: <Eye size={13} className="text-info" />,
-                  label: 'Link acessado',
-                },
-                form_started: {
-                  icon: <Clock size={13} className="text-warning" />,
-                  label: 'Preenchimento iniciado',
-                },
-                form_submitted: {
-                  icon: <CheckCircle2 size={13} className="text-success" />,
-                  label: 'Briefing concluído',
-                },
-              }
-              const entry = lblMap[n.type] || { icon: <Bell size={13} />, label: n.type }
-              return (
-                <div
-                  key={i}
-                  className={`rounded-lg border px-4 py-3 ${
-                    isClientEvent ? 'border-border bg-card' : 'border-border bg-muted/30'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 text-sm font-medium">
-                      {entry.icon} {entry.label}
-                    </span>
-                    {!isClientEvent && (
-                      <span
-                        className={`inline-flex items-center gap-1 text-xs font-medium ${
-                          n.status === 'sent' ? 'text-success' : 'text-destructive'
-                        }`}
-                      >
-                        {n.status === 'sent' ? (
-                          <>
-                            <Check size={12} /> Entregue
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 size={12} /> Falhou
-                          </>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  {n.details?.to && (
-                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      {n.details.role === 'cc' && (
-                        <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium">
-                          CC
-                        </span>
-                      )}
-                      {n.details.role === 'primary' && (
-                        <span className="rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success">
-                          Principal
-                        </span>
-                      )}
-                      {n.details.name && (
-                        <span className="font-medium text-foreground">{n.details.name}</span>
-                      )}
-                      {n.details.name && <span className="text-muted-foreground/50">·</span>}
-                      <span>{n.details.to}</span>
-                    </div>
-                  )}
-                  <div className="text-[10px] text-muted-foreground/60 mt-1">
-                    {new Date(n.sent_at).toLocaleString('pt-BR')}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <BriefingActivityFeed history={history} />
         )}
       </div>
     </div>

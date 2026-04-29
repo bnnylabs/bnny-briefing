@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { IconButton } from '@/components/ui/icon-button'
-import { Pencil, FileText, Bell, BellRing, Copy, RefreshCw, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Clock, CheckCircle2, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Clipboard, Plus, X, ArrowRight, ScrollText, MoreHorizontal } from 'lucide-react'
+import { Pencil, FileText, BellRing, Copy, Link, Trash2, Lock, Unlock, ClipboardList, Search, Mail, Check, Send, Eye, Paperclip, Download, ExternalLink, Image as ImageIcon, ShieldCheck, Plus, X, ArrowRight, ScrollText, MoreHorizontal } from 'lucide-react'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -42,7 +42,9 @@ import {
   BRIEFING_STATUS_LABELS,
 } from './_components/BriefingStatusBadge'
 import { Modal } from './_components/Modal'
-import { ResponsesContent } from '@/components/admin/briefings/ResponsesContent'
+import { ResponsesModal } from './_components/ResponsesModal'
+import { DiffModal } from './_components/DiffModal'
+import { NotifHistoryModal } from './_components/NotifHistoryModal'
 
 interface Client { id: string; name: string; company: string; email: string; phone: string; avatar_url?: string | null }
 interface Briefing {
@@ -729,108 +731,30 @@ export default function AdminPage() {
 
       {/* ── RESPONSES MODAL ──────────────────────────────────────────── */}
       {responsesBriefing && (
-        <Modal onClose={() => { setResponsesBriefing(null); setResponses(null) }} wide>
-          <div className="mb-5 pb-4 border-b border-border/60">
-            <div className="font-bold text-lg tracking-tight">{responsesBriefing.clients?.company}</div>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <Badge variant="outline" className="text-[11px] font-medium">{responsesBriefing.type_label}</Badge>
-              {responsesBriefing.clients?.name && <span className="text-sm text-muted-foreground">{responsesBriefing.clients.name}</span>}
-            </div>
-            {responsesBriefing.completed_at && <div className="text-xs text-muted-foreground mt-1.5">Concluído em {fmt(responsesBriefing.completed_at)}</div>}
-          </div>
-          <div className="flex gap-2 mb-5">
-            <Button onClick={copyAll} variant="outline" className="flex-1"><Clipboard size={14} />{copied ? 'Copiado!' : 'Copiar tudo'}</Button>
-            <Button onClick={exportPDF} variant="outline" className="flex-1"><FileText size={14} /> Exportar PDF</Button>
-          </div>
-          {responseVersions > 1 && responseDiff && (
-            <div className="mb-4">
-              <div className="flex gap-2">
-                <button onClick={() => setShowDiffView(false)}
-                  className={`flex-1 text-xs py-2 rounded-lg border transition-colors inline-flex items-center justify-center gap-1.5 ${!showDiffView ? 'border-foreground/20 bg-muted text-foreground font-medium' : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}>
-                  <ClipboardList size={12} /> Respostas atuais
-                </button>
-                <button onClick={() => setShowDiffView(true)}
-                  className={`flex-1 text-xs py-2 rounded-lg border transition-colors inline-flex items-center justify-center gap-2 ${showDiffView ? 'border-foreground/20 bg-muted text-foreground font-medium' : 'border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}>
-                  <Pencil size={12} /> Ver alterações
-                  <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-bold text-foreground">{Object.keys(responseDiff).length}</span>
-                </button>
-              </div>
-              {showDiffView && (
-                <div className="mt-3 flex flex-col gap-2">
-                  {Object.keys(responseDiff).length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">Nenhuma alteração detectada</div>
-                  ) : Object.entries(responseDiff).map(([key, { old: oldVal, new: newVal }]) => {
-                    const labelMap = responsesBriefing?.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
-                    const label = labelMap[key] || key.replace(/_/g, ' ')
-                    const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
-                    const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
-                    return (
-                      <div key={key} className="rounded-lg overflow-hidden border border-border">
-                        <div className="px-3.5 py-2 bg-muted/40 border-b border-border">
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-foreground uppercase tracking-wider"><Pencil size={10} /> {label}</span>
-                        </div>
-                        <div className="px-3.5 py-3 bg-card flex flex-col gap-2">
-                          <div className="text-xs text-muted-foreground line-through">{oldStr || '—'}</div>
-                          <div className="text-sm font-semibold text-foreground">{newStr}</div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-          {responses && !showDiffView && (
-            <ResponsesContent responses={responses} language={responsesBriefing?.language}
-              companyName={responsesBriefing?.clients?.company || 'briefing'}
-              renderFileValue={renderFileValue} labelMapPT={FIELD_LABELS_PT} labelMapEN={FIELD_LABELS_EN} />
-          )}
-          {!responses && <div className="flex justify-center py-10"><div className="spinner" /></div>}
-        </Modal>
+        <ResponsesModal
+          briefing={responsesBriefing}
+          responses={responses}
+          responseDiff={responseDiff}
+          responseVersions={responseVersions}
+          showDiffView={showDiffView}
+          copied={copied}
+          renderFileValue={renderFileValue}
+          onClose={() => { setResponsesBriefing(null); setResponses(null) }}
+          onCopyAll={copyAll}
+          onExportPDF={exportPDF}
+          onToggleDiff={setShowDiffView}
+        />
       )}
 
       {/* ── DIFF MODAL ───────────────────────────────────────────────── */}
       {diffModal && (
-        <Modal onClose={() => setDiffModal(null)} wide>
-          <div className="mb-5 pb-4 border-b border-border/60">
-            <div className="font-bold text-lg tracking-tight">{diffModal.briefing.clients?.company}</div>
-            <div className="flex items-center gap-2 mt-1.5">
-              <Badge variant="outline" className="text-[10px] font-medium gap-1"><Pencil size={10} /> {diffModal.briefing.update_count}x atualizado</Badge>
-              <span className="text-sm text-muted-foreground">{diffModal.briefing.type_label}</span>
-            </div>
-          </div>
-          {loadingDiff ? (
-            <div className="flex justify-center py-10"><div className="spinner" /></div>
-          ) : Object.keys(diffModal.diff).length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              <Search className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <div className="text-sm mb-4">Não foi possível comparar versões.</div>
-              <Button variant="outline" onClick={() => { setDiffModal(null); viewResponses(diffModal.briefing) }}>Ver respostas →</Button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div className="text-xs text-muted-foreground mb-1">{Object.keys(diffModal.diff).length} campos alterados</div>
-              {Object.entries(diffModal.diff).map(([key, { old: oldVal, new: newVal }]) => {
-                const labelMap = diffModal.briefing.language === 'en-US' ? FIELD_LABELS_EN : FIELD_LABELS_PT
-                const label = labelMap[key] || key.replace(/_/g, ' ')
-                const oldStr = Array.isArray(oldVal) ? (oldVal as string[]).join(', ') : String(oldVal || '')
-                const newStr = Array.isArray(newVal) ? (newVal as string[]).join(', ') : String(newVal || '')
-                return (
-                  <div key={key} className="rounded-lg overflow-hidden border border-border">
-                    <div className="px-3.5 py-2 bg-muted/40 border-b border-border">
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-foreground uppercase tracking-wider"><Pencil size={10} /> {label}</span>
-                    </div>
-                    <div className="px-3.5 py-3 bg-card flex flex-col gap-2">
-                      <div className="text-xs text-muted-foreground line-through">{oldStr || '—'}</div>
-                      <div className="text-sm font-semibold text-foreground">{newStr}</div>
-                    </div>
-                  </div>
-                )
-              })}
-              <Button variant="ghost" onClick={() => { setDiffModal(null); viewResponses(diffModal.briefing) }} className="mt-1">Ver todas as respostas →</Button>
-            </div>
-          )}
-        </Modal>
+        <DiffModal
+          briefing={diffModal.briefing}
+          diff={diffModal.diff}
+          loading={loadingDiff}
+          onClose={() => setDiffModal(null)}
+          onViewResponses={() => { setDiffModal(null); viewResponses(diffModal.briefing) }}
+        />
       )}
 
       {/* ── EDIT CLIENT ──────────────────────────────────────────────── */}
@@ -896,64 +820,11 @@ export default function AdminPage() {
 
       {/* ── NOTIFICATIONS ────────────────────────────────────────────── */}
       {notifBriefing && (
-        <Modal onClose={() => { setNotifBriefing(null); setNotifHistory([]) }}>
-          <div className="mb-5">
-            <div className="font-bold text-lg tracking-tight">Histórico de atividades</div>
-            <div className="text-sm text-muted-foreground mt-0.5">{notifBriefing.clients?.company} · {notifBriefing.type_label}</div>
-          </div>
-          {notifHistory.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">Nenhuma atividade registrada</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {notifHistory.map((n, i) => {
-                // Client activity events — different visual treatment
-                const isClientEvent = ['link_opened', 'form_started', 'form_submitted'].includes(n.type)
-
-                const lblMap: Record<string, { icon: React.ReactNode; label: string; clientEvent?: boolean }> = {
-                  // Admin sends
-                  email_client: { icon: <Send size={13} />,       label: 'Email enviado' },
-                  email_admin:  { icon: <Mail size={13} />,       label: 'Notificação ao admin' },
-                  reminder:     { icon: <Bell size={13} />,       label: 'Lembrete enviado' },
-                  resend:       { icon: <RefreshCw size={13} />,  label: 'Reenvio' },
-                  // Client activity
-                  link_opened:    { icon: <Eye size={13} className="text-info" />,         label: 'Link acessado', clientEvent: true },
-                  form_started:   { icon: <Clock size={13} className="text-warning" />,    label: 'Preenchimento iniciado', clientEvent: true },
-                  form_submitted: { icon: <CheckCircle2 size={13} className="text-success" />, label: 'Briefing concluído', clientEvent: true },
-                }
-                const entry = lblMap[n.type] || { icon: <Bell size={13} />, label: n.type }
-
-                return (
-                  <div key={i} className={`rounded-lg border px-4 py-3 ${isClientEvent ? 'border-border bg-card' : 'border-border bg-muted/30'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1.5 text-sm font-medium">
-                        {entry.icon} {entry.label}
-                      </span>
-                      {!isClientEvent && (
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium ${n.status === 'sent' ? 'text-success' : 'text-destructive'}`}>
-                          {n.status === 'sent' ? <><Check size={12} /> Entregue</> : <><Trash2 size={12} /> Falhou</>}
-                        </span>
-                      )}
-                    </div>
-                    {n.details?.to && (
-                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                        {n.details.role === 'cc' && (
-                          <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">CC</span>
-                        )}
-                        {n.details.role === 'primary' && (
-                          <span className="rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success">Principal</span>
-                        )}
-                        {n.details.name && <span className="font-medium text-foreground">{n.details.name}</span>}
-                        {n.details.name && <span className="text-muted-foreground/50">·</span>}
-                        <span>{n.details.to}</span>
-                      </div>
-                    )}
-                    <div className="text-[10px] text-muted-foreground/60 mt-1">{new Date(n.sent_at).toLocaleString('pt-BR')}</div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Modal>
+        <NotifHistoryModal
+          briefing={notifBriefing}
+          history={notifHistory}
+          onClose={() => { setNotifBriefing(null); setNotifHistory([]) }}
+        />
       )}
 
       {/* ── DELETE ───────────────────────────────────────────────────── */}
