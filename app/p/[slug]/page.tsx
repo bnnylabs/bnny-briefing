@@ -60,6 +60,7 @@ function t(lang: PageLang) {
     return {
       validUntilLocale: 'en-US' as const,
       proposalLabel: 'PROPOSAL',
+      downloadPdf: 'Download PDF',
       thanksFor: (studioName: string) => `Thank you for considering ${studioName}!`,
       validUntilText: (date: string) => ` This estimate is valid through ${date}`,
       andMayChange: ' and may change with scope adjustments.',
@@ -69,6 +70,7 @@ function t(lang: PageLang) {
   return {
     validUntilLocale: 'pt-BR' as const,
     proposalLabel: 'ORÇAMENTO',
+    downloadPdf: 'Baixar PDF',
     thanksFor: (studioName: string) => `Obrigado por considerar a ${studioName}!`,
     validUntilText: (date: string) => ` Esta estimativa é válida até ${date}`,
     andMayChange: ' e pode variar com mudanças no escopo.',
@@ -134,7 +136,7 @@ export default async function PublicProposalPage({ params, searchParams }: PageP
       <div className="h-1.5 w-full bg-primary" />
 
       <article className="mx-auto max-w-3xl px-6 py-10 sm:py-16 sm:px-10">
-        {/* Header: logo + proposal number */}
+        {/* Header: logo + proposal number + PDF download */}
         <header className="mb-12 flex items-start justify-between gap-4">
           <Logo className="h-12 w-auto sm:h-14" />
           <div className="text-right">
@@ -142,6 +144,16 @@ export default async function PublicProposalPage({ params, searchParams }: PageP
               {i18n.proposalLabel}
             </div>
             <div className="font-mono text-sm tabular-nums text-foreground">{num}</div>
+            {/* PDF download — discrete link below the number. Carries the
+                same ?l=<lang> the page is using so the PDF matches the
+                public render. Server-rendered <a> for max compatibility:
+                no JS, browser handles the download via Content-Disposition. */}
+            <a
+              href={`/api/p/${slug}/pdf?l=${lang === 'en-US' ? 'en' : 'pt'}`}
+              className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              ↓ {i18n.downloadPdf}
+            </a>
           </div>
         </header>
 

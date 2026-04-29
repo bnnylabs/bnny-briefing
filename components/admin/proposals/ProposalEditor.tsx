@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Check, AlertCircle, Loader2, Eye, Plus, Trash2,
   ChevronDown, ChevronUp, FileText, DollarSign, List, AlignLeft, Clock,
-  Sparkles, Lock, Send, Link as LinkIcon, MoreHorizontal,
+  Sparkles, Lock, Send, Link as LinkIcon, MoreHorizontal, Download,
   Users, LayoutTemplate,
 } from 'lucide-react'
 
@@ -660,6 +660,21 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                   <LinkIcon className="mr-2 h-4 w-4" />
                   Copiar link público
                 </DropdownMenuItem>
+                {/* PDF download — only enabled once the proposal is past draft.
+                    Drafts return 404 from the public PDF endpoint, so showing
+                    it for draft would just produce a broken download. */}
+                {status !== 'draft' && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const lq = proposal.language === 'en-US' ? 'en' : 'pt'
+                      window.open(`/api/p/${slug}/pdf?l=${lq}`, '_blank')
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Baixar PDF
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
