@@ -29,6 +29,13 @@ import type { ProposalBlock, ProposalBlockContent } from '@/lib/proposal-types'
  *   - Persiste o resultado em proposal_blocks.translations[targetLang]
  *     + proposal_blocks.translations_meta[targetLang]
  *   - Registra evento 'block_translated' em proposal_activity
+ *
+ * DELETE /api/proposals/[slug]/blocks/[blockId]/translate?lang=en-US
+ *
+ * Remove a tradução de UM idioma de UM bloco. Idempotente — se a
+ * tradução já não existe, devolve 200 com flag alreadyDeleted.
+ * Outras línguas em translations/translations_meta são preservadas.
+ * Registra evento 'block_translation_deleted'.
  */
 
 // Vercel: dá tempo pra IA responder com folga
@@ -166,6 +173,98 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     })
   } catch {
     // ignore — log de atividade é nice-to-have
+  }
+
+  return NextResponse.json({ ok: true, block: updated })
+}
+
+// ─── DELETE — remove tradução de um idioma ──────────────────────────────
+
+export async function DELETE(req: NextRequest, { params }: Ctx) {
+  const unauthorized = requireAuth(req)
+  if (unauthorized) return unauthorized
+
+  const { slug, blockId } = await params
+
+  const lang = req.nextUrl.searchParams.get('lang')
+  if (!lang || !VALID_LANGS.includes(lang as Lang)) {
+    return NextResponse.json(
+      {
+        error: `Query param 'lang' inválido. Use um de: ${VALID_LANGS.join(', ')}`,
+      },
+      { status: 400 },
+    )
+  }
+  const targetLang = lang as Lang
+
+  const proposal = await getProposalBySlug(slug)
+  if (!proposal) {
+    return NextResponse.json({ error: 'Proposal not found' }, { status: 404 })
+  }
+
+  const { data: blockRow, error: blockErr } = await supabaseAdmin
+    .from('proposal_blocks')
+    .select('*')
+    .eq('id', blockId)
+    .eq('proposal_id', proposal.id)
+    .maybeSingle()
+
+  if (blockErr) {
+    return NextResponse.json({ error: blockErr.message }, { status: 500 })
+  }
+  if (!blockRow) {
+    return NextResponse.json({ error: 'Block not found' }, { status: 404 })
+  }
+  const block = blockRow as ProposalBlock & {
+    translations: TranslationsByLang<ProposalBlockContent>
+    translations_meta: TranslationsMetaByLang
+  }
+
+  // Idempotente — se a tradução já não existe, retorna 200 sem fazer
+  // nada. Permite que múltiplos clicks acidentais ou retries não
+  // resultem em 404.
+  const hadTranslation = block.translations?.[targetLang] !== undefined
+  if (!hadTranslation) {
+    return NextResponse.json({
+      ok: true,
+      block,
+      alreadyDeleted: true,
+    })
+  }
+
+  // Spread descarta a chave do idioma alvo, preservando as demais.
+  // Usar `delete` em uma cópia do objeto também funcionaria, mas o
+  // spread + rest deixa o intent mais explícito.
+  const { [targetLang]: _droppedT, ...remainingTranslations } =
+    block.translations ?? {}
+  const { [targetLang]: _droppedM, ...remainingMeta } =
+    block.translations_meta ?? {}
+
+  const { data: updated, error: updErr } = await supabaseAdmin
+    .from('proposal_blocks')
+    .update({
+      translations: remainingTranslations,
+      translations_meta: remainingMeta,
+    })
+    .eq('id', blockId)
+    .select('*')
+    .maybeSingle()
+
+  if (updErr || !updated) {
+    return NextResponse.json(
+      { error: updErr?.message ?? 'Update failed' },
+      { status: 500 },
+    )
+  }
+
+  try {
+    await logProposalActivity(proposal.id, 'block_translation_deleted', 'admin', {
+      block_id: blockId,
+      block_type: block.type,
+      target_lang: targetLang,
+    })
+  } catch {
+    // ignore
   }
 
   return NextResponse.json({ ok: true, block: updated })

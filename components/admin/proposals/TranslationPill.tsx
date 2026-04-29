@@ -145,8 +145,58 @@ export function TranslationPill({
     }
   }
 
+  // ── Delete: 2-click confirmation pattern ──────────────────────────
+  // First click flips the button into a "confirm" red state. Second
+  // click within the same popover session fires the DELETE. Cheaper
+  // and less interruptive than a full ConfirmDialog for a low-stakes
+  // action that's also reversible (operator can re-translate later).
+  // The confirm state is reset whenever the popover reopens.
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  const handleDelete = async () => {
+    if (loading) return
+    if (!confirmingDelete) {
+      setConfirmingDelete(true)
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch(
+        `/api/proposals/${slug}/blocks/${block.id}/translate?lang=${encodeURIComponent(targetLang)}`,
+        { method: 'DELETE' },
+      )
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(data.error || 'Falha ao excluir tradução')
+      }
+      const data = (await res.json()) as {
+        block: {
+          translations: ProposalBlock['translations']
+          translations_meta: ProposalBlock['translations_meta']
+        }
+      }
+      onTranslated({
+        translations: data.block.translations,
+        translations_meta: data.block.translations_meta,
+      })
+      setConfirmingDelete(false)
+      setOpen(false)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Falha ao excluir tradução'
+      onError?.(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        if (!v) setConfirmingDelete(false)
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -183,7 +233,7 @@ export function TranslationPill({
             disabled={loading}
             variant={status === 'fresh' ? 'outline' : 'default'}
           >
-            {loading ? (
+            {loading && !confirmingDelete ? (
               <>
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                 Traduzindo…
@@ -192,6 +242,27 @@ export function TranslationPill({
               actionLabel[status]
             )}
           </Button>
+          {status !== 'missing' && (
+            <Button
+              type="button"
+              size="sm"
+              className="w-full"
+              onClick={handleDelete}
+              disabled={loading}
+              variant={confirmingDelete ? 'destructive' : 'ghost'}
+            >
+              {loading && confirmingDelete ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  Excluindo…
+                </>
+              ) : confirmingDelete ? (
+                'Confirmar exclusão'
+              ) : (
+                'Excluir tradução'
+              )}
+            </Button>
+          )}
         </div>
       </PopoverContent>
     </Popover>
