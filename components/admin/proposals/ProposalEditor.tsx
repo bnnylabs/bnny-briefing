@@ -323,7 +323,11 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
 
     // Best-effort copy of the public link as a convenience (so the owner
     // can also forward by WhatsApp etc.).
-    try { await navigator.clipboard.writeText(publicUrl) } catch {}
+    try {
+      await navigator.clipboard.writeText(publicUrl)
+    } catch (e) {
+      console.warn('[ProposalEditor] clipboard write silenced:', e)
+    }
   }
 
   // ── Advanced action: change client ────────────────────────────────────
@@ -341,7 +345,9 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
           }))
           setAdvancedClients(list)
         }
-      } catch {}
+      } catch (e) {
+        console.warn('[ProposalEditor] fetch /api/admin/clients silenced:', e)
+      }
     }
   }, [proposal.client_id, advancedClients.length])
 
@@ -381,7 +387,9 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
           const data = await res.json()
           setAdvancedTemplates(data.templates ?? [])
         }
-      } catch {}
+      } catch (e) {
+        console.warn('[ProposalEditor] fetch /api/proposal-templates silenced:', e)
+      }
     }
   }, [proposal.template_id, advancedTemplates.length])
 

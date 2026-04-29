@@ -89,7 +89,9 @@ export async function POST(
       status: 'sent',
       details: { event, timestamp: now, label: eventLabels[event] },
     })
-  } catch (_e) {}
+  } catch (e) {
+    console.error('[briefings/track] notification insert silenced:', e)
+  }
 
   return NextResponse.json({ ok: true, newStatus })
 }

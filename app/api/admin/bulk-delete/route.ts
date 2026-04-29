@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
       action: 'bulk_delete_briefings',
       details: { count: slugs.length, slugs }
     })
-  } catch (_e) {}
+  } catch (e) {
+    console.error('[admin/bulk-delete] activity_log insert silenced:', e)
+  }
 
   return NextResponse.json({ ok: true, deleted: slugs.length })
 }

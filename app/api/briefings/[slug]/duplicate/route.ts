@@ -44,7 +44,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
         type_label: original.type_label,
       }
     })
-  } catch (_e) {}
+  } catch (e) {
+    console.error('[briefings/duplicate] activity_log insert silenced:', e)
+  }
 
   return NextResponse.json({ briefing: newBriefing, link })
 }

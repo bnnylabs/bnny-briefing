@@ -55,12 +55,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     }).eq('id', briefing.id)
 
     // Log form_submitted event to activity timeline
-    try { await supabaseAdmin.from('notifications').insert({
-      briefing_id: briefing.id,
-      type: 'form_submitted',
-      status: 'sent',
-      details: { event: 'form_submitted', timestamp: now.toISOString(), label: 'Briefing concluído pelo cliente' },
-    }) } catch (_e) {}
+    try {
+      await supabaseAdmin.from('notifications').insert({
+        briefing_id: briefing.id,
+        type: 'form_submitted',
+        status: 'sent',
+        details: { event: 'form_submitted', timestamp: now.toISOString(), label: 'Briefing concluído pelo cliente' },
+      })
+    } catch (e) {
+      console.error('[briefings/submit] form_submitted notification silenced:', e)
+    }
   }
 
   // Load settings
@@ -116,13 +120,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       changes,
       language: 'pt-BR',
     })
-    try { await supabaseAdmin.from('notifications').insert({ briefing_id: briefing.id, type: isUpdate ? 'update_admin' : 'email_admin', status: 'sent', details: { to: adminEmail } }) } catch (_e) {}
+    try {
+      await supabaseAdmin.from('notifications').insert({
+        briefing_id: briefing.id,
+        type: isUpdate ? 'update_admin' : 'email_admin',
+        status: 'sent',
+        details: { to: adminEmail },
+      })
+    } catch (e) {
+      console.error('[briefings/submit] admin notification silenced:', e)
+    }
   }
 
   // Confirmation to client (only on first submit)
   if (!isUpdate && clientEmail) {
     await sendClientConfirmation({ clientName, clientEmail, company: briefing.clients?.company, typeLabel: briefing.type_label, language: lang, briefingLink: `${baseUrl}/${briefing.slug}`, editingHours })
-    try { await supabaseAdmin.from('notifications').insert({ briefing_id: briefing.id, type: 'email_client_confirmation', status: 'sent', details: { to: clientEmail } }) } catch (_e) {}
+    try {
+      await supabaseAdmin.from('notifications').insert({
+        briefing_id: briefing.id,
+        type: 'email_client_confirmation',
+        status: 'sent',
+        details: { to: clientEmail },
+      })
+    } catch (e) {
+      console.error('[briefings/submit] client confirmation notification silenced:', e)
+    }
   }
 
   const msg = isUpdate
