@@ -140,6 +140,46 @@ export async function createProposal(
     // The proposal is more important than the template link.
   }
 
+  // Resolve payment terms with this priority order:
+  //   1. Template's default_payment_terms (if any non-empty entry)
+  //   2. Default payment preset from proposal_payment_presets (v0.10.85+)
+  //   3. Empty array
+  //
+  // The "non-empty" check filters terms with both label='' and
+  // description='' — those are owner-forgot data we don't want to copy
+  // forward (same defensive filter as the PDF/preview render in v0.10.83).
+  const templateTerms = (template?.default_payment_terms ?? []) as PaymentTerm[]
+  const templateHasUsefulTerms = templateTerms.some(
+    (t) => !!t.label?.trim() || !!t.description?.trim(),
+  )
+
+  let resolvedPaymentTerms: PaymentTerm[] = []
+  if (templateHasUsefulTerms) {
+    resolvedPaymentTerms = templateTerms
+  } else {
+    // Try the default payment preset. If multiple are flagged default
+    // (shouldn't happen but defensive), the first row wins because the
+    // listPaymentPresets ORDER BY is_default DESC + name ASC.
+    try {
+      const { data: presetRows } = await supabaseAdmin
+        .from('proposal_payment_presets')
+        .select('payment_terms, is_default')
+        .eq('is_default', true)
+        .limit(1)
+      if (presetRows && presetRows[0]) {
+        const presetTerms = (presetRows[0].payment_terms ?? []) as PaymentTerm[]
+        const presetHasUsefulTerms = presetTerms.some(
+          (t) => !!t.label?.trim() || !!t.description?.trim(),
+        )
+        if (presetHasUsefulTerms) resolvedPaymentTerms = presetTerms
+      }
+    } catch (e) {
+      // Tolerate the table not existing yet (migration not run) — falls
+      // through to empty array. Log so it surfaces in production.
+      console.error('[createProposal] default preset lookup failed:', e)
+    }
+  }
+
   const slug = generateProposalSlug(input.title)
 
   const { data, error } = await supabaseAdmin
@@ -153,7 +193,7 @@ export async function createProposal(
       briefing_id: input.briefing_id ?? null,
       template_id: template?.id ?? null,
       status: 'draft',
-      payment_terms: template?.default_payment_terms ?? [],
+      payment_terms: resolvedPaymentTerms,
     })
     .select()
     .single()
@@ -161,7 +201,9 @@ export async function createProposal(
   if (error) throw new Error(error.message)
   const proposal = data as Proposal
 
-  // Hydrate blocks from template if present.
+  // Hydrate blocks from template if present. Investment block gets
+  // resolvedPaymentTerms injected — keeps the block content consistent
+  // with the proposals.payment_terms top-level field.
   if (template && Array.isArray(template.default_blocks) && template.default_blocks.length > 0) {
     const overrides = input.content_overrides ?? {}
     const rows = template.default_blocks.map((b, i) => {
@@ -169,6 +211,17 @@ export async function createProposal(
       let content = b.content ?? {}
       if (b.type === 'header' && overrides.header) content = overrides.header
       if (b.type === 'phases' && overrides.phases) content = overrides.phases
+      // For investment blocks, override payment_terms with the resolved
+      // value so the block matches what was set on proposals.payment_terms.
+      // This prevents the v0.10.83 case where the block had empty terms
+      // but the resolved set was the preset — would render inconsistent.
+      if (b.type === 'investment') {
+        const inv = content as { intro?: string; total_amount?: number; currency?: string; payment_terms?: PaymentTerm[] }
+        content = {
+          ...inv,
+          payment_terms: resolvedPaymentTerms,
+        }
+      }
       return {
         proposal_id: proposal.id,
         type: b.type,

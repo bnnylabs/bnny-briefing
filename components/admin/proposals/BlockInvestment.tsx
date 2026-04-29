@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { BlockContentInvestment, PaymentTerm } from '@/lib/proposal-types'
 import { RewriteButton } from './RewriteButton'
+import { ApplyPresetButton } from './ApplyPresetButton'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -108,9 +109,18 @@ export function InvestmentEditor({ content, onChange, clientId, onRewriteError }
 
       {/* Payment terms */}
       <div className="space-y-2">
-        <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-          Condições de pagamento
-        </label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Condições de pagamento
+          </label>
+          {/* Apply preset — replaces payment_terms with the chosen preset's
+              terms. Owner keeps the option to edit manually after, so applying
+              isn't a one-way commitment. */}
+          <ApplyPresetButton
+            onApply={(presetTerms) => onChange({ ...content, payment_terms: presetTerms })}
+            className="h-7 text-[11px]"
+          />
+        </div>
 
         {terms.length === 0 ? (
           <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-4 text-center text-xs text-muted-foreground">
