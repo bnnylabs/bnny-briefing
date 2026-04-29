@@ -8,6 +8,7 @@ import { ProposalMarkdown } from '@/lib/proposal-markdown'
 import { Logo } from '@/components/brand/Logo'
 import { BlockReadOnly } from '@/components/admin/proposals/BlockReadOnly'
 import { ProposalViewTracker } from './ProposalViewTracker'
+import { DecisionBar } from './DecisionBar'
 
 /**
  * Public proposal view — `/p/[slug]`
@@ -110,6 +111,9 @@ export default async function PublicProposalPage({ params }: PageProps) {
             </section>
           ))}
         </div>
+
+        {/* Decision bar — buttons render only if status is 'sent' or 'viewed' */}
+        <DecisionBar slug={slug} status={proposal.status} />
 
         {/* Footer — pulls everything from studio_identity (singleton row) */}
         <footer className="mt-16 border-t border-border pt-8 text-xs leading-relaxed text-muted-foreground">

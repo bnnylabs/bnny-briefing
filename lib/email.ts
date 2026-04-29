@@ -811,6 +811,182 @@ export async function sendProposalViewedToAdmin({
   }
 }
 
+// ─── Proposal decision (approved / rejected) ────────────────────────────
+
+/**
+ * Email to admin when client clicks "Aprovar" on the public proposal
+ * view. Captures who approved (name + email) — that data was collected
+ * in the dialog form before the API call. Terms acceptance is implicit
+ * (the route validates terms_accepted=true before this fires).
+ */
+export async function sendProposalApprovedToAdmin({
+  adminEmail,
+  proposalTitle,
+  proposalNumber,
+  clientCompany,
+  actorName,
+  actorEmail,
+  adminUrl,
+  language = 'pt-BR',
+}: {
+  adminEmail: string
+  proposalTitle: string
+  proposalNumber: string
+  clientCompany: string
+  actorName: string
+  actorEmail: string
+  adminUrl: string
+  language?: string
+}) {
+  const lang: TemplateLanguage = language === 'en-US' ? 'en-US' : 'pt-BR'
+  const localeForDate = lang === 'en-US' ? 'en-US' : 'pt-BR'
+  const approvedAt = new Date().toLocaleString(localeForDate)
+
+  const vars: TemplateVars = {
+    actor_name: actorName,
+    actor_email: actorEmail,
+    company: clientCompany,
+    proposal_title: proposalTitle,
+    proposal_number: proposalNumber,
+    approved_at: approvedAt,
+  }
+
+  const composed = await composeEmail({
+    type: 'proposal_approved_admin',
+    language: lang,
+    vars,
+    blocks: {
+      meta_card: renderMetaCard([
+        {
+          label: lang === 'en-US' ? 'Approved by' : 'Aprovado por',
+          value: actorName,
+        },
+        {
+          label: lang === 'en-US' ? 'Email' : 'E-mail',
+          value: actorEmail,
+        },
+        {
+          label: lang === 'en-US' ? 'Company' : 'Empresa',
+          value: clientCompany,
+        },
+        {
+          label: lang === 'en-US' ? 'Proposal' : 'Proposta',
+          value: `${proposalNumber} — ${proposalTitle}`,
+        },
+        {
+          label: lang === 'en-US' ? 'Approved at' : 'Aprovado em',
+          value: approvedAt,
+        },
+      ]),
+    },
+    ctaHref: adminUrl,
+  })
+
+  try {
+    const result = await getResend().emails.send({
+      from: FROM,
+      to: adminEmail,
+      subject: composed.subject,
+      html: composed.html,
+      text: composed.text,
+    })
+    return { ok: true, id: result.data?.id }
+  } catch (error) {
+    console.error('[email/proposal-approved-admin] failed:', error)
+    return { ok: false, error }
+  }
+}
+
+/**
+ * Email to admin when client clicks "Recusar" on the public proposal
+ * view. Reason is optional — if absent, the body section that mentions
+ * it is rendered as a graceful "Sem motivo informado." placeholder.
+ */
+export async function sendProposalRejectedToAdmin({
+  adminEmail,
+  proposalTitle,
+  proposalNumber,
+  clientCompany,
+  actorName,
+  actorEmail,
+  reason,
+  adminUrl,
+  language = 'pt-BR',
+}: {
+  adminEmail: string
+  proposalTitle: string
+  proposalNumber: string
+  clientCompany: string
+  actorName: string
+  actorEmail: string
+  reason: string | null
+  adminUrl: string
+  language?: string
+}) {
+  const lang: TemplateLanguage = language === 'en-US' ? 'en-US' : 'pt-BR'
+  const localeForDate = lang === 'en-US' ? 'en-US' : 'pt-BR'
+  const rejectedAt = new Date().toLocaleString(localeForDate)
+
+  const reasonText = reason && reason.trim()
+    ? (lang === 'en-US' ? `**Reason given:** ${reason.trim()}` : `**Motivo informado:** ${reason.trim()}`)
+    : (lang === 'en-US' ? '_No reason given._' : '_Sem motivo informado._')
+
+  const vars: TemplateVars = {
+    actor_name: actorName,
+    actor_email: actorEmail,
+    company: clientCompany,
+    proposal_title: proposalTitle,
+    proposal_number: proposalNumber,
+    rejected_at: rejectedAt,
+    reason: reasonText,
+  }
+
+  const composed = await composeEmail({
+    type: 'proposal_rejected_admin',
+    language: lang,
+    vars,
+    blocks: {
+      meta_card: renderMetaCard([
+        {
+          label: lang === 'en-US' ? 'Rejected by' : 'Recusado por',
+          value: actorName,
+        },
+        {
+          label: lang === 'en-US' ? 'Email' : 'E-mail',
+          value: actorEmail,
+        },
+        {
+          label: lang === 'en-US' ? 'Company' : 'Empresa',
+          value: clientCompany,
+        },
+        {
+          label: lang === 'en-US' ? 'Proposal' : 'Proposta',
+          value: `${proposalNumber} — ${proposalTitle}`,
+        },
+        {
+          label: lang === 'en-US' ? 'Rejected at' : 'Recusado em',
+          value: rejectedAt,
+        },
+      ]),
+    },
+    ctaHref: adminUrl,
+  })
+
+  try {
+    const result = await getResend().emails.send({
+      from: FROM,
+      to: adminEmail,
+      subject: composed.subject,
+      html: composed.html,
+      text: composed.text,
+    })
+    return { ok: true, id: result.data?.id }
+  } catch (error) {
+    console.error('[email/proposal-rejected-admin] failed:', error)
+    return { ok: false, error }
+  }
+}
+
 // ─── Preview pipeline (used by the editor's live preview API) ───────────
 
 /**

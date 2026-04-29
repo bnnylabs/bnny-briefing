@@ -24,6 +24,8 @@ export type TemplateType =
   | 'briefing_updated_admin'
   | 'proposal_sent_to_client'
   | 'proposal_viewed_admin'
+  | 'proposal_approved_admin'
+  | 'proposal_rejected_admin'
 
 export type TemplateLanguage = 'pt-BR' | 'en-US'
 
@@ -35,6 +37,8 @@ export const TEMPLATE_TYPES: readonly TemplateType[] = [
   'briefing_updated_admin',
   'proposal_sent_to_client',
   'proposal_viewed_admin',
+  'proposal_approved_admin',
+  'proposal_rejected_admin',
 ] as const
 
 export const TEMPLATE_LANGUAGES: readonly TemplateLanguage[] = ['pt-BR', 'en-US'] as const
@@ -52,6 +56,8 @@ export const TEMPLATE_VARIABLES: Record<TemplateType, readonly string[]> = {
   briefing_updated_admin: ['company', 'type_label', 'changes_count'],
   proposal_sent_to_client: ['client_name', 'company', 'proposal_title', 'proposal_number', 'valid_until', 'total_amount'],
   proposal_viewed_admin: ['client_name', 'company', 'proposal_title', 'proposal_number', 'viewed_at'],
+  proposal_approved_admin: ['actor_name', 'actor_email', 'company', 'proposal_title', 'proposal_number', 'approved_at'],
+  proposal_rejected_admin: ['actor_name', 'actor_email', 'company', 'proposal_title', 'proposal_number', 'rejected_at', 'reason'],
 }
 
 /**
@@ -68,6 +74,8 @@ export const TEMPLATE_BLOCKS: Record<TemplateType, readonly string[]> = {
   briefing_updated_admin: ['changes'],
   proposal_sent_to_client: ['fallback_link'],
   proposal_viewed_admin: ['meta_card'],
+  proposal_approved_admin: ['meta_card'],
+  proposal_rejected_admin: ['meta_card'],
 }
 
 /**
@@ -102,6 +110,14 @@ export const TEMPLATE_LABELS: Record<TemplateType, { 'pt-BR': string; 'en-US': s
   proposal_viewed_admin: {
     'pt-BR': 'Cliente abriu a proposta (admin)',
     'en-US': 'Client opened proposal (admin)',
+  },
+  proposal_approved_admin: {
+    'pt-BR': 'Cliente aprovou a proposta (admin)',
+    'en-US': 'Client approved proposal (admin)',
+  },
+  proposal_rejected_admin: {
+    'pt-BR': 'Cliente recusou a proposta (admin)',
+    'en-US': 'Client rejected proposal (admin)',
   },
 }
 
@@ -303,6 +319,54 @@ Any questions, just reply to this email.
       body_markdown: `**{client_name}** from **{company}** just opened proposal {proposal_number} — *{proposal_title}*.
 
 {{meta_card}}`,
+      cta_text: 'View in admin →',
+    },
+  },
+  proposal_approved_admin: {
+    'pt-BR': {
+      subject: '✓ {company} aprovou a proposta {proposal_number}',
+      preheader: 'Cliente aprovou o orçamento — pode começar',
+      title: 'Proposta aprovada',
+      body_markdown: `**{actor_name}** ({actor_email}), da **{company}**, aprovou o orçamento {proposal_number} — *{proposal_title}*.
+
+{{meta_card}}
+
+A aprovação ficou registrada com aceite dos termos. Pode iniciar o projeto.`,
+      cta_text: 'Ver no painel →',
+    },
+    'en-US': {
+      subject: '✓ {company} approved proposal {proposal_number}',
+      preheader: 'Client approved the proposal — you can start',
+      title: 'Proposal approved',
+      body_markdown: `**{actor_name}** ({actor_email}), from **{company}**, approved proposal {proposal_number} — *{proposal_title}*.
+
+{{meta_card}}
+
+The approval is on record with terms accepted. You can start the project.`,
+      cta_text: 'View in admin →',
+    },
+  },
+  proposal_rejected_admin: {
+    'pt-BR': {
+      subject: '✗ {company} recusou a proposta {proposal_number}',
+      preheader: 'Cliente recusou o orçamento',
+      title: 'Proposta recusada',
+      body_markdown: `**{actor_name}** ({actor_email}), da **{company}**, recusou o orçamento {proposal_number} — *{proposal_title}*.
+
+{{meta_card}}
+
+{reason}`,
+      cta_text: 'Ver no painel →',
+    },
+    'en-US': {
+      subject: '✗ {company} rejected proposal {proposal_number}',
+      preheader: 'Client rejected the proposal',
+      title: 'Proposal rejected',
+      body_markdown: `**{actor_name}** ({actor_email}), from **{company}**, rejected proposal {proposal_number} — *{proposal_title}*.
+
+{{meta_card}}
+
+{reason}`,
       cta_text: 'View in admin →',
     },
   },
