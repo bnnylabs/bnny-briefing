@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback, ReactNode } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
-  Activity, ArrowRight, BarChart2, Bell, BellRing, Bot, Briefcase, Building2,
+  Activity, ArrowRight, BarChart2, BellRing, Bot, Briefcase, Building2,
   Check, CheckCircle2, ChevronDown,
   Clipboard, ClipboardCheck, ClipboardList, Clock, Copy, Download, ExternalLink,
   Eye, FileText, Image as ImageIcon, Link as LinkIcon,
   Lock, Mail, Maximize2, MoreHorizontal, Paperclip, Pencil, Plus, RefreshCw, Save, Send,
-  ScrollText, Sparkles, Star, StickyNote, Trash2, Unlock, Users, X,
+  ScrollText, Sparkles, Star, StickyNote, Unlock, Users, X,
 } from 'lucide-react'
 import { SOCIAL_NETWORKS } from './SocialIcons'
 import { AvatarUpload } from '@/components/admin/AvatarUpload'
@@ -41,6 +41,8 @@ import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 import { cn } from '@/lib/utils'
 import { ContactsSection, type ClientContact } from './ContactsSection'
 import { NotesSection, type ClientNote } from './NotesSection'
+import { ResponsesContent, type FileEntry } from './_components/ResponsesContent'
+import { ActivityHistoryModal } from './_components/ActivityHistoryModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -145,81 +147,6 @@ function BriefingStatusIcon({ status }: { status: string }) {
     case 'concluido': return <CheckCircle2 className={cls} />
     default: return null
   }
-}
-
-interface FileEntry { url: string; name: string; type?: string; size?: number }
-
-// ─── ResponsesContent (preserved exactly) ────────────────────────────────
-
-function ResponsesContent({
-  responses, language, companyName, renderFileValue, labelMapPT, labelMapEN,
-}: {
-  responses: Record<string, unknown>; language?: string; companyName: string
-  renderFileValue: (v: unknown) => ReactNode
-  labelMapPT: Record<string, string>; labelMapEN: Record<string, string>
-}) {
-  const allFiles: FileEntry[] = []
-  Object.values(responses).forEach(value => {
-    if (Array.isArray(value)) {
-      ;(value as FileEntry[]).forEach(f => { if (f?.name && f.url?.startsWith('http')) allFiles.push(f) })
-    }
-  })
-  const imageFiles = allFiles.filter(f => f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name))
-  const otherFiles = allFiles.filter(f => !f.type?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name))
-  const labelMap = language === 'en-US' ? labelMapEN : labelMapPT
-
-  async function handleDownloadAll() {
-    const { downloadAsZip } = await import('@/lib/download-zip')
-    await downloadAsZip(allFiles, `${companyName} - arquivos.zip`)
-  }
-
-  return (
-    <>
-      {allFiles.length > 0 && (
-        <Card className="mb-3 flex items-center gap-3 bg-muted/50 p-3">
-          <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold">
-              {allFiles.length} {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
-              {imageFiles.length > 0 && (
-                <span className="ml-2 text-xs font-normal text-muted-foreground">
-                  · {imageFiles.length} {imageFiles.length === 1 ? 'imagem' : 'imagens'}
-                  {otherFiles.length > 0 && `, ${otherFiles.length} ${otherFiles.length === 1 ? 'documento' : 'documentos'}`}
-                </span>
-              )}
-            </div>
-          </div>
-          <Button size="sm" onClick={handleDownloadAll} className="shrink-0">
-            <Download className="mr-1.5 h-3.5 w-3.5" /> Baixar ZIP
-          </Button>
-        </Card>
-      )}
-      <div className="flex flex-col gap-2">
-        {Object.entries(responses).filter(([, v]) => v).map(([key, value]) => {
-          const isFileField = /arquivo|logo|referencia|anexo|upload|files/i.test(key) ||
-            (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'url' in (value[0] as object))
-          const displayValue = isFileField ? '' : Array.isArray(value) ? (value as string[]).join(', ') : String(value)
-          const isShort = !isFileField && displayValue.length < 60
-          return (
-            <div key={key} className="overflow-hidden rounded-lg border border-border">
-              <div className={cn('flex items-center justify-between gap-2 bg-muted/40 px-3.5 py-2', !(isShort && !isFileField) && 'border-b border-border')}>
-                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  {isFileField && <Paperclip className="h-3 w-3" />}
-                  {labelMap[key] || key.replace(/_/g, ' ')}
-                </span>
-                {isShort && !isFileField && <span className="text-sm font-semibold text-foreground">{displayValue}</span>}
-              </div>
-              {(!isShort || isFileField) && (
-                <div className="bg-card px-3.5 py-3 text-sm leading-relaxed text-foreground">
-                  {isFileField ? renderFileValue(value) : <span className="whitespace-pre-wrap">{displayValue}</span>}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </>
-  )
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────
@@ -1344,68 +1271,13 @@ export default function ClientePerfilPage() {
       )}
 
       {/* ── ACTIVITY HISTORY MODAL ───────────────────────────────────── */}
-      {activityBriefing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in-0 duration-150"
-          onClick={() => { setActivityBriefing(null); setActivityHistory([]) }}>
-          <div className="relative w-full max-w-md rounded-xl bg-card border border-border p-6 shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1 duration-200 max-h-[88vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}>
-            <button
-              onClick={() => { setActivityBriefing(null); setActivityHistory([]) }}
-              aria-label="Fechar histórico"
-              className="absolute right-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <X size={15} />
-            </button>
-            <div className="mb-5">
-              <div className="font-bold text-lg tracking-tight">Histórico de atividades</div>
-              <div className="text-sm text-muted-foreground mt-0.5">{client?.company} · {activityBriefing.type_label}</div>
-            </div>
-            {loadingActivity ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">Carregando…</div>
-            ) : activityHistory.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">Nenhuma atividade registrada</div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {activityHistory.map((n, i) => {
-                  const isClientEvent = ['link_opened', 'form_started', 'form_submitted'].includes(n.type)
-                  const lblMap: Record<string, { icon: React.ReactNode; label: string }> = {
-                    email_client:   { icon: <Send size={13} />,                                    label: 'Email enviado' },
-                    email_admin:    { icon: <Mail size={13} />,                                    label: 'Notificação ao admin' },
-                    reminder:       { icon: <Bell size={13} />,                                    label: 'Lembrete enviado' },
-                    resend:         { icon: <RefreshCw size={13} />,                               label: 'Reenvio' },
-                    link_opened:    { icon: <Eye size={13} className="text-info" />,               label: 'Link acessado' },
-                    form_started:   { icon: <Clock size={13} className="text-warning" />,          label: 'Preenchimento iniciado' },
-                    form_submitted: { icon: <CheckCircle2 size={13} className="text-success" />,   label: 'Briefing concluído' },
-                  }
-                  const entry = lblMap[n.type] || { icon: <Bell size={13} />, label: n.type }
-                  return (
-                    <div key={i} className={`rounded-lg border px-4 py-3 ${isClientEvent ? 'border-border bg-card' : 'border-border bg-muted/30'}`}>
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium">{entry.icon} {entry.label}</span>
-                        {!isClientEvent && (
-                          <span className={`inline-flex items-center gap-1 text-xs font-medium ${n.status === 'sent' ? 'text-success' : 'text-destructive'}`}>
-                            {n.status === 'sent' ? <><Check size={12} /> Entregue</> : <><Trash2 size={12} /> Falhou</>}
-                          </span>
-                        )}
-                      </div>
-                      {n.details?.to && (
-                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          {n.details.role === 'cc' && <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium">CC</span>}
-                          {n.details.role === 'primary' && <span className="rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success">Principal</span>}
-                          {n.details.name && <span className="font-medium text-foreground">{n.details.name}</span>}
-                          {n.details.name && <span className="text-muted-foreground/50">·</span>}
-                          <span>{n.details.to}</span>
-                        </div>
-                      )}
-                      <div className="text-[10px] text-muted-foreground/60 mt-1">{new Date(n.sent_at).toLocaleString('pt-BR')}</div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <ActivityHistoryModal
+        briefingLabel={activityBriefing?.type_label ?? null}
+        companyName={client?.company ?? ''}
+        loading={loadingActivity}
+        history={activityHistory}
+        onClose={() => { setActivityBriefing(null); setActivityHistory([]) }}
+      />
     </div>
   )
 }
