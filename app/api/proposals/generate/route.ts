@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import type { ProposalTemplate } from '@/lib/proposal-types'
 import { isAuthed } from '@/lib/auth'
 import { anthropic } from '@/lib/anthropic'
+import { ANTI_CLICHE_RULES_PT, buildSharedPreamble } from '@/lib/ai-style-rules'
 
 /**
  * POST /api/proposals/generate
@@ -164,13 +165,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const contextBlock = [
-    autoContext.trim(),
-    context?.trim() ? `Notas adicionais do owner:\n${context.trim()}` : '',
-  ].filter(Boolean).join('\n\n')
+  // Owner notes (from the "Observações" field) get authoritative
+  // weight in the prompt — see lib/ai-style-rules.ts. They go to a
+  // dedicated <owner_directives> block at the top, NOT mixed into the
+  // generic context. autoContext (transcript, client profile, briefing
+  // answers) stays as factual backdrop for the model to work with.
+  const ownerNotes = context?.trim() || ''
 
   // Fail safe: if absolutely nothing to work with, bail.
-  if (!contextBlock) {
+  if (!autoContext.trim() && !ownerNotes) {
     return NextResponse.json({ error: 'No context available for AI generation' }, { status: 400 })
   }
 
@@ -195,13 +198,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ? `você, ${clientContactName.trim()}`
     : 'você'
 
-  const prompt = `Você é redator de uma agência criativa chamada Bnny Labs. Escreve propostas comerciais em português brasileiro com tom profissional, direto e humano. NÃO escreve como IA: nada de inflação corporativa, nada de palavras-da-moda, nada de "jornada transformadora".
+  const prompt = `${buildSharedPreamble(ownerNotes)}
 
 CLIENTE: ${clientCompany || 'o cliente'}
 ${clientContactName ? `CONTATO PRINCIPAL: ${clientContactName}` : ''}
 
-CONTEXTO DO PROJETO:
-${contextBlock}
+CONTEXTO DO PROJETO (para referência factual):
+${autoContext.trim() || '(nenhum contexto automatizado disponível — use apenas as instruções do owner acima)'}
 
 TEMPLATE BASE (estrutura para adaptar):
 
@@ -211,49 +214,7 @@ Abertura base:
 Fases:
 ${basePhases.map((p) => `${p.number} — ${p.title} (${p.duration}): ${p.description}`).join('\n')}
 
-═══════════════════════════════════════════════════════════
-REGRAS DE ESCRITA (IMPORTANTÍSSIMAS — texto sai sem isto)
-═══════════════════════════════════════════════════════════
-
-PROIBIDO usar (palavras de IA em PT-BR):
-- robusto, alavancar, potencializar, engajamento, empoderar, disruptivo, sinergia, holístico, ecossistema, jornada, imersivo, transformador, estratégico, escalável, inovador, destravar, desbloquear
-- "elevar a outro patamar", "agregar valor", "entregar valor", "gerar valor", "outro nível"
-- excelência, inovação, transformação, soluções
-- vibrante, pulsante, "rico em", encanta, deslumbrante
-
-PROIBIDO usar (conectores expositivos automáticos):
-- "Vale ressaltar que", "É importante destacar que", "Cabe ressaltar"
-- "Nesse sentido", "Nesse contexto", "Diante disso"
-- "Em suma", "Em última análise", "Posto isso"
-- "No fim das contas", "A verdade é que", "O que realmente importa"
-
-PROIBIDO usar (inflação de significância):
-- "marca um momento crucial"
-- "consolida-se como referência"
-- "desempenha papel fundamental/essencial"
-- "representa um marco"
-- "abre caminho para"
-
-PROIBIDO usar (perífrases formais):
-- "no que tange a" → use "sobre"
-- "tendo em vista que" → use "como"
-- "com o intuito de" / "a fim de" → use "para"
-- "haja vista" → use "já que"
-- "faz-se necessário" → use "é preciso"
-
-PROIBIDO usar (gerúndios analíticos pendurados no fim de frase):
-- "destacando-se", "evidenciando", "demonstrando", "consolidando"
-- "agregando valor", "contribuindo para", "promovendo", "fomentando"
-
-PROIBIDO usar (servilismo):
-- "Foi um prazer", "Excelente!", "Com certeza!", "Espero ter ajudado"
-- (a saudação inicial é a única exceção, vide regra abaixo)
-
-PROIBIDO (estrutura):
-- Listas de 3 adjetivos seguidos ("rápido, eficaz e moderno")
-- Frases com colchetes de "X: Y" para anunciar o que vem ("A solução é simples: X")
-- Mesóclise artificial ("dar-se-á", "far-se-á")
-- Conclusões otimistas genéricas ("o futuro é promissor")
+${ANTI_CLICHE_RULES_PT}
 
 ═══════════════════════════════════════════════════════════
 COMO ESCREVER

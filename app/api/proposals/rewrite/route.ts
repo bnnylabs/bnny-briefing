@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { isAuthed } from '@/lib/auth'
 import { anthropic } from '@/lib/anthropic'
+import {
+  ANTI_CLICHE_RULES_PT,
+  SECTION_DIVIDER,
+  buildSharedPreamble,
+} from '@/lib/ai-style-rules'
 
 /**
  * POST /api/proposals/rewrite
@@ -89,39 +94,28 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const prompt = `Você é redator da Bnny Labs. Reescreve o trecho abaixo em português brasileiro mantendo o sentido, mas com tom mais humano e profissional. NÃO escreve como IA.
+  const prompt = `${buildSharedPreamble(body.extra_context)}
 
-═══════════════════════════════════════════════════════════
+Reescreve o trecho abaixo em português brasileiro mantendo o sentido, mas com tom mais humano e profissional.
+
+${SECTION_DIVIDER}
 CONTEXTO DESTE CAMPO
-═══════════════════════════════════════════════════════════
+${SECTION_DIVIDER}
 ${KIND_INSTRUCTIONS[kind]}
 
-${clientContext ? `═══════════════════════════════════════════════════════════
+${clientContext ? `${SECTION_DIVIDER}
 SOBRE O CLIENTE
-═══════════════════════════════════════════════════════════
-${clientContext}\n` : ''}${body.extra_context ? `═══════════════════════════════════════════════════════════
-INSTRUÇÃO ADICIONAL DO OWNER
-═══════════════════════════════════════════════════════════
-${body.extra_context}\n` : ''}═══════════════════════════════════════════════════════════
-PROIBIDO usar
-═══════════════════════════════════════════════════════════
-- Palavras de IA: robusto, alavancar, potencializar, engajamento, empoderar, disruptivo, sinergia, holístico, ecossistema, jornada, imersivo, transformador, estratégico, escalável, inovador, destravar, "agregar valor", "elevar a outro patamar", excelência, inovação, transformação, soluções
-- Conectores expositivos: "Vale ressaltar", "É importante destacar", "Nesse sentido", "Diante disso", "Em suma", "No fim das contas", "A verdade é que"
-- Inflação: "marca um momento crucial", "consolida-se como referência", "papel fundamental"
-- Perífrases formais: "no que tange a", "tendo em vista que", "a fim de" (use "sobre", "como", "para")
-- Gerúndios pendurados: "destacando-se", "evidenciando", "agregando valor", "contribuindo para"
-- Listas de 3 adjetivos seguidos
-- Mesóclise artificial ("dar-se-á", "far-se-á")
-- Servilismo ("Excelente!", "Espero ter ajudado")
+${SECTION_DIVIDER}
+${clientContext}\n` : ''}${ANTI_CLICHE_RULES_PT}
 
-═══════════════════════════════════════════════════════════
+${SECTION_DIVIDER}
 TRECHO ORIGINAL
-═══════════════════════════════════════════════════════════
+${SECTION_DIVIDER}
 ${text}
 
-═══════════════════════════════════════════════════════════
+${SECTION_DIVIDER}
 RESPONDA APENAS com o texto reescrito. Sem markdown, sem aspas envolventes, sem comentários, sem prefácio. Só o texto puro.
-═══════════════════════════════════════════════════════════`
+${SECTION_DIVIDER}`
 
   try {
     const msg = await anthropic.messages.create({

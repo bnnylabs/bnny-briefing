@@ -7,6 +7,11 @@ import type {
 } from '@/lib/proposal-types'
 import { isAuthed } from '@/lib/auth'
 import { anthropic } from '@/lib/anthropic'
+import {
+  ANTI_CLICHE_RULES_PT,
+  SECTION_DIVIDER,
+  STUDIO_IDENTITY_PT,
+} from '@/lib/ai-style-rules'
 
 /**
  * POST /api/proposal-templates/build
@@ -178,31 +183,26 @@ export async function POST(req: NextRequest) {
 
   const ownerName = body.name?.trim()
 
-  const prompt = `Você é redator da Bnny Labs, uma agência criativa que escreve propostas comerciais em português brasileiro com tom profissional, direto e humano. Sua tarefa é montar a estrutura completa de um MODELO de proposta — uma estrutura reutilizável que vai servir de base pra várias propostas reais futuras.
+  const prompt = `${STUDIO_IDENTITY_PT}
 
-═══════════════════════════════════════════════════════════
-DESCRIÇÃO DO MODELO QUE O OWNER QUER
-═══════════════════════════════════════════════════════════
+Sua tarefa é montar a estrutura completa de um MODELO de proposta — uma estrutura reutilizável que vai servir de base pra várias propostas reais futuras.
+
+${SECTION_DIVIDER}
+DESCRIÇÃO DO MODELO (instrução do owner — siga à risca)
+${SECTION_DIVIDER}
 ${description}
 ${ownerName ? `\nNome sugerido pelo owner: "${ownerName}" (use exatamente esse nome se fizer sentido).` : ''}
 
-═══════════════════════════════════════════════════════════
+${SECTION_DIVIDER}
 COMO ESCREVER (REGRA DE OURO)
-═══════════════════════════════════════════════════════════
+${SECTION_DIVIDER}
 Como é um MODELO genérico (não uma proposta personalizada pra cliente específico), os textos devem ser intencionalmente NEUTROS e GENÉRICOS — vai ser a IA depois que vai personalizar pra cada cliente real. Mas sem cair em vagueza corporativa.
 
-PROIBIDO usar:
-- Palavras de IA: robusto, alavancar, potencializar, engajamento, empoderar, disruptivo, sinergia, holístico, ecossistema, jornada, imersivo, transformador, estratégico, escalável, inovador, destravar, "agregar valor", "elevar a outro patamar", excelência, inovação, transformação, soluções
-- Conectores expositivos: "Vale ressaltar", "É importante destacar", "Nesse sentido", "Diante disso", "Em suma"
-- Inflação: "marca um momento crucial", "consolida-se como referência", "papel fundamental"
-- Perífrases formais: "no que tange a", "tendo em vista que", "a fim de" (use "sobre", "como", "para")
-- Gerúndios pendurados: "destacando-se", "evidenciando", "agregando valor", "contribuindo para"
-- Listas de 3 adjetivos seguidos
-- Servilismo
+${ANTI_CLICHE_RULES_PT}
 
-═══════════════════════════════════════════════════════════
+${SECTION_DIVIDER}
 INSTRUÇÕES POR CAMPO
-═══════════════════════════════════════════════════════════
+${SECTION_DIVIDER}
 
 NAME: nome curto do modelo, 2 a 4 palavras. Use o nome sugerido pelo owner se houver e fizer sentido.
 
