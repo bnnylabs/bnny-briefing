@@ -10,56 +10,86 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Badge } from '@/components/ui/badge'
-import type { PaymentTerm } from '@/lib/proposal-types'
-import type { PaymentPreset } from '@/lib/payment-presets'
 
-interface ApplyPresetButtonProps {
+/**
+ * Minimum shape any preset must have for this component. Concrete preset
+ * types (PaymentPreset, TermsPreset, NextStepsPreset) all satisfy this
+ * since they share the same metadata fields — only the body differs.
+ */
+export interface BasePreset {
+  id: string
+  name: string
+  description: string | null
+  type: string | null
+  is_default: boolean
+}
+
+interface ApplyPresetButtonProps<T extends BasePreset> {
   /**
-   * Called when the user picks a preset. Parent receives the
-   * payment_terms array from the chosen preset and is responsible for
-   * patching the block content. Sync — no async work happens inside.
+   * GET endpoint that returns { presets: T[] }. Lazy-loaded on first
+   * popover open. Cached in component state per session.
    */
-  onApply: (terms: PaymentTerm[]) => void
+  endpoint: string
+
+  /**
+   * Called when the user picks a preset. Parent receives the full
+   * preset object — extracts whatever payload field it cares about
+   * (payment_terms, body_markdown, items, etc.).
+   */
+  onApply: (preset: T) => void
+
+  /**
+   * Returns a short detail line shown under each preset in the list
+   * (e.g. "2 opções", "350 chars", "5 passos"). Helps owner pick at
+   * a glance without opening each preset.
+   */
+  getDetailLine?: (preset: T) => string
+
+  /**
+   * Text shown when no presets exist. Should point the owner to the
+   * config tab where they can create one.
+   */
+  emptyHint: React.ReactNode
+
   /** Optional className for layout flexibility. */
   className?: string
-  /** Disabled state — parent passes when in some operation. */
+
+  /** Disabled state. */
   disabled?: boolean
 }
 
 /**
- * Button that opens a popover listing all payment presets. Clicking a
- * preset replaces the current payment_terms with the preset's terms.
+ * Generic "Aplicar preset" popover. Originally built for payment
+ * presets (v0.10.86), generalized in v0.10.87 to also serve terms +
+ * next-steps presets.
  *
- * Lazy-loads the preset list on first popover open. Subsequent opens
- * reuse the cache (in-memory; refreshes on full page reload).
+ * Lazy-loads on first open. Subsequent opens reuse cache. Refresh
+ * via full page reload (the editor pages don't need live updates of
+ * preset library content during editing).
  *
- * Used in two places:
- *   1. components/admin/proposals/BlockInvestment.tsx (template +
- *      proposal investment editors share the same component)
- *   2. Anywhere else that wants to apply a preset to PaymentTerm[]
- *
- * Why a popover and not a Dialog: presets are a quick choice (1 click).
- * A modal would feel heavy for picking from a short list.
+ * Why popover and not Dialog: applying a preset is a 1-click choice
+ * from a short list. A modal would feel heavy.
  */
-export function ApplyPresetButton({
+export function ApplyPresetButton<T extends BasePreset>({
+  endpoint,
   onApply,
+  getDetailLine,
+  emptyHint,
   className,
   disabled,
-}: ApplyPresetButtonProps) {
+}: ApplyPresetButtonProps<T>) {
   const [open, setOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
-  const [presets, setPresets] = React.useState<PaymentPreset[] | null>(null)
+  const [presets, setPresets] = React.useState<T[] | null>(null)
 
   const loadIfNeeded = React.useCallback(async () => {
     if (presets !== null) return
     setLoading(true)
     try {
-      const res = await fetch('/api/proposal-payment-presets', {
-        cache: 'no-store',
-      })
+      const res = await fetch(endpoint, { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
-        setPresets((data.presets ?? []) as PaymentPreset[])
+        setPresets((data.presets ?? []) as T[])
       } else {
         setPresets([])
       }
@@ -68,15 +98,15 @@ export function ApplyPresetButton({
     } finally {
       setLoading(false)
     }
-  }, [presets])
+  }, [endpoint, presets])
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
     if (next) loadIfNeeded()
   }
 
-  function handleApply(p: PaymentPreset) {
-    onApply(p.payment_terms ?? [])
+  function handleApply(p: T) {
+    onApply(p)
     setOpen(false)
   }
 
@@ -102,49 +132,48 @@ export function ApplyPresetButton({
           </div>
         ) : presets === null || presets.length === 0 ? (
           <div className="p-4 text-center text-xs text-muted-foreground">
-            Nenhum preset cadastrado.
-            <br />
-            Crie em <span className="font-mono">Configurações &gt; Pagamentos</span>.
+            {emptyHint}
           </div>
         ) : (
           <div className="max-h-80 overflow-y-auto py-1">
-            {presets.map((p) => {
-              const termCount = (p.payment_terms ?? []).filter((t) => {
-                const hasLabel = !!t.label?.trim()
-                const hasDesc = !!t.description?.trim()
-                return hasLabel || hasDesc
-              }).length
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => handleApply(p)}
-                  className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium">{p.name}</span>
-                      {p.is_default && (
-                        <Star className="h-3 w-3 fill-current text-primary" aria-label="Padrão" />
-                      )}
-                      {p.type && (
-                        <Badge variant="secondary" className="font-mono text-[9px]">
-                          {p.type}
-                        </Badge>
-                      )}
-                    </div>
-                    {p.description && (
-                      <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                        {p.description}
-                      </div>
+            {presets.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handleApply(p)}
+                className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium">{p.name}</span>
+                    {p.is_default && (
+                      <Star
+                        className="h-3 w-3 fill-current text-primary"
+                        aria-label="Padrão"
+                      />
                     )}
-                    <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                      {termCount} {termCount === 1 ? 'opção' : 'opções'}
-                    </div>
+                    {p.type && (
+                      <Badge
+                        variant="secondary"
+                        className="font-mono text-[9px]"
+                      >
+                        {p.type}
+                      </Badge>
+                    )}
                   </div>
-                </button>
-              )
-            })}
+                  {p.description && (
+                    <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                      {p.description}
+                    </div>
+                  )}
+                  {getDetailLine && (
+                    <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      {getDetailLine(p)}
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))}
           </div>
         )}
       </PopoverContent>

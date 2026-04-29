@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   FileText,
   ListChecks,
-  Receipt,
 } from 'lucide-react'
 
 import { IconButton } from '@/components/ui/icon-button'
@@ -22,6 +21,7 @@ import { useToast, ToastContainer } from '@/components/toast'
 import { ModelosTab } from './ModelosTab'
 import { EstudioTab } from './EstudioTab'
 import { PagamentosTab } from './PagamentosTab'
+import { TermosTab } from './TermosTab'
 
 /**
  * Centro de Configurações de Propostas — Fase 2 do roadmap.
@@ -29,7 +29,7 @@ import { PagamentosTab } from './PagamentosTab'
  * 5 abas planejadas:
  *   - Modelos              ✦ ativa
  *   - Pagamentos          ✦ ativa (v0.10.85)
- *   - Termos              (em breve)
+ *   - Termos              ✦ ativa (v0.10.87)
  *   - Próximos passos     (em breve)
  *   - Estúdio             ✦ ativa (v0.10.74)
  *
@@ -90,11 +90,7 @@ export default function ConfigPropostasPage() {
           </TabsContent>
 
           <TabsContent value="termos">
-            <ComingSoonPanel
-              icon={<Receipt className="h-9 w-9 opacity-40" />}
-              title="Termos e condições"
-              description="Biblioteca de cláusulas padrão. Cada proposta puxa o set que faz sentido. IA ajusta o tom pra cada cliente."
-            />
+            <TermosTab toast={toast} />
           </TabsContent>
 
           <TabsContent value="proximos">

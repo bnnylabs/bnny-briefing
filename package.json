@@ -1,6 +1,6 @@
 {
   "name": "bnny-briefing",
-  "version": "0.10.86",
+  "version": "0.10.87",
   "private": true,
   "scripts": {
     "dev": "next dev",

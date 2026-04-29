@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import type { BlockContentInvestment, PaymentTerm } from '@/lib/proposal-types'
 import { RewriteButton } from './RewriteButton'
 import { ApplyPresetButton } from './ApplyPresetButton'
+import type { PaymentPreset } from '@/lib/payment-presets'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -116,8 +117,27 @@ export function InvestmentEditor({ content, onChange, clientId, onRewriteError }
           {/* Apply preset — replaces payment_terms with the chosen preset's
               terms. Owner keeps the option to edit manually after, so applying
               isn't a one-way commitment. */}
-          <ApplyPresetButton
-            onApply={(presetTerms) => onChange({ ...content, payment_terms: presetTerms })}
+          <ApplyPresetButton<PaymentPreset>
+            endpoint="/api/proposal-payment-presets"
+            onApply={(preset) =>
+              onChange({ ...content, payment_terms: preset.payment_terms ?? [] })
+            }
+            getDetailLine={(p) => {
+              const count = (p.payment_terms ?? []).filter((t) => {
+                const hasLabel = !!t.label?.trim()
+                const hasDesc = !!t.description?.trim()
+                return hasLabel || hasDesc
+              }).length
+              return `${count} ${count === 1 ? 'opção' : 'opções'}`
+            }}
+            emptyHint={
+              <>
+                Nenhum preset cadastrado.
+                <br />
+                Crie em{' '}
+                <span className="font-mono">Configurações &gt; Pagamentos</span>.
+              </>
+            }
             className="h-7 text-[11px]"
           />
         </div>

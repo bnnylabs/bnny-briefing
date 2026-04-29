@@ -180,6 +180,42 @@ export async function createProposal(
     }
   }
 
+  // Resolve terms body_markdown with parallel logic to payment_terms:
+  //   1. Template's `terms` block has non-empty body_markdown? → use it
+  //   2. Default terms preset (proposal_terms_presets, v0.10.87+)
+  //   3. Empty string (block hydrates as-is from template, even if empty)
+  //
+  // Only matters if the template has a terms block at all. If the
+  // template doesn't include terms, we don't fabricate one — owner
+  // can add it manually later.
+  const templateTermsBlock = (template?.default_blocks ?? []).find(
+    (b) => b.type === 'terms',
+  )
+  const templateTermsBody =
+    typeof (templateTermsBlock?.content as { body_markdown?: string } | undefined)
+      ?.body_markdown === 'string'
+      ? ((templateTermsBlock!.content as { body_markdown: string }).body_markdown).trim()
+      : ''
+  const templateHasUsefulTermsBody = templateTermsBody.length > 0
+
+  let resolvedTermsBody: string | null = null
+  if (!templateHasUsefulTermsBody && templateTermsBlock) {
+    // Template has a terms block but no body — try default preset
+    try {
+      const { data: termsPresetRows } = await supabaseAdmin
+        .from('proposal_terms_presets')
+        .select('body_markdown, is_default')
+        .eq('is_default', true)
+        .limit(1)
+      if (termsPresetRows && termsPresetRows[0]) {
+        const presetBody = (termsPresetRows[0].body_markdown ?? '') as string
+        if (presetBody.trim().length > 0) resolvedTermsBody = presetBody
+      }
+    } catch (e) {
+      console.error('[createProposal] default terms preset lookup failed:', e)
+    }
+  }
+
   const slug = generateProposalSlug(input.title)
 
   const { data, error } = await supabaseAdmin
@@ -221,6 +257,14 @@ export async function createProposal(
           ...inv,
           payment_terms: resolvedPaymentTerms,
         }
+      }
+      // For terms blocks, if the template had empty body_markdown but a
+      // default terms preset existed (v0.10.87+), apply the preset body.
+      // resolvedTermsBody is null when no fallback was needed (template
+      // already had a body, or no preset default exists, or no terms
+      // block in template).
+      if (b.type === 'terms' && resolvedTermsBody !== null) {
+        content = { body_markdown: resolvedTermsBody }
       }
       return {
         proposal_id: proposal.id,

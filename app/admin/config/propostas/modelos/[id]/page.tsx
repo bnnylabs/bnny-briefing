@@ -30,6 +30,8 @@ import { cn } from '@/lib/utils'
 import { HeaderEditor } from '@/components/admin/proposals/BlockHeader'
 import { PhasesEditor } from '@/components/admin/proposals/BlockPhases'
 import { InvestmentEditor } from '@/components/admin/proposals/BlockInvestment'
+import { ApplyPresetButton } from '@/components/admin/proposals/ApplyPresetButton'
+import type { TermsPreset } from '@/lib/terms-presets'
 import {
   formatSavedAgo,
   useAutoSave,
@@ -486,9 +488,32 @@ function TermsBody({
 }) {
   return (
     <div className="space-y-2">
-      <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-        Texto (markdown aceito)
-      </Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          Texto (markdown aceito)
+        </Label>
+        {/* Apply terms preset — replaces body_markdown with the chosen
+            preset's content. Owner can edit manually after. */}
+        <ApplyPresetButton<TermsPreset>
+          endpoint="/api/proposal-terms-presets"
+          onApply={(preset) =>
+            onChange({ body_markdown: preset.body_markdown ?? '' })
+          }
+          getDetailLine={(p) => {
+            const len = (p.body_markdown ?? '').trim().length
+            return `${len} ${len === 1 ? 'caractere' : 'caracteres'}`
+          }}
+          emptyHint={
+            <>
+              Nenhum preset cadastrado.
+              <br />
+              Crie em{' '}
+              <span className="font-mono">Configurações &gt; Termos</span>.
+            </>
+          }
+          className="h-7 text-[11px]"
+        />
+      </div>
       <textarea
         value={content.body_markdown ?? ''}
         onChange={(e) => onChange({ body_markdown: e.target.value })}
