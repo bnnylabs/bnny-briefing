@@ -7,7 +7,7 @@ import {
   ArrowLeft, Check, AlertCircle, Loader2, Eye, Plus, Trash2,
   ChevronDown, ChevronUp, FileText, DollarSign, List, AlignLeft, Clock,
   Sparkles, Lock, Send, Link as LinkIcon, MoreHorizontal, Download,
-  Users, LayoutTemplate,
+  Users, LayoutTemplate, Languages,
 } from 'lucide-react'
 
 import { Badge }    from '@/components/ui/badge'
@@ -51,7 +51,9 @@ import { formatSavedAgo, useAutoSave, type AutoSaveStatus } from './useAutoSave'
 import { RewriteButton } from './RewriteButton'
 import { BlockReadOnly } from './BlockReadOnly'
 import { SendDialog, type SendContact, type SendRecipientPayload } from './SendDialog'
-import type { BlockContentInvestment } from '@/lib/proposal-types'
+import { TranslationPill } from './TranslationPill'
+import { MasterTranslateDialog, type TranslationSummary } from './MasterTranslateDialog'
+import type { BlockContentInvestment, ProposalLanguage } from '@/lib/proposal-types'
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -156,6 +158,14 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
   const [advancedTemplateChoice, setAdvancedTemplateChoice] = useState<string>('')
   const [advancedSaving, setAdvancedSaving]                 = useState(false)
 
+  // ── Translation (Phase G) ─────────────────────────────────────────────
+  // Master "translate everything" lives in the More-actions menu and opens
+  // a confirmation dialog. Per-block status pills sit on each card header.
+  // Target language is the binary opposite of the proposal's source.
+  const [masterTranslateOpen, setMasterTranslateOpen] = useState(false)
+  const translationTargetLang: ProposalLanguage =
+    proposal.language === 'pt-BR' ? 'en-US' : 'pt-BR'
+
   const slug = proposal.slug
   const proposalDirtyRef = useRef(false)
   const blockDirtyIdsRef = useRef<Set<string>>(new Set())
@@ -242,6 +252,47 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
       proposalDirtyRef.current = true
       proposalSave.schedule()
     }
+  }
+
+  // Per-block translation result handler — patches translations + meta
+  // in local state so the pill re-renders fresh without a full reload.
+  // The block's `content` is unchanged (translation lives in a separate
+  // column), so this is independent of patchBlock.
+  const onBlockTranslated = (
+    id: string,
+    next: {
+      translations: ProposalBlock['translations']
+      translations_meta: ProposalBlock['translations_meta']
+    },
+  ) => {
+    setBlocks((arr) =>
+      arr.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              translations: next.translations,
+              translations_meta: next.translations_meta,
+            }
+          : b,
+      ),
+    )
+  }
+
+  // Master translation result — server returns only a summary, so we
+  // refresh the route to re-pull the latest translations from Supabase.
+  // Toast surfaces the counts so the operator knows what happened.
+  const onMasterTranslated = (summary: TranslationSummary) => {
+    const langLabel = summary.targetLang === 'en-US' ? 'English' : 'Português'
+    const parts: string[] = [`${summary.blocks.translated} blocos traduzidos`]
+    if (summary.blocks.skipped_fresh > 0) {
+      parts.push(`${summary.blocks.skipped_fresh} já atualizados`)
+    }
+    if (summary.blocks.failed > 0) {
+      parts.push(`${summary.blocks.failed} com erro`)
+    }
+    const variant = summary.blocks.failed > 0 ? 'error' : 'success'
+    toast(`Tradução para ${langLabel} · ${parts.join(' · ')}`, variant)
+    router.refresh()
   }
 
   const confirmDeleteBlock = async () => {
@@ -656,6 +707,14 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                   Trocar modelo
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setMasterTranslateOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <Languages className="mr-2 h-4 w-4" />
+                  Traduzir para {translationTargetLang === 'en-US' ? 'English' : 'Português'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={copyPublicLink} className="cursor-pointer">
                   <LinkIcon className="mr-2 h-4 w-4" />
                   Copiar link público
@@ -728,13 +787,23 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                   icon={<AlignLeft className="h-4 w-4" />}
                   title="Texto de abertura"
                   action={
-                    <RewriteButton
-                      value={(headerBlock.content as { body?: string }).body ?? ''}
-                      kind="header_body"
-                      clientId={proposal.client_id}
-                      onRewritten={(text) => patchBlock(headerBlock.id, { body: text })}
-                      onError={(msg) => toast(msg, 'error')}
-                    />
+                    <div className="flex items-center gap-2">
+                      <TranslationPill
+                        block={headerBlock}
+                        sourceLang={proposal.language}
+                        targetLang={translationTargetLang}
+                        slug={slug}
+                        onTranslated={(next) => onBlockTranslated(headerBlock.id, next)}
+                        onError={(msg) => toast(msg, 'error')}
+                      />
+                      <RewriteButton
+                        value={(headerBlock.content as { body?: string }).body ?? ''}
+                        kind="header_body"
+                        clientId={proposal.client_id}
+                        onRewritten={(text) => patchBlock(headerBlock.id, { body: text })}
+                        onError={(msg) => toast(msg, 'error')}
+                      />
+                    </div>
                   }
                 />
                 <textarea
@@ -761,6 +830,16 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                 onChange={(c) => patchBlock(phasesBlock.id, c)}
                 clientId={proposal.client_id}
                 onRewriteError={(msg) => toast(msg, 'error')}
+                headerExtra={
+                  <TranslationPill
+                    block={phasesBlock}
+                    sourceLang={proposal.language}
+                    targetLang={translationTargetLang}
+                    slug={slug}
+                    onTranslated={(next) => onBlockTranslated(phasesBlock.id, next)}
+                    onError={(msg) => toast(msg, 'error')}
+                  />
+                }
               />
             ) : (
               <MissingSection label="Fases do projeto" type="phases" onAdd={addBlock} />
@@ -786,6 +865,16 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
               <InvestimentoCard
                 block={investmentBlock}
                 onChange={(c) => patchBlock(investmentBlock.id, c)}
+                headerExtra={
+                  <TranslationPill
+                    block={investmentBlock}
+                    sourceLang={proposal.language}
+                    targetLang={translationTargetLang}
+                    slug={slug}
+                    onTranslated={(next) => onBlockTranslated(investmentBlock.id, next)}
+                    onError={(msg) => toast(msg, 'error')}
+                  />
+                }
               />
             ) : (
               <MissingSection label="Investimento" type="investment" onAdd={addBlock} />
@@ -901,6 +990,19 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
         onConfirm={executeSend}
         onContactAdded={refreshSendContacts}
       />
+
+      {/* Master translation — opens from the More-actions menu. Confirms,
+          fires POST /api/proposals/[slug]/translate, and refreshes route
+          on success so all pills re-render with the new fresh state. */}
+      <MasterTranslateDialog
+        open={masterTranslateOpen}
+        onOpenChange={setMasterTranslateOpen}
+        slug={slug}
+        targetLang={translationTargetLang}
+        blockCount={blocks.filter((b) => b.visible !== false).length}
+        onTranslated={onMasterTranslated}
+        onError={(msg) => toast(msg, 'error')}
+      />
     </div>
   )
 }
@@ -990,12 +1092,13 @@ function MissingSection({ label, type, onAdd }: { label: string; type: ProposalB
 // ─── Phases card ──────────────────────────────────────────────────────────
 
 function PhasesCard({
-  block, onChange, clientId, onRewriteError,
+  block, onChange, clientId, onRewriteError, headerExtra,
 }: {
   block: ProposalBlock
   onChange: (c: ProposalBlockContent) => void
   clientId?: string | null
   onRewriteError?: (msg: string) => void
+  headerExtra?: React.ReactNode
 }) {
   const [expanded, setExpanded] = useState<number | null>(null)
   const content = block.content as { phases?: ProposalPhase[] }
@@ -1027,9 +1130,12 @@ function PhasesCard({
         icon={<List className="h-4 w-4" />}
         title="Fases do projeto"
         action={
-          <Button variant="ghost" size="sm" onClick={add}>
-            <Plus className="mr-1 h-3.5 w-3.5" />Fase
-          </Button>
+          <div className="flex items-center gap-2">
+            {headerExtra}
+            <Button variant="ghost" size="sm" onClick={add}>
+              <Plus className="mr-1 h-3.5 w-3.5" />Fase
+            </Button>
+          </div>
         }
       />
 
@@ -1133,7 +1239,7 @@ function PhasesCard({
 
 // ─── Investment card (right sidebar) ─────────────────────────────────────
 
-function InvestimentoCard({ block, onChange }: { block: ProposalBlock; onChange: (c: ProposalBlockContent) => void }) {
+function InvestimentoCard({ block, onChange, headerExtra }: { block: ProposalBlock; onChange: (c: ProposalBlockContent) => void; headerExtra?: React.ReactNode }) {
   const content = block.content as BlockContentInvestment
   const terms = (content.payment_terms as PaymentTerm[] | undefined) ?? []
 
@@ -1161,7 +1267,11 @@ function InvestimentoCard({ block, onChange }: { block: ProposalBlock; onChange:
 
   return (
     <Card className="p-5">
-      <CardHeader icon={<DollarSign className="h-4 w-4" />} title="Investimento" />
+      <CardHeader
+        icon={<DollarSign className="h-4 w-4" />}
+        title="Investimento"
+        action={headerExtra}
+      />
 
       <div className="space-y-5">
         {/* Total */}
