@@ -428,6 +428,7 @@ export default function PropostasPage() {
     valid_until: '',
     template_id: '' as string,
     context: '',
+    addressee_name: '',
   })
 
   const fetchProposals = useCallback(async () => {
@@ -500,6 +501,7 @@ export default function PropostasPage() {
       valid_until: '',
       template_id: defaultTemplate?.id ?? TEMPLATE_BLANK,
       context: '',
+      addressee_name: '',
     })
     setShowNew(true)
   }
@@ -528,6 +530,7 @@ export default function PropostasPage() {
             template_id: form.template_id,
             client_id: form.client_id,
             context: form.context,
+            addressee_name: form.addressee_name.trim() || null,
           }),
         })
         if (genRes.ok) {
@@ -850,6 +853,27 @@ export default function PropostasPage() {
               <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
                 Personalização com IA <span className="text-muted-foreground/60">(opcional)</span>
               </div>
+            </div>
+
+            {/* Addressee override — sobrescreve o contato primário só
+                pra esta geração. Útil quando a proposta vai pra alguém
+                específico que não é (ou não deveria ser) o primário
+                cadastrado. Vazio = usa contato primário (default). */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="addressee_name"
+                className="text-[10px] uppercase tracking-widest text-muted-foreground"
+              >
+                Para quem é a abertura?
+              </Label>
+              <Input
+                id="addressee_name"
+                value={form.addressee_name}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, addressee_name: e.target.value }))
+                }
+                placeholder="Ex: Gabriel — usa o contato principal se vazio"
+              />
             </div>
 
             <div className="space-y-1.5">
