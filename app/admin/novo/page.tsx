@@ -3,19 +3,13 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
-  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Bot,
-  ChevronRight,
-  Clipboard,
-  ClipboardCheck,
   Eye,
   Globe,
   Mail,
-  PartyPopper,
   Plus,
-  Search,
   Send,
   Sparkles,
 } from 'lucide-react'
@@ -34,6 +28,9 @@ import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { PreviewModal } from '@/components/admin/PreviewModal'
 import { cn } from '@/lib/utils'
+import { buildPrefilled } from './_lib/build-prefilled'
+import { SelectStep, type ExistingClient as SelectStepClient } from './_components/SelectStep'
+import { PreviewStep } from './_components/PreviewStep'
 
 interface ClientData {
   id?: string
@@ -58,120 +55,6 @@ interface ExistingClient {
 
 type Step = 'select' | 'client' | 'type' | 'preview'
 
-function buildPrefilled(
-  ai: Record<string, unknown>,
-  clientForm: ClientData,
-): Record<string, unknown> {
-  const prefilled: Record<string, unknown> = {}
-
-  const directMap: Record<string, string[]> = {
-    company_name: ['company_name'],
-    segment: ['segment'],
-    description: ['description'],
-    differentials: ['differentials'],
-    target_audience: ['target_audience'],
-    key_features: ['key_features'],
-    unique_value_proposition: ['unique_value_proposition', 'positioning'],
-    geographic_focus: ['geographic_focus'],
-    extra_notes: ['extra_notes'],
-    colors_hint: ['color_preferences', 'color_palette'],
-  }
-  for (const [aiKey, fieldIds] of Object.entries(directMap)) {
-    if (ai[aiKey]) {
-      for (const fid of fieldIds) prefilled[fid] = ai[aiKey]
-    }
-  }
-
-  if (ai.price_positioning) {
-    const p = String(ai.price_positioning).toLowerCase()
-    if (p.includes('premium') || p.includes('alto'))
-      prefilled.price_positioning = 'Premium / Alto padrão'
-    else if (
-      p.includes('intermediário') ||
-      p.includes('intermediario') ||
-      p.includes('custo')
-    )
-      prefilled.price_positioning = 'Intermediário'
-    else if (p.includes('acess') || p.includes('popular'))
-      prefilled.price_positioning = 'Acessível / Popular'
-    else prefilled.price_positioning = ai.price_positioning
-  }
-
-  if (ai.brand_personality) {
-    const optionsMap: Record<string, string> = {
-      moderna: 'Moderna',
-      classica: 'Clássica',
-      clássica: 'Clássica',
-      ousada: 'Ousada',
-      elegante: 'Elegante',
-      divertida: 'Divertida',
-      séria: 'Séria',
-      seria: 'Séria',
-      minimalista: 'Minimalista',
-      sofisticada: 'Sofisticada',
-      acessível: 'Acessível',
-      acessivel: 'Acessível',
-      tecnológica: 'Tecnológica',
-      tecnologica: 'Tecnológica',
-      humana: 'Humana',
-      sustentável: 'Sustentável',
-      sustentavel: 'Sustentável',
-      inovadora: 'Moderna',
-      criativa: 'Ousada',
-      profissional: 'Séria',
-      jovem: 'Divertida',
-      luxo: 'Sofisticada',
-    }
-    const raw = String(ai.brand_personality)
-    const words = raw
-      .split(/[,\s]+/)
-      .map((w: string) =>
-        w
-          .trim()
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, ''),
-      )
-    const matched = [
-      ...new Set(words.map((w: string) => optionsMap[w]).filter(Boolean)),
-    ]
-    if (matched.length > 0) prefilled.brand_personality = matched
-  }
-
-  if (ai.tone_of_voice) {
-    const t = String(ai.tone_of_voice).toLowerCase()
-    let tone = ''
-    if (t.includes('formal') || t.includes('institucional'))
-      tone = 'Formal e institucional'
-    else if (
-      t.includes('próximo') ||
-      t.includes('proximo') ||
-      t.includes('profissional')
-    )
-      tone = 'Profissional mas próximo'
-    else if (
-      t.includes('descontraído') ||
-      t.includes('descontraido') ||
-      t.includes('jovem')
-    )
-      tone = 'Descontraído e jovem'
-    else if (
-      t.includes('técnico') ||
-      t.includes('tecnico') ||
-      t.includes('especialista')
-    )
-      tone = 'Técnico e especialista'
-    if (tone) {
-      prefilled.brand_tone = tone
-      prefilled.content_tone = tone
-    }
-  }
-
-  // Contact info now comes from client record — not pre-filled in form
-
-  return prefilled
-}
-
 function NovoBriefingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -179,7 +62,6 @@ function NovoBriefingContent() {
 
   const [step, setStep] = useState<Step>(clientId ? 'type' : 'select')
   const [loading, setLoading] = useState(false)
-  const [clientSearch, setClientSearch] = useState('')
   const [existingClients, setExistingClients] = useState<ExistingClient[]>([])
   const [loadingClients, setLoadingClients] = useState(false)
   const [showNewClientForm, setShowNewClientForm] = useState(false)
@@ -197,7 +79,6 @@ function NovoBriefingContent() {
   const [language, setLanguage] = useState<BriefingLanguage>('pt-BR')
   const [generatedLink, setGeneratedLink] = useState('')
   const [emailSent, setEmailSent] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [extraNote, setExtraNote] = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
 
@@ -317,20 +198,6 @@ function NovoBriefingContent() {
     setLoading(false)
   }
 
-  async function copyLink() {
-    await navigator.clipboard.writeText(generatedLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const filteredClients = existingClients.filter(
-    (c) =>
-      !clientSearch ||
-      [c.company, c.name, c.email].some((v) =>
-        v?.toLowerCase().includes(clientSearch.toLowerCase()),
-      ),
-  )
-
   const stepLabels = clientId
     ? [
         { key: 'type', label: '1. Tipo' },
@@ -410,95 +277,15 @@ function NovoBriefingContent() {
       <div className="mx-auto max-w-2xl px-6 pb-12">
         {/* STEP: select client */}
         {step === 'select' && !showNewClientForm && (
-          <div>
-            <h2 className="mb-1.5 font-mono text-2xl font-bold tracking-tight">
-              Para qual cliente?
-            </h2>
-            <p className="mb-6 text-sm text-muted-foreground">
-              Selecione um cliente existente ou crie um novo.
-            </p>
-
-            {/* Search existing */}
-            <div className="relative mb-3">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={clientSearch}
-                onChange={(e) => setClientSearch(e.target.value)}
-                placeholder="Buscar por empresa ou nome..."
-                autoFocus
-                className="pl-9"
-              />
-            </div>
-
-            {/* Client list */}
-            {loadingClients ? (
-              <div className="mb-4 flex flex-col gap-2">
-                {[1, 2, 3].map((i) => (
-                  <Card key={i} className="p-4">
-                    <div className="mb-2 h-3.5 w-2/5 animate-pulse rounded bg-muted" />
-                    <div className="h-2.5 w-3/5 animate-pulse rounded bg-muted" />
-                  </Card>
-                ))}
-              </div>
-            ) : filteredClients.length > 0 ? (
-              <div className="mb-4 flex max-h-80 flex-col gap-2 overflow-y-auto">
-                {filteredClients.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => selectExistingClient(c)}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-card p-3.5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 truncate text-sm font-semibold">
-                        <span className="truncate">{c.company}</span>
-                        {c.analysis &&
-                          Object.keys(c.analysis).length > 0 && (
-                            <Bot
-                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                              aria-label="Perfil IA disponível"
-                            />
-                          )}
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {c.name}
-                        {c.email && ` · ${c.email}`}
-                      </div>
-                    </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  </button>
-                ))}
-              </div>
-            ) : clientSearch ? (
-              <div className="mb-4 py-5 text-center text-sm text-muted-foreground">
-                Nenhum cliente encontrado para &ldquo;{clientSearch}&rdquo;
-              </div>
-            ) : (
-              <div className="mb-4 py-5 text-center text-sm text-muted-foreground">
-                Nenhum cliente cadastrado ainda
-              </div>
-            )}
-
-            {/* Divider */}
-            <div className="mb-4 flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="shrink-0 text-xs text-muted-foreground">
-                ou
-              </span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setShowNewClientForm(true)
-                setStep('client')
-              }}
-            >
-              <Plus className="mr-1.5 h-4 w-4" />
-              Criar novo cliente
-            </Button>
-          </div>
+          <SelectStep
+            clients={existingClients}
+            loading={loadingClients}
+            onSelect={selectExistingClient}
+            onNewClient={() => {
+              setShowNewClientForm(true)
+              setStep('client')
+            }}
+          />
         )}
 
         {/* STEP: new client form */}
@@ -851,85 +638,13 @@ function NovoBriefingContent() {
 
         {/* STEP: preview */}
         {step === 'preview' && (
-          <div className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <PartyPopper className="h-8 w-8 text-primary" />
-            </div>
-            <h2 className="mb-2 font-mono text-2xl font-bold tracking-tight">
-              Briefing criado!
-            </h2>
-            <p className="mb-7 text-sm text-muted-foreground">
-              Pronto para{' '}
-              <strong className="text-foreground">{clientForm.name}</strong> da{' '}
-              <strong className="text-foreground">{clientForm.company}</strong>
-            </p>
-
-            {clientForm.email && (
-              <Card
-                className={cn(
-                  'mb-5 p-3 text-sm',
-                  emailSent
-                    ? 'border-success/30 bg-success/10 text-success'
-                    : 'border-destructive/30 bg-destructive/10 text-destructive',
-                )}
-              >
-                {emailSent ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    Email enviado para {clientForm.email}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    Email não enviado — copie e envie o link manualmente
-                  </span>
-                )}
-              </Card>
-            )}
-
-            <Card className="mb-3.5 p-4 text-left">
-              <div className="mb-1.5 text-xs text-muted-foreground">
-                Link do briefing
-              </div>
-              <div className="break-all font-mono text-sm text-primary">
-                {generatedLink}
-              </div>
-            </Card>
-
-            <div className="mb-2.5 flex gap-2.5">
-              <Button onClick={copyLink} className="flex-1">
-                {copied ? (
-                  <>
-                    <ClipboardCheck className="mr-1.5 h-4 w-4" />
-                    Copiado!
-                  </>
-                ) : (
-                  <>
-                    <Clipboard className="mr-1.5 h-4 w-4" />
-                    Copiar link
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  clientForm.id
-                    ? router.push(`/admin/clientes/${clientForm.id}`)
-                    : router.push('/admin')
-                }
-                className="flex-1"
-              >
-                {clientForm.id ? 'Ver cliente' : 'Ver painel'}
-              </Button>
-            </div>
-            <Button
-              variant="ghost"
-              onClick={() => router.push('/admin')}
-              className="w-full"
-            >
-              Ir para o painel
-            </Button>
-          </div>
+          <PreviewStep
+            clientForm={clientForm}
+            generatedLink={generatedLink}
+            emailSent={emailSent}
+            onGoToClient={(id) => router.push(`/admin/clientes/${id}`)}
+            onGoToAdmin={() => router.push('/admin')}
+          />
         )}
       </div>
     </div>
