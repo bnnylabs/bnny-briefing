@@ -411,7 +411,16 @@ function InvestmentBlock({
 }) {
   const total = content.total_amount ?? 0
   const currency = content.currency || (lang === 'en-US' ? 'USD' : 'BRL')
-  const terms = (content.payment_terms ?? []) as PaymentTerm[]
+  const allTerms = (content.payment_terms ?? []) as PaymentTerm[]
+  // Skip empty / placeholder terms — when the template had a payment_term
+  // row with label='' and description=undefined, rendering "—" looks
+  // unprofessional. Treat as "owner forgot to fill" and hide gracefully.
+  const terms = allTerms.filter((t) => {
+    if ((t as { visible?: boolean }).visible === false) return false
+    const hasLabel = typeof t.label === 'string' && t.label.trim().length > 0
+    const hasDesc = typeof t.description === 'string' && t.description.trim().length > 0
+    return hasLabel || hasDesc
+  })
   return (
     <View style={styles.section}>
       <Text style={styles.totalLabel}>{i18n.total}</Text>
@@ -431,8 +440,10 @@ function InvestmentBlock({
                 : null
             return (
               <View key={i} style={styles.termCard}>
-                <Text style={styles.termLabel}>{term.label || '—'}</Text>
-                {term.description && (
+                {term.label?.trim() && (
+                  <Text style={styles.termLabel}>{term.label}</Text>
+                )}
+                {term.description?.trim() && (
                   <Text style={styles.termDescription}>{term.description}</Text>
                 )}
                 {discount !== null && discount > 0 && (

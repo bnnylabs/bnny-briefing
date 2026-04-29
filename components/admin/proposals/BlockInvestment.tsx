@@ -181,9 +181,20 @@ interface InvestmentPreviewProps {
 }
 
 export function InvestmentPreview({ content }: InvestmentPreviewProps) {
+  // Filter on visibility AND on having actual content. A payment term
+  // with label='' and no description is owner-forgot data — better to
+  // hide than render an empty card. Mirrors the same filter applied in
+  // the PDF renderer (lib/proposal-pdf.tsx).
   const terms = (Array.isArray(content.payment_terms)
     ? (content.payment_terms as PaymentTerm[])
-    : []).filter((t) => (t as { visible?: boolean }).visible !== false)
+    : [])
+    .filter((t) => (t as { visible?: boolean }).visible !== false)
+    .filter((t) => {
+      const hasLabel = typeof t.label === 'string' && t.label.trim().length > 0
+      const hasDesc =
+        typeof t.description === 'string' && t.description.trim().length > 0
+      return hasLabel || hasDesc
+    })
   const amount = content.total_amount ?? 0
 
   return (
