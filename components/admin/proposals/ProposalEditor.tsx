@@ -53,6 +53,7 @@ import { BlockReadOnly } from './BlockReadOnly'
 import { SendDialog, type SendContact, type SendRecipientPayload } from './SendDialog'
 import { TranslationPill } from './TranslationPill'
 import { MasterTranslateDialog, type TranslationSummary } from './MasterTranslateDialog'
+import { ReviewBlockButton } from './ReviewBlockButton'
 import type { BlockContentInvestment, ProposalLanguage } from '@/lib/proposal-types'
 
 // ─── Constants ────────────────────────────────────────────────────────────
@@ -796,6 +797,13 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                         onTranslated={(next) => onBlockTranslated(headerBlock.id, next)}
                         onError={(msg) => toast(msg, 'error')}
                       />
+                      <ReviewBlockButton
+                        slug={slug}
+                        block={headerBlock}
+                        blockLabel="Texto de abertura"
+                        onApplied={(revised) => patchBlock(headerBlock.id, revised)}
+                        onError={(msg) => toast(msg, 'error')}
+                      />
                       <RewriteButton
                         value={(headerBlock.content as { body?: string }).body ?? ''}
                         kind="header_body"
@@ -831,14 +839,23 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                 clientId={proposal.client_id}
                 onRewriteError={(msg) => toast(msg, 'error')}
                 headerExtra={
-                  <TranslationPill
-                    block={phasesBlock}
-                    sourceLang={proposal.language}
-                    targetLang={translationTargetLang}
-                    slug={slug}
-                    onTranslated={(next) => onBlockTranslated(phasesBlock.id, next)}
-                    onError={(msg) => toast(msg, 'error')}
-                  />
+                  <>
+                    <TranslationPill
+                      block={phasesBlock}
+                      sourceLang={proposal.language}
+                      targetLang={translationTargetLang}
+                      slug={slug}
+                      onTranslated={(next) => onBlockTranslated(phasesBlock.id, next)}
+                      onError={(msg) => toast(msg, 'error')}
+                    />
+                    <ReviewBlockButton
+                      slug={slug}
+                      block={phasesBlock}
+                      blockLabel="Fases do projeto"
+                      onApplied={(revised) => patchBlock(phasesBlock.id, revised)}
+                      onError={(msg) => toast(msg, 'error')}
+                    />
+                  </>
                 }
               />
             ) : (
@@ -866,14 +883,23 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                 block={investmentBlock}
                 onChange={(c) => patchBlock(investmentBlock.id, c)}
                 headerExtra={
-                  <TranslationPill
-                    block={investmentBlock}
-                    sourceLang={proposal.language}
-                    targetLang={translationTargetLang}
-                    slug={slug}
-                    onTranslated={(next) => onBlockTranslated(investmentBlock.id, next)}
-                    onError={(msg) => toast(msg, 'error')}
-                  />
+                  <>
+                    <TranslationPill
+                      block={investmentBlock}
+                      sourceLang={proposal.language}
+                      targetLang={translationTargetLang}
+                      slug={slug}
+                      onTranslated={(next) => onBlockTranslated(investmentBlock.id, next)}
+                      onError={(msg) => toast(msg, 'error')}
+                    />
+                    <ReviewBlockButton
+                      slug={slug}
+                      block={investmentBlock}
+                      blockLabel="Investimento"
+                      onApplied={(revised) => patchBlock(investmentBlock.id, revised)}
+                      onError={(msg) => toast(msg, 'error')}
+                    />
+                  </>
                 }
               />
             ) : (

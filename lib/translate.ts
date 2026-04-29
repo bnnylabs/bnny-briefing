@@ -37,6 +37,7 @@
 import { createHash } from 'crypto'
 import { anthropic } from '@/lib/anthropic'
 import { STUDIO_IDENTITY_PT } from '@/lib/ai-style-rules'
+import { extractBlockStrings } from '@/lib/block-strings'
 import type {
   BlockContentAttachments,
   BlockContentCustom,
@@ -161,137 +162,10 @@ export function readTranslatedContent<T>(
 
 // ─── Extract / reconstruct por tipo de bloco ────────────────────────────
 //
-// Cada extractor devolve { strings, reconstruct } onde:
-//   - strings: array das strings traduzíveis na ordem que vão pro modelo
-//   - reconstruct(translated): pega o array traduzido e devolve o content
-//     com as strings novas costuradas de volta — campos não-textuais
-//     (números, URLs, currency code) ficam exatamente como no source.
-
-interface Extractor<T extends ProposalBlockContent> {
-  strings: string[]
-  reconstruct: (translated: string[]) => T
-}
-
-function extractHeader(c: BlockContentHeader): Extractor<BlockContentHeader> {
-  return {
-    strings: [c.body ?? ''],
-    reconstruct: ([body]) => ({ body: body ?? '' }),
-  }
-}
-
-function extractPhases(c: BlockContentPhases): Extractor<BlockContentPhases> {
-  const phases = Array.isArray(c.phases) ? c.phases : []
-  // Cada fase contribui 3 strings: title, duration, description.
-  // O `number` ("1.0", "2.0") fica intacto — não é texto de prosa.
-  const strings: string[] = []
-  for (const p of phases) {
-    strings.push(p.title ?? '', p.duration ?? '', p.description ?? '')
-  }
-  return {
-    strings,
-    reconstruct: (t) => ({
-      phases: phases.map((p, i) => ({
-        number: p.number ?? '',
-        title: t[i * 3] ?? '',
-        duration: t[i * 3 + 1] ?? '',
-        description: t[i * 3 + 2] ?? '',
-        ...(p.visible !== undefined ? { visible: p.visible } : {}),
-      })),
-    }),
-  }
-}
-
-function extractInvestment(
-  c: BlockContentInvestment,
-): Extractor<BlockContentInvestment> {
-  // Campos textuais: intro + cada payment_term.label e payment_term.description.
-  // Números (total_amount, currency, discount_percent), URLs e tipo ficam intactos.
-  const terms = Array.isArray(c.payment_terms) ? c.payment_terms : []
-  const strings: string[] = [c.intro ?? '']
-  for (const t of terms) {
-    strings.push(t.label ?? '', (t as { description?: string }).description ?? '')
-  }
-  return {
-    strings,
-    reconstruct: (t) => ({
-      intro: t[0] ?? '',
-      total_amount: c.total_amount ?? 0,
-      currency: c.currency ?? 'BRL',
-      payment_terms: terms.map((term, i): PaymentTerm => {
-        const newLabel = t[1 + i * 2] ?? term.label ?? ''
-        const newDesc = t[1 + i * 2 + 1] ?? ''
-        // Mantém todos os campos não-textuais do termo intactos
-        return { ...term, label: newLabel, description: newDesc } as PaymentTerm
-      }),
-    }),
-  }
-}
-
-function extractTerms(c: BlockContentTerms): Extractor<BlockContentTerms> {
-  return {
-    strings: [c.body_markdown ?? ''],
-    reconstruct: ([md]) => ({ body_markdown: md ?? '' }),
-  }
-}
-
-function extractNextSteps(
-  c: BlockContentNextSteps,
-): Extractor<BlockContentNextSteps> {
-  const items = Array.isArray(c.items) ? c.items : []
-  return {
-    strings: [...items],
-    reconstruct: (t) => ({ items: items.map((_, i) => t[i] ?? '') }),
-  }
-}
-
-function extractAttachments(
-  c: BlockContentAttachments,
-): Extractor<BlockContentAttachments> {
-  // Anexos têm `name` (traduzível) e `url` (não traduzível).
-  const files = Array.isArray(c.files) ? c.files : []
-  return {
-    strings: files.map((f) => f.name ?? ''),
-    reconstruct: (t) => ({
-      files: files.map((f, i) => ({ name: t[i] ?? '', url: f.url ?? '' })),
-    }),
-  }
-}
-
-function extractCustom(c: BlockContentCustom): Extractor<BlockContentCustom> {
-  return {
-    strings: [c.title ?? '', c.body_markdown ?? ''],
-    reconstruct: ([title, md]) => ({
-      title: title ?? '',
-      body_markdown: md ?? '',
-    }),
-  }
-}
-
-/**
- * Dispatcher — escolhe o extractor correto pelo tipo do bloco.
- * Tipos novos no futuro só precisam de uma entrada aqui.
- */
-function extractTranslatable(
-  type: ProposalBlockType,
-  content: ProposalBlockContent,
-): Extractor<ProposalBlockContent> {
-  switch (type) {
-    case 'header':
-      return extractHeader(content as BlockContentHeader) as Extractor<ProposalBlockContent>
-    case 'phases':
-      return extractPhases(content as BlockContentPhases) as Extractor<ProposalBlockContent>
-    case 'investment':
-      return extractInvestment(content as BlockContentInvestment) as Extractor<ProposalBlockContent>
-    case 'terms':
-      return extractTerms(content as BlockContentTerms) as Extractor<ProposalBlockContent>
-    case 'next_steps':
-      return extractNextSteps(content as BlockContentNextSteps) as Extractor<ProposalBlockContent>
-    case 'attachments':
-      return extractAttachments(content as BlockContentAttachments) as Extractor<ProposalBlockContent>
-    case 'custom':
-      return extractCustom(content as BlockContentCustom) as Extractor<ProposalBlockContent>
-  }
-}
+// Os extractors vivem em lib/block-strings.ts (compartilhados com a lib
+// de revisão com IA). A engine de tradução só consome o dispatcher
+// `extractBlockStrings` — que tipo de bloco existe e quais campos são
+// textuais ficam encapsulados lá.
 
 // ─── Tradução via Anthropic ─────────────────────────────────────────────
 
@@ -388,7 +262,7 @@ export async function translateBlock(
   }
 
   const sourceHash = computeContentHash(block.content)
-  const extractor = extractTranslatable(block.type, block.content)
+  const extractor = extractBlockStrings(block.type, block.content)
 
   // Caminho rápido: nada pra traduzir (ex: attachments com 0 arquivos)
   const hasContent = extractor.strings.some((s) => s && s.trim().length > 0)
