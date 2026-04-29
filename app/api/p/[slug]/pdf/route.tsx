@@ -3,6 +3,8 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { getProposalBySlug, listBlocks } from '@/lib/proposals'
 import { getStudioIdentity } from '@/lib/studio-identity'
 import { formatProposalNumber } from '@/lib/proposal-types'
+import type { ProposalScalars } from '@/lib/proposal-types'
+import { readTranslatedContent } from '@/lib/translate'
 import { ProposalPdfDocument, registerFonts, type ProposalPdfData } from '@/lib/proposal-pdf'
 
 /**
@@ -85,11 +87,38 @@ export async function GET(
     proposal.version_suffix,
   )
 
-  const data: ProposalPdfData = {
+  // ─── Apply per-language translations (Phase G — schema-v16) ─────────
+  // Mirrors the public page logic: scalars and each block read their
+  // translation when displayLang !== sourceLang and a translation exists,
+  // falling back to source content silently otherwise.
+  const sourceLang = proposal.language
+  const sourceScalars: ProposalScalars = {
     title: proposal.title,
+    payment_terms: proposal.payment_terms,
+  }
+  const displayScalars = readTranslatedContent(
+    sourceScalars,
+    sourceLang,
+    proposal.translations,
+    proposal.translations_meta,
+    lang,
+  ).content
+  const displayBlocks = blocks.map((block) => {
+    const displayContent = readTranslatedContent(
+      block.content,
+      sourceLang,
+      block.translations,
+      block.translations_meta,
+      lang,
+    ).content
+    return { ...block, content: displayContent }
+  })
+
+  const data: ProposalPdfData = {
+    title: displayScalars.title,
     proposalNumber,
     studio,
-    blocks,
+    blocks: displayBlocks,
     validUntil: validUntilStr,
     lang,
   }
@@ -118,7 +147,9 @@ export async function GET(
   // Filename: proposal_number-title-slug.pdf
   // Slug is included so duplicate numbers (shouldn't happen, but
   // defensive) don't collide for the user. We strip /\W/ from title.
-  const safeTitle = proposal.title
+  // Title comes from the displayed (translated) version so an EN download
+  // gets an EN filename — matches what the recipient sees inside.
+  const safeTitle = displayScalars.title
     .normalize('NFKD')
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '_')

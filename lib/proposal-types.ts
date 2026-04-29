@@ -133,6 +133,10 @@ export interface ProposalBlock {
   content: ProposalBlockContent
   visible: boolean
   created_at: string
+  /** Per-language translated content. Keyed by ProposalLanguage. (schema-v16) */
+  translations?: TranslationsByLang<ProposalBlockContent>
+  /** Per-language translation metadata: source_hash, translated_at, etc. (schema-v16) */
+  translations_meta?: TranslationsMetaByLang
 }
 
 export interface ProposalItem {
@@ -171,6 +175,10 @@ export interface Proposal {
   internal_notes: string | null
   created_at: string
   updated_at: string
+  /** Per-language translated scalars (title + payment_terms). (schema-v16) */
+  translations?: TranslationsByLang<ProposalScalars>
+  /** Per-language translation metadata. (schema-v16) */
+  translations_meta?: TranslationsMetaByLang
 }
 
 export interface ProposalTemplate {
@@ -188,6 +196,15 @@ export interface ProposalTemplate {
   is_default: boolean
   created_at: string
   updated_at: string
+  /** Source language of the template's canonical content. Defaults to pt-BR. (schema-v16) */
+  source_lang?: ProposalLanguage
+  /** Per-language translated content. (schema-v16) */
+  translations?: TranslationsByLang<{
+    default_blocks?: ProposalTemplate['default_blocks']
+    default_payment_terms?: PaymentTerm[]
+  }>
+  /** Per-language translation metadata. (schema-v16) */
+  translations_meta?: TranslationsMetaByLang
 }
 
 export interface ProposalActivity {
@@ -197,6 +214,37 @@ export interface ProposalActivity {
   actor_type: ProposalActivityActor
   details: Record<string, unknown>
   created_at: string
+}
+
+// ─── Translations (schema-v16) ───────────────────────────────────────────
+//
+// Defined here (not in lib/translate.ts) so that `Proposal`, `ProposalBlock`
+// and `ProposalTemplate` can reference them without creating a circular
+// import — translate.ts already imports from this file.
+
+export type TranslationStatus = 'missing' | 'fresh' | 'stale'
+
+export interface TranslationMeta {
+  /** sha256 of the source content at translation time, for staleness detection. */
+  source_hash: string
+  /** ISO timestamp. */
+  translated_at: string
+  /** 'ai' from the translate engine, 'manual' if the operator hand-edited later. */
+  translated_by: 'ai' | 'manual'
+  /** Anthropic model used (only set when translated_by === 'ai'). */
+  model?: string
+}
+
+/** Shape of the `translations` JSONB column — keyed by language. */
+export type TranslationsByLang<T> = Partial<Record<ProposalLanguage, T>>
+
+/** Shape of the `translations_meta` JSONB column — keyed by language. */
+export type TranslationsMetaByLang = Partial<Record<ProposalLanguage, TranslationMeta>>
+
+/** Shape of the per-language proposal scalars (title + payment_terms). */
+export interface ProposalScalars {
+  title: string
+  payment_terms: PaymentTerm[]
 }
 
 /** Proposal joined with the client row — what the list page receives. */

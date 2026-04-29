@@ -50,28 +50,29 @@ import type {
   ProposalBlockContent,
   ProposalBlockType,
   ProposalLanguage,
+  ProposalScalars,
+  TranslationMeta,
+  TranslationsByLang,
+  TranslationsMetaByLang,
+  TranslationStatus,
 } from '@/lib/proposal-types'
 
-// ─── Public types ───────────────────────────────────────────────────────
+// ─── Public types (re-exports) ──────────────────────────────────────────
+//
+// Translation domain types live in proposal-types.ts (canonical source) so
+// that Proposal/ProposalBlock/ProposalTemplate can reference them without
+// circular imports. We re-export here to keep this module's public API
+// stable — existing callers (the v0.10.92 endpoints) import from
+// '@/lib/translate' and shouldn't have to change.
 
 export type Lang = ProposalLanguage
-
-export type TranslationStatus = 'missing' | 'fresh' | 'stale'
-
-export interface TranslationMeta {
-  /** sha256 do source content no momento da tradução, p/ detectar stale. */
-  source_hash: string
-  /** ISO timestamp. */
-  translated_at: string
-  /** 'ai' ou 'manual' (operador editou no editor de tradução). */
-  translated_by: 'ai' | 'manual'
-  /** Modelo usado (só p/ 'ai'). */
-  model?: string
+export type {
+  TranslationStatus,
+  TranslationMeta,
+  TranslationsByLang,
+  TranslationsMetaByLang,
+  ProposalScalars,
 }
-
-/** Shape das colunas JSONB introduzidas pela schema-v16. */
-export type TranslationsByLang<T> = Partial<Record<Lang, T>>
-export type TranslationsMetaByLang = Partial<Record<Lang, TranslationMeta>>
 
 // ─── Hash ───────────────────────────────────────────────────────────────
 
@@ -450,11 +451,6 @@ export async function translateBlock(
 //
 // `proposals.title` e `proposals.payment_terms` ficam fora dos blocks e
 // também precisam ser traduzidos. Mesmo padrão.
-
-export interface ProposalScalars {
-  title: string
-  payment_terms: PaymentTerm[]
-}
 
 export interface TranslateProposalScalarsResult {
   translated: ProposalScalars

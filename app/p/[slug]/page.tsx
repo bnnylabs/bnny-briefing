@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { Mail, Phone } from 'lucide-react'
 import { getProposalBySlug, listBlocks, getLatestDecision } from '@/lib/proposals'
 import { formatProposalNumber } from '@/lib/proposal-types'
+import type { ProposalScalars } from '@/lib/proposal-types'
+import { readTranslatedContent } from '@/lib/translate'
 import { getStudioIdentity, formatStudioLocation } from '@/lib/studio-identity'
 import { ProposalMarkdown } from '@/lib/proposal-markdown'
 import { Logo } from '@/components/brand/Logo'
@@ -78,14 +80,31 @@ function t(lang: PageLang) {
   }
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params
+  const sp = await searchParams
+  const lang = resolveLang(sp.l)
   const proposal = await getProposalBySlug(slug)
   if (!proposal) return { title: 'Proposta' }
   const studio = await getStudioIdentity()
   const num = formatProposalNumber(proposal.number, proposal.version_suffix)
+
+  // Use translated title in the browser tab when available; falls back
+  // to source silently when no translation exists for this lang.
+  const sourceScalars: ProposalScalars = {
+    title: proposal.title,
+    payment_terms: proposal.payment_terms,
+  }
+  const displayTitle = readTranslatedContent(
+    sourceScalars,
+    proposal.language,
+    proposal.translations,
+    proposal.translations_meta,
+    lang,
+  ).content.title
+
   return {
-    title: `${num} · ${proposal.title} · ${studio.studio_name}`,
+    title: `${num} · ${displayTitle} · ${studio.studio_name}`,
     description: `Orçamento ${num} preparado pela ${studio.studio_name}.`,
     robots: { index: false, follow: false }, // private commercial doc
   }
@@ -109,6 +128,39 @@ export default async function PublicProposalPage({ params, searchParams }: PageP
     getStudioIdentity(),
   ])
   const visibleBlocks = blocks.filter((b) => b.visible !== false)
+
+  // ─── Apply per-language translations (Phase G — schema-v16) ─────────
+  // The `?l=en` query param only flipped the page chrome before — block
+  // content stayed in the source language. Now each block + the proposal
+  // scalars (title, payment_terms) read their translation when:
+  //   - displayLang !== sourceLang, AND
+  //   - a translation exists for displayLang.
+  // When the translation is missing, readTranslatedContent falls back to
+  // the source content silently — better than rendering nothing or a
+  // jarring "untranslated" placeholder.
+  const sourceLang = proposal.language
+  const sourceScalars: ProposalScalars = {
+    title: proposal.title,
+    payment_terms: proposal.payment_terms,
+  }
+  const displayScalars = readTranslatedContent(
+    sourceScalars,
+    sourceLang,
+    proposal.translations,
+    proposal.translations_meta,
+    lang,
+  ).content
+
+  const displayBlocks = visibleBlocks.map((block) => {
+    const displayContent = readTranslatedContent(
+      block.content,
+      sourceLang,
+      block.translations,
+      block.translations_meta,
+      lang,
+    ).content
+    return { ...block, content: displayContent }
+  })
 
   // Pull the actor info for already-decided proposals so every contact
   // (not just the one who clicked) sees who decided. Skip the query
@@ -160,13 +212,13 @@ export default async function PublicProposalPage({ params, searchParams }: PageP
         {/* Document title */}
         <div className="mb-10">
           <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            {proposal.title}
+            {displayScalars.title}
           </h1>
         </div>
 
         {/* Body blocks */}
         <div className="space-y-12">
-          {visibleBlocks.map((block) => (
+          {displayBlocks.map((block) => (
             <section key={block.id}>
               <BlockReadOnly block={block} />
             </section>
