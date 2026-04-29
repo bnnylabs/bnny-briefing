@@ -26,6 +26,8 @@ export type TemplateType =
   | 'proposal_viewed_admin'
   | 'proposal_approved_admin'
   | 'proposal_rejected_admin'
+  | 'proposal_approved_to_actor'
+  | 'proposal_rejected_to_actor'
 
 export type TemplateLanguage = 'pt-BR' | 'en-US'
 
@@ -39,6 +41,8 @@ export const TEMPLATE_TYPES: readonly TemplateType[] = [
   'proposal_viewed_admin',
   'proposal_approved_admin',
   'proposal_rejected_admin',
+  'proposal_approved_to_actor',
+  'proposal_rejected_to_actor',
 ] as const
 
 export const TEMPLATE_LANGUAGES: readonly TemplateLanguage[] = ['pt-BR', 'en-US'] as const
@@ -58,6 +62,8 @@ export const TEMPLATE_VARIABLES: Record<TemplateType, readonly string[]> = {
   proposal_viewed_admin: ['client_name', 'company', 'proposal_title', 'proposal_number', 'viewed_at'],
   proposal_approved_admin: ['actor_name', 'actor_email', 'company', 'proposal_title', 'proposal_number', 'approved_at'],
   proposal_rejected_admin: ['actor_name', 'actor_email', 'company', 'proposal_title', 'proposal_number', 'rejected_at', 'reason'],
+  proposal_approved_to_actor: ['actor_name', 'company', 'proposal_title', 'proposal_number', 'approved_at', 'studio_name'],
+  proposal_rejected_to_actor: ['actor_name', 'company', 'proposal_title', 'proposal_number', 'rejected_at', 'studio_name'],
 }
 
 /**
@@ -76,6 +82,8 @@ export const TEMPLATE_BLOCKS: Record<TemplateType, readonly string[]> = {
   proposal_viewed_admin: ['meta_card'],
   proposal_approved_admin: ['meta_card'],
   proposal_rejected_admin: ['meta_card'],
+  proposal_approved_to_actor: ['meta_card'],
+  proposal_rejected_to_actor: ['meta_card'],
 }
 
 /**
@@ -118,6 +126,14 @@ export const TEMPLATE_LABELS: Record<TemplateType, { 'pt-BR': string; 'en-US': s
   proposal_rejected_admin: {
     'pt-BR': 'Cliente recusou a proposta (admin)',
     'en-US': 'Client rejected proposal (admin)',
+  },
+  proposal_approved_to_actor: {
+    'pt-BR': 'Confirmação de aprovação (cliente)',
+    'en-US': 'Approval confirmation (client)',
+  },
+  proposal_rejected_to_actor: {
+    'pt-BR': 'Confirmação de recusa (cliente)',
+    'en-US': 'Rejection confirmation (client)',
   },
 }
 
@@ -368,6 +384,62 @@ The approval is on record with terms accepted. You can start the project.`,
 
 {reason}`,
       cta_text: 'View in admin →',
+    },
+  },
+  proposal_approved_to_actor: {
+    'pt-BR': {
+      subject: 'Confirmação: você aprovou a proposta {proposal_number}',
+      preheader: 'Sua aprovação foi registrada',
+      title: 'Aprovação registrada',
+      body_markdown: `Olá, **{actor_name}**.
+
+Confirmamos sua aprovação do orçamento {proposal_number} — *{proposal_title}* — em nome de **{company}**.
+
+{{meta_card}}
+
+A {studio_name} foi notificada e vai entrar em contato em breve com os próximos passos. Guarde este e-mail como comprovante de aceite dos termos descritos na proposta.`,
+      cta_text: 'Ver proposta →',
+    },
+    'en-US': {
+      subject: 'Confirmation: you approved proposal {proposal_number}',
+      preheader: 'Your approval has been recorded',
+      title: 'Approval recorded',
+      body_markdown: `Hello, **{actor_name}**.
+
+We confirm your approval of proposal {proposal_number} — *{proposal_title}* — on behalf of **{company}**.
+
+{{meta_card}}
+
+{studio_name} has been notified and will reach out soon with next steps. Keep this email as confirmation of acceptance of the terms described in the proposal.`,
+      cta_text: 'View proposal →',
+    },
+  },
+  proposal_rejected_to_actor: {
+    'pt-BR': {
+      subject: 'Recebemos sua resposta sobre a proposta {proposal_number}',
+      preheader: 'Sua resposta foi registrada',
+      title: 'Resposta registrada',
+      body_markdown: `Olá, **{actor_name}**.
+
+Registramos sua resposta sobre o orçamento {proposal_number} — *{proposal_title}* — em nome de **{company}**.
+
+{{meta_card}}
+
+Obrigado pelo retorno. A {studio_name} foi notificada e pode entrar em contato pra entender melhor o que ajustar, se fizer sentido.`,
+      cta_text: 'Ver proposta →',
+    },
+    'en-US': {
+      subject: 'We received your response on proposal {proposal_number}',
+      preheader: 'Your response has been recorded',
+      title: 'Response recorded',
+      body_markdown: `Hello, **{actor_name}**.
+
+We recorded your response on proposal {proposal_number} — *{proposal_title}* — on behalf of **{company}**.
+
+{{meta_card}}
+
+Thank you for the feedback. {studio_name} has been notified and may reach out to understand what to adjust, if it makes sense.`,
+      cta_text: 'View proposal →',
     },
   },
 }

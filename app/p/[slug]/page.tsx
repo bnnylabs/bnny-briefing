@@ -36,6 +36,44 @@ import { DecisionBar } from './DecisionBar'
 
 interface PageProps {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ l?: string }>
+}
+
+/**
+ * Resolve the page language. The `?l=` query param wins (set by the
+ * /send route based on each recipient's contact.language). Default
+ * is pt-BR — kept simple, no Accept-Language sniffing.
+ */
+type PageLang = 'pt-BR' | 'en-US'
+function resolveLang(l?: string): PageLang {
+  return l === 'en' || l === 'en-US' ? 'en-US' : 'pt-BR'
+}
+
+/**
+ * Tiny i18n table for the public page. Keep this colocated with the
+ * usage — there's no plan to externalize unless we add Spanish or
+ * something. The DecisionBar has its own copy of strings (it's a
+ * client component, easier to keep its own dict than thread props).
+ */
+function t(lang: PageLang) {
+  if (lang === 'en-US') {
+    return {
+      validUntilLocale: 'en-US' as const,
+      proposalLabel: 'PROPOSAL',
+      thanksFor: (studioName: string) => `Thank you for considering ${studioName}!`,
+      validUntilText: (date: string) => ` This estimate is valid through ${date}`,
+      andMayChange: ' and may change with scope adjustments.',
+      contactUs: ' For questions, get in touch.',
+    }
+  }
+  return {
+    validUntilLocale: 'pt-BR' as const,
+    proposalLabel: 'ORÇAMENTO',
+    thanksFor: (studioName: string) => `Obrigado por considerar a ${studioName}!`,
+    validUntilText: (date: string) => ` Esta estimativa é válida até ${date}`,
+    andMayChange: ' e pode variar com mudanças no escopo.',
+    contactUs: ' Para dúvidas, entre em contato conosco.',
+  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -51,8 +89,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default async function PublicProposalPage({ params }: PageProps) {
+export default async function PublicProposalPage({ params, searchParams }: PageProps) {
   const { slug } = await params
+  const sp = await searchParams
+  const lang = resolveLang(sp.l)
   const proposal = await getProposalBySlug(slug)
   if (!proposal) notFound()
 
@@ -69,8 +109,9 @@ export default async function PublicProposalPage({ params }: PageProps) {
   const visibleBlocks = blocks.filter((b) => b.visible !== false)
 
   const num = formatProposalNumber(proposal.number, proposal.version_suffix)
+  const i18n = t(lang)
   const validUntil = proposal.valid_until
-    ? new Date(proposal.valid_until + 'T00:00:00').toLocaleDateString('pt-BR', {
+    ? new Date(proposal.valid_until + 'T00:00:00').toLocaleDateString(i18n.validUntilLocale, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -90,7 +131,7 @@ export default async function PublicProposalPage({ params }: PageProps) {
           <Logo className="h-12 w-auto sm:h-14" />
           <div className="text-right">
             <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Orçamento
+              {i18n.proposalLabel}
             </div>
             <div className="font-mono text-sm tabular-nums text-foreground">{num}</div>
           </div>
@@ -113,15 +154,15 @@ export default async function PublicProposalPage({ params }: PageProps) {
         </div>
 
         {/* Decision bar — buttons render only if status is 'sent' or 'viewed' */}
-        <DecisionBar slug={slug} status={proposal.status} />
+        <DecisionBar slug={slug} status={proposal.status} lang={lang} />
 
         {/* Footer — pulls everything from studio_identity (singleton row) */}
         <footer className="mt-16 border-t border-border pt-8 text-xs leading-relaxed text-muted-foreground">
           <p className="font-mono">
-            Obrigado por considerar a {studio.studio_name}!
-            {validUntil && ` Esta estimativa é válida até ${validUntil}`}
-            {validUntil && ' e pode variar com mudanças no escopo.'}
-            {!validUntil && ' Para dúvidas, entre em contato conosco.'}
+            {i18n.thanksFor(studio.studio_name)}
+            {validUntil && i18n.validUntilText(validUntil)}
+            {validUntil && i18n.andMayChange}
+            {!validUntil && i18n.contactUs}
           </p>
 
           {/* Owner-editable disclaimer (markdown). Rendered via the same

@@ -987,6 +987,167 @@ export async function sendProposalRejectedToAdmin({
   }
 }
 
+/**
+ * Email confirmation TO THE PERSON WHO APPROVED. Sent in their language
+ * (which the public page passes through from the ?l= query string).
+ *
+ * Whoever clicked Aprovar on the public page gave us name + email in
+ * the dialog. Even if they're not in the client_contacts list (an
+ * external partner / lawyer / spouse), they get a copy as proof of
+ * acceptance — the email serves as their record of what they agreed to.
+ *
+ * Best-effort: failure is logged but doesn't roll back the decision.
+ */
+export async function sendProposalApprovedToActor({
+  actorEmail,
+  actorName,
+  proposalTitle,
+  proposalNumber,
+  clientCompany,
+  studioName,
+  proposalLink,
+  language = 'pt-BR',
+}: {
+  actorEmail: string
+  actorName: string
+  proposalTitle: string
+  proposalNumber: string
+  clientCompany: string
+  studioName: string
+  proposalLink: string
+  language?: string
+}) {
+  const lang: TemplateLanguage = language === 'en-US' ? 'en-US' : 'pt-BR'
+  const localeForDate = lang === 'en-US' ? 'en-US' : 'pt-BR'
+  const approvedAt = new Date().toLocaleString(localeForDate)
+
+  const vars: TemplateVars = {
+    actor_name: actorName,
+    company: clientCompany,
+    proposal_title: proposalTitle,
+    proposal_number: proposalNumber,
+    approved_at: approvedAt,
+    studio_name: studioName,
+  }
+
+  const composed = await composeEmail({
+    type: 'proposal_approved_to_actor',
+    language: lang,
+    vars,
+    blocks: {
+      meta_card: renderMetaCard([
+        {
+          label: lang === 'en-US' ? 'Proposal' : 'Proposta',
+          value: `${proposalNumber} — ${proposalTitle}`,
+        },
+        {
+          label: lang === 'en-US' ? 'Company' : 'Empresa',
+          value: clientCompany,
+        },
+        {
+          label: lang === 'en-US' ? 'Approved by' : 'Aprovado por',
+          value: actorName,
+        },
+        {
+          label: lang === 'en-US' ? 'Approved at' : 'Aprovado em',
+          value: approvedAt,
+        },
+      ]),
+    },
+    ctaHref: proposalLink,
+  })
+
+  try {
+    const result = await getResend().emails.send({
+      from: FROM,
+      to: actorEmail,
+      subject: composed.subject,
+      html: composed.html,
+      text: composed.text,
+    })
+    return { ok: true, id: result.data?.id }
+  } catch (error) {
+    console.error('[email/proposal-approved-to-actor] failed:', error)
+    return { ok: false, error }
+  }
+}
+
+/**
+ * Email confirmation TO THE PERSON WHO REJECTED. Same idea as the
+ * approved version but with neutral copy. We don't include the reason
+ * in this email because the actor wrote it themselves — they don't
+ * need to read it back.
+ */
+export async function sendProposalRejectedToActor({
+  actorEmail,
+  actorName,
+  proposalTitle,
+  proposalNumber,
+  clientCompany,
+  studioName,
+  proposalLink,
+  language = 'pt-BR',
+}: {
+  actorEmail: string
+  actorName: string
+  proposalTitle: string
+  proposalNumber: string
+  clientCompany: string
+  studioName: string
+  proposalLink: string
+  language?: string
+}) {
+  const lang: TemplateLanguage = language === 'en-US' ? 'en-US' : 'pt-BR'
+  const localeForDate = lang === 'en-US' ? 'en-US' : 'pt-BR'
+  const rejectedAt = new Date().toLocaleString(localeForDate)
+
+  const vars: TemplateVars = {
+    actor_name: actorName,
+    company: clientCompany,
+    proposal_title: proposalTitle,
+    proposal_number: proposalNumber,
+    rejected_at: rejectedAt,
+    studio_name: studioName,
+  }
+
+  const composed = await composeEmail({
+    type: 'proposal_rejected_to_actor',
+    language: lang,
+    vars,
+    blocks: {
+      meta_card: renderMetaCard([
+        {
+          label: lang === 'en-US' ? 'Proposal' : 'Proposta',
+          value: `${proposalNumber} — ${proposalTitle}`,
+        },
+        {
+          label: lang === 'en-US' ? 'Company' : 'Empresa',
+          value: clientCompany,
+        },
+        {
+          label: lang === 'en-US' ? 'Recorded at' : 'Registrado em',
+          value: rejectedAt,
+        },
+      ]),
+    },
+    ctaHref: proposalLink,
+  })
+
+  try {
+    const result = await getResend().emails.send({
+      from: FROM,
+      to: actorEmail,
+      subject: composed.subject,
+      html: composed.html,
+      text: composed.text,
+    })
+    return { ok: true, id: result.data?.id }
+  } catch (error) {
+    console.error('[email/proposal-rejected-to-actor] failed:', error)
+    return { ok: false, error }
+  }
+}
+
 // ─── Preview pipeline (used by the editor's live preview API) ───────────
 
 /**

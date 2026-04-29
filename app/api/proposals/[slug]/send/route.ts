@@ -126,11 +126,17 @@ export async function POST(
   const proposalNumber = formatProposalNumber(proposal.number, proposal.version_suffix)
 
   // Send to every recipient. Each one gets the email in their own
-  // language preference (set on the contact row).
+  // language preference (set on the contact row), AND a personalized
+  // link with ?l=<lang> so the public page renders in their language
+  // when they click. Without this, an EN contact opens the link and
+  // sees the page in PT (default), which was the v0.10.75 bug.
   const sendResults = await Promise.all(
     recipients.map(async (r) => {
       const lang = r.language === 'en-US' ? 'en-US' : 'pt-BR'
       const localeForDate = lang === 'en-US' ? 'en-US' : 'pt-BR'
+      // Per-recipient link carries the language. The page reads
+      // searchParams.l and falls back to 'pt-BR' if absent.
+      const personalLink = `${link}?l=${lang === 'en-US' ? 'en' : 'pt'}`
       const validUntilStr = proposal.valid_until
         ? new Date(proposal.valid_until + 'T00:00:00').toLocaleDateString(localeForDate, {
             day: '2-digit',
@@ -149,7 +155,7 @@ export async function POST(
         proposalNumber,
         validUntil: validUntilStr,
         totalAmount: fmtCurrency(totalAmount, lang),
-        link,
+        link: personalLink,
         language: lang,
       })
       return { recipient: r, ...r2 }

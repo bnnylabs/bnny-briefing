@@ -3,7 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase'
 import {
   sendProposalApprovedToAdmin,
   sendProposalRejectedToAdmin,
+  sendProposalApprovedToActor,
+  sendProposalRejectedToActor,
 } from '@/lib/email'
+import { getStudioIdentity } from '@/lib/studio-identity'
 
 /**
  * POST /api/p/[slug]/decision
@@ -113,6 +116,14 @@ export async function POST(
       ? body.reason.trim().slice(0, MAX_REASON)
       : ''
 
+  // Language hint from the public page. Used both in the actor-facing
+  // confirmation email and to select error messages we send back. We
+  // intentionally accept short codes ('pt'/'en') and full codes
+  // ('pt-BR'/'en-US') because the page passes the short form.
+  const langInput = typeof body.lang === 'string' ? body.lang : ''
+  const actorLang: 'pt-BR' | 'en-US' =
+    langInput === 'en' || langInput === 'en-US' ? 'en-US' : 'pt-BR'
+
   // Look up the proposal. Use maybeSingle to avoid 500 on miss.
   const { data: proposal, error: lookupErr } = await supabaseAdmin
     .from('proposals')
@@ -176,6 +187,7 @@ export async function POST(
         actor_email,
         terms_accepted_at: action === 'approve' ? nowIso : undefined,
         reason: reason || undefined,
+        lang: actorLang,
         ip,
         user_agent: userAgent,
       },
@@ -184,56 +196,107 @@ export async function POST(
     console.error('[p/decision] activity insert silenced:', e)
   }
 
-  // Notify admin. Best-effort: status change already persisted, so a
-  // failed email doesn't roll back the decision. Owner sees it in
-  // /admin/propostas anyway.
+  // Notify admin AND actor. Best-effort: status change already
+  // persisted, so a failed email doesn't roll back the decision.
+  // Owner sees it in /admin/propostas anyway, and the actor still
+  // has the public page success state as immediate feedback.
   try {
-    // Pull notification email from settings (canonical source).
-    const { data: settingsData } = await supabaseAdmin
-      .from('settings')
-      .select('key, value')
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`
+
+    // proposal.clients comes back as array shape from the join — flatten.
+    const clientRow = Array.isArray(proposal.clients)
+      ? proposal.clients[0]
+      : proposal.clients
+    const clientCompany = (clientRow as { company?: string } | null)?.company || ''
+
+    const proposalNumber =
+      `#${String(proposal.number).padStart(3, '0')}` +
+      (proposal.version_suffix ? `-${proposal.version_suffix}` : '')
+
+    // Pull notification email + studio identity in parallel — settings
+    // for the admin recipient, studio for the actor confirmation.
+    const [{ data: settingsData }, studio] = await Promise.all([
+      supabaseAdmin.from('settings').select('key, value'),
+      getStudioIdentity(),
+    ])
     const settings: Record<string, string> = {}
     settingsData?.forEach((s: { key: string; value: string }) => {
       settings[s.key] = s.value || ''
     })
-    const adminEmail = settings.notification_email || process.env.NOTIFICATION_EMAIL || ''
+    const adminEmail =
+      settings.notification_email || process.env.NOTIFICATION_EMAIL || ''
 
-    if (adminEmail) {
-      // proposal.clients comes back as array shape from the join — flatten.
-      const clientRow = Array.isArray(proposal.clients)
-        ? proposal.clients[0]
-        : proposal.clients
-      const clientCompany = (clientRow as { company?: string } | null)?.company || ''
+    // Actor's view of the proposal — same slug, same query language.
+    const actorProposalLink = `${baseUrl}/p/${slug}?l=${actorLang === 'en-US' ? 'en' : 'pt'}`
 
-      const proposalNumber =
-        `#${String(proposal.number).padStart(3, '0')}` +
-        (proposal.version_suffix ? `-${proposal.version_suffix}` : '')
+    const adminUrl = `${baseUrl}/admin/propostas/${slug}`
 
-      if (action === 'approve') {
-        await sendProposalApprovedToAdmin({
-          adminEmail,
-          proposalTitle: proposal.title,
-          proposalNumber,
-          clientCompany,
-          actorName: actor_name,
-          actorEmail: actor_email,
-          adminUrl: `${process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`}/admin/propostas/${slug}`,
-        })
-      } else {
-        await sendProposalRejectedToAdmin({
-          adminEmail,
-          proposalTitle: proposal.title,
-          proposalNumber,
-          clientCompany,
-          actorName: actor_name,
-          actorEmail: actor_email,
-          reason: reason || null,
-          adminUrl: `${process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`}/admin/propostas/${slug}`,
-        })
+    if (action === 'approve') {
+      const promises: Promise<unknown>[] = []
+
+      if (adminEmail) {
+        promises.push(
+          sendProposalApprovedToAdmin({
+            adminEmail,
+            proposalTitle: proposal.title,
+            proposalNumber,
+            clientCompany,
+            actorName: actor_name,
+            actorEmail: actor_email,
+            adminUrl,
+          }),
+        )
       }
+
+      promises.push(
+        sendProposalApprovedToActor({
+          actorEmail: actor_email,
+          actorName: actor_name,
+          proposalTitle: proposal.title,
+          proposalNumber,
+          clientCompany,
+          studioName: studio.studio_name,
+          proposalLink: actorProposalLink,
+          language: actorLang,
+        }),
+      )
+
+      await Promise.all(promises)
+    } else {
+      const promises: Promise<unknown>[] = []
+
+      if (adminEmail) {
+        promises.push(
+          sendProposalRejectedToAdmin({
+            adminEmail,
+            proposalTitle: proposal.title,
+            proposalNumber,
+            clientCompany,
+            actorName: actor_name,
+            actorEmail: actor_email,
+            reason: reason || null,
+            adminUrl,
+          }),
+        )
+      }
+
+      promises.push(
+        sendProposalRejectedToActor({
+          actorEmail: actor_email,
+          actorName: actor_name,
+          proposalTitle: proposal.title,
+          proposalNumber,
+          clientCompany,
+          studioName: studio.studio_name,
+          proposalLink: actorProposalLink,
+          language: actorLang,
+        }),
+      )
+
+      await Promise.all(promises)
     }
   } catch (e) {
-    console.error('[p/decision] admin notification silenced:', e)
+    console.error('[p/decision] notifications silenced:', e)
   }
 
   return NextResponse.json({ ok: true, status: newStatus })
