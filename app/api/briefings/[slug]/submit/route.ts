@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendCompletionToAdmin, sendWhatsApp, sendClientConfirmation } from '@/lib/email'
+import { resolveBriefingRecipients } from '@/lib/briefing-recipients'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -70,9 +71,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   const adminEmail = settings.notification_email || process.env.NOTIFICATION_EMAIL || ''
     const editingHours = parseInt(settings.editing_hours || '48', 10)
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.get('host')}`
-  const clientName = briefing.clients?.name || 'Cliente'
-  const clientEmail = briefing.clients?.email
-  const lang = briefing.language || 'pt-BR'
+
+  // Resolve client recipient from client_contacts (canonical since
+  // schema v5). The legacy briefing.clients.email path is empty for
+  // any client created after v5 — so the confirmation email below was
+  // silently never being sent. Same root cause as v0.10.63 (proposals)
+  // and v0.10.66 (cron reminders).
+  const recipients = await resolveBriefingRecipients(briefing.client_id, {
+    name: briefing.clients?.name || 'Cliente',
+    email: briefing.clients?.email ?? null,
+  })
+  const primary = recipients.find((r) => r.role === 'primary') ?? recipients[0]
+  const clientName = primary?.name || briefing.clients?.name || 'Cliente'
+  const clientEmail = primary?.email || null
+  const lang = primary?.language || briefing.language || 'pt-BR'
 
   // Build diff for updates — collected as structured data, the email
   // module owns the rendering. Same shape both surfaces (email + future
