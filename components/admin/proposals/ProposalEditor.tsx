@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Check, AlertCircle, Loader2, Eye, Plus, Trash2,
-  ChevronDown, ChevronUp, FileText, DollarSign, List, AlignLeft, Clock,
-  Sparkles, Lock, Send, Link as LinkIcon, MoreHorizontal, Download,
+  ArrowLeft, Check, Loader2, Eye, Plus,
+  ChevronDown, FileText, AlignLeft, Clock,
+  Send, Link as LinkIcon, MoreHorizontal, Download,
   Users, LayoutTemplate, Languages,
 } from 'lucide-react'
 
@@ -16,7 +16,6 @@ import { Button }   from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { Input }    from '@/components/ui/input'
 import { Card }     from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle,
@@ -38,7 +37,7 @@ import {
   formatProposalNumber,
   PROPOSAL_STATUS_LABELS_PT,
   proposalStatusVariant,
-  type PaymentTerm,
+  type BlockContentInvestment,
   type ProposalBlock,
   type ProposalBlockContent,
   type ProposalBlockType,
@@ -46,15 +45,23 @@ import {
   type ProposalStatus,
   type ProposalWithClient,
 } from '@/lib/proposal-types'
+import { fmtCurrency, fmtDate, fmtDateLong } from '@/lib/proposal-editor-utils'
 
-import { formatSavedAgo, useAutoSave, type AutoSaveStatus } from './useAutoSave'
+import { useAutoSave, type AutoSaveStatus } from './useAutoSave'
 import { RewriteButton } from './RewriteButton'
 import { BlockReadOnly } from './BlockReadOnly'
 import { SendDialog, type SendContact, type SendRecipientPayload } from './SendDialog'
 import { TranslationPill } from './TranslationPill'
 import { MasterTranslateDialog, type TranslationSummary } from './MasterTranslateDialog'
 import { ReviewBlockButton } from './ReviewBlockButton'
-import type { BlockContentInvestment, ProposalLanguage } from '@/lib/proposal-types'
+import { SaveIndicator } from './SaveIndicator'
+import { CardHeader, FieldLabel } from './editor-cards/EditorPrimitives'
+import { DetalheRow, MissingSection } from './editor-cards/EditorMisc'
+import { InternalNotesCard } from './editor-cards/InternalNotesCard'
+import { PhasesCard } from './editor-cards/PhasesCard'
+import { InvestimentoCard } from './editor-cards/InvestimentoCard'
+import { IACard } from './editor-cards/IACard'
+import type { ProposalLanguage } from '@/lib/proposal-types'
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -66,62 +73,6 @@ const STATUS_COLORS: Record<ProposalStatus, string> = {
   rejected: 'border-destructive/30 bg-destructive/10 text-destructive',
   revised:  'border-warning/30 bg-warning/10 text-warning',
   expired:  'border-border bg-muted text-muted-foreground/70',
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────
-
-function fmtCurrency(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency, minimumFractionDigits: 2 }).format(amount)
-  } catch { return `R$ ${amount.toFixed(2)}` }
-}
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return '—'
-  return new Date(`${iso}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-// ─── Save indicator ───────────────────────────────────────────────────────
-
-function SaveIndicator({ status, lastSavedAt }: { status: AutoSaveStatus; lastSavedAt: number | null }) {
-  const [, force] = useState(0)
-  useEffect(() => {
-    if (status !== 'idle') return
-    const t = setInterval(() => force((n) => n + 1), 5000)
-    return () => clearInterval(t)
-  }, [status])
-
-  if (status === 'saving') return <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Salvando…</span>
-  if (status === 'saved')  return <span className="inline-flex items-center gap-1.5 text-[11px] text-success"><Check className="h-3 w-3" />Salvo</span>
-  if (status === 'error')  return <span className="inline-flex items-center gap-1.5 text-[11px] text-destructive"><AlertCircle className="h-3 w-3" />Erro ao salvar</span>
-  if (lastSavedAt) return <span className="text-[11px] text-muted-foreground/70">{formatSavedAgo(lastSavedAt)}</span>
-  return null
-}
-
-// ─── Card section header (matches client detail pattern) ──────────────────
-
-function CardHeader({
-  icon, title, action,
-}: { icon: React.ReactNode; title: string; action?: React.ReactNode }) {
-  return (
-    <div className="mb-4 flex items-center justify-between gap-3">
-      <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
-        <span className="text-muted-foreground">{icon}</span>
-        {title}
-      </div>
-      {action}
-    </div>
-  )
-}
-
-// ─── Field label ──────────────────────────────────────────────────────────
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-      {children}
-    </div>
-  )
 }
 
 // ─── Main component ───────────────────────────────────────────────────────
@@ -1033,453 +984,6 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
   )
 }
 
-// ─── Detalhe row ──────────────────────────────────────────────────────────
-
-function DetalheRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right text-foreground">{value}</span>
-    </div>
-  )
-}
-
-// ─── Internal notes card (right sidebar) ─────────────────────────────────
-//
-// Free-form private text the owner uses to track negotiation context,
-// reminders, risk flags. Never rendered in the public proposal view, never
-// included in PDF export, never sent to the client.
-
-function InternalNotesCard({
-  value, onChange,
-}: { value: string | null; onChange: (notes: string | null) => void }) {
-  const [draft, setDraft] = useState(value ?? '')
-
-  // Keep local draft in sync if the proposal reloads with new server state.
-  useEffect(() => { setDraft(value ?? '') }, [value])
-
-  return (
-    <Card className="p-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
-          <Lock className="h-4 w-4 text-muted-foreground" />
-          Notas internas
-        </div>
-        <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          Privado
-        </span>
-      </div>
-
-      <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
-        Anotações que só você vê. Não aparecem na proposta pública nem no PDF.
-      </p>
-
-      <textarea
-        value={draft}
-        onChange={(e) => {
-          setDraft(e.target.value)
-          // Save on every keystroke (debounced upstream by useAutoSave).
-          // Empty string is normalized to null so the DB stays clean.
-          onChange(e.target.value.trim() === '' ? null : e.target.value)
-        }}
-        placeholder="Contexto da negociação, lembretes, próximos passos…"
-        rows={4}
-        className={cn(
-          'flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2.5',
-          'text-xs text-foreground placeholder:text-muted-foreground/50',
-          'focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary/30 transition-all',
-        )}
-      />
-    </Card>
-  )
-}
-
-// ─── Date helper for Detalhes ─────────────────────────────────────────────
-
-function fmtDateLong(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })
-}
-
-// ─── Missing section placeholder ──────────────────────────────────────────
-
-function MissingSection({ label, type, onAdd }: { label: string; type: ProposalBlockType; onAdd: (t: ProposalBlockType) => void }) {
-  return (
-    <Card className="border-dashed p-5">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{label} não adicionado</span>
-        <Button variant="ghost" size="sm" onClick={() => onAdd(type)}>
-          <Plus className="mr-1 h-3.5 w-3.5" />Adicionar
-        </Button>
-      </div>
-    </Card>
-  )
-}
-
-// ─── Phases card ──────────────────────────────────────────────────────────
-
-function PhasesCard({
-  block, onChange, clientId, onRewriteError, headerExtra,
-}: {
-  block: ProposalBlock
-  onChange: (c: ProposalBlockContent) => void
-  clientId?: string | null
-  onRewriteError?: (msg: string) => void
-  headerExtra?: React.ReactNode
-}) {
-  const [expanded, setExpanded] = useState<number | null>(null)
-  const content = block.content as { phases?: ProposalPhase[] }
-  const phases: ProposalPhase[] = content.phases ?? []
-
-  const update = (i: number, patch: Partial<ProposalPhase>) => {
-    const next = phases.map((p, idx) => idx === i ? { ...p, ...patch } : p)
-    onChange({ phases: next })
-  }
-
-  const toggleVisible = (i: number) => {
-    update(i, { visible: phases[i].visible === false ? true : false })
-  }
-
-  const remove = (i: number) => {
-    onChange({ phases: phases.filter((_, idx) => idx !== i) })
-    if (expanded === i) setExpanded(null)
-  }
-
-  const add = () => {
-    const nextNum = `${phases.length + 1}.0`
-    onChange({ phases: [...phases, { number: nextNum, title: '', duration: '', description: '', visible: true }] })
-    setExpanded(phases.length)
-  }
-
-  return (
-    <Card className="p-5">
-      <CardHeader
-        icon={<List className="h-4 w-4" />}
-        title="Fases do projeto"
-        action={
-          <div className="flex items-center gap-2">
-            {headerExtra}
-            <Button variant="ghost" size="sm" onClick={add}>
-              <Plus className="mr-1 h-3.5 w-3.5" />Fase
-            </Button>
-          </div>
-        }
-      />
-
-      {phases.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhuma fase adicionada.</p>
-      ) : (
-        <div className="space-y-1">
-          {phases.map((phase, i) => {
-            const isExpanded = expanded === i
-            const isVisible = phase.visible !== false
-            return (
-              <div key={i} className={cn('rounded-lg border border-border transition-colors', !isVisible && 'opacity-50')}>
-                {/* Compact row */}
-                <div
-                  className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-muted/30"
-                  onClick={() => setExpanded(isExpanded ? null : i)}
-                >
-                  <Checkbox
-                    checked={isVisible}
-                    onCheckedChange={() => toggleVisible(i)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="shrink-0 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background"
-                  />
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">{phase.number || `${i + 1}.0`}</span>
-                  <span className="flex-1 truncate text-sm font-medium text-foreground">{phase.title || 'Sem título'}</span>
-                  {phase.duration && (
-                    <span className="hidden shrink-0 rounded bg-success/15 px-1.5 py-0.5 font-mono text-[10px] text-success sm:block">
-                      {phase.duration}
-                    </span>
-                  )}
-                  <span className="text-muted-foreground/50">
-                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  </span>
-                </div>
-
-                {/* Expanded editing */}
-                {isExpanded && (
-                  <div className="space-y-2.5 border-t border-border bg-muted/20 px-3 py-3">
-                    <div className="flex gap-2">
-                      <Input
-                        value={phase.number}
-                        onChange={(e) => update(i, { number: e.target.value })}
-                        placeholder="1.0"
-                        className="w-16 font-mono text-xs tabular-nums"
-                      />
-                      <Input
-                        value={phase.title}
-                        onChange={(e) => update(i, { title: e.target.value })}
-                        placeholder="Título da fase"
-                        className="flex-1"
-                      />
-                    </div>
-                    <Input
-                      value={phase.duration}
-                      onChange={(e) => update(i, { duration: e.target.value })}
-                      placeholder="3 a 4 dias úteis"
-                      className="text-sm"
-                    />
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Descrição
-                      </span>
-                      <RewriteButton
-                        value={phase.description}
-                        kind="phase_description"
-                        clientId={clientId}
-                        onRewritten={(text) => update(i, { description: text })}
-                        onError={onRewriteError}
-                        extraContext={`Esta é a fase "${phase.title || phase.number}", com duração de ${phase.duration || 'não especificada'}.`}
-                      />
-                    </div>
-                    <textarea
-                      value={phase.description}
-                      onChange={(e) => update(i, { description: e.target.value })}
-                      placeholder="O que acontece nesta fase…"
-                      rows={2}
-                      className={cn(
-                        'flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2',
-                        'text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50',
-                        'focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all',
-                      )}
-                    />
-                    <div className="flex justify-end">
-                      <button
-                        onClick={() => remove(i)}
-                        className="text-[11px] text-muted-foreground/50 hover:text-destructive transition-colors"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </Card>
-  )
-}
-
-// ─── Investment card (right sidebar) ─────────────────────────────────────
-
-function InvestimentoCard({ block, onChange, headerExtra }: { block: ProposalBlock; onChange: (c: ProposalBlockContent) => void; headerExtra?: React.ReactNode }) {
-  const content = block.content as BlockContentInvestment
-  const terms = (content.payment_terms as PaymentTerm[] | undefined) ?? []
-
-  const [focused, setFocused] = useState(false)
-
-  const updateTotal = (raw: string) => {
-    // Strip everything except digits, comma, period
-    const num = parseFloat(raw.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'))
-    onChange({ ...content, total_amount: isNaN(num) ? 0 : num })
-  }
-
-  const toggleTerm = (i: number) => {
-    const next = terms.map((t, idx) =>
-      idx === i ? { ...t, visible: (t as { visible?: boolean }).visible === false ? true : false } : t
-    ) as PaymentTerm[]
-    onChange({ ...content, payment_terms: next })
-  }
-
-  // Display: raw editable value when focused, formatted "3.000,00" when blurred
-  const displayAmount = focused
-    ? (content.total_amount > 0 ? String(content.total_amount).replace('.', ',') : '')
-    : (content.total_amount > 0
-        ? content.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        : '')
-
-  return (
-    <Card className="p-5">
-      <CardHeader
-        icon={<DollarSign className="h-4 w-4" />}
-        title="Investimento"
-        action={headerExtra}
-      />
-
-      <div className="space-y-5">
-        {/* Total */}
-        <div>
-          <FieldLabel>Valor total</FieldLabel>
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="font-mono text-sm text-muted-foreground">R$</span>
-            <Input
-              value={displayAmount}
-              onChange={(e) => updateTotal(e.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              placeholder="0,00"
-              className="font-mono text-lg font-bold tabular-nums"
-            />
-          </div>
-        </div>
-
-        {/* Payment terms */}
-        {terms.length > 0 && (
-          <div>
-            <FieldLabel>Condições de pagamento</FieldLabel>
-            <div className="mt-2 space-y-2">
-              {terms.map((term, i) => {
-                const t = term as { label?: string; description?: string; discount_percent?: number; visible?: boolean }
-                const active = t.visible !== false
-                return (
-                  <label
-                    key={i}
-                    className={cn(
-                      'flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors',
-                      active ? 'bg-card' : 'opacity-50',
-                    )}
-                  >
-                    <Checkbox
-                      checked={active}
-                      onCheckedChange={() => toggleTerm(i)}
-                      className="mt-0.5 shrink-0 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground data-[state=checked]:text-background"
-                    />
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-foreground">{t.label || 'Sem título'}</div>
-                      {t.description && (
-                        <div className="text-xs leading-relaxed text-muted-foreground">{t.description}</div>
-                      )}
-                      {t.discount_percent && (
-                        <div className="mt-1 inline-flex rounded bg-success/15 px-1.5 py-0.5 font-mono text-[10px] text-success">
-                          {t.discount_percent}% de desconto
-                        </div>
-                      )}
-                    </div>
-                  </label>
-                )
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </Card>
-  )
-}
-
-// ─── IA Assistente card ──────────────────────────────────────────────────
-
-function IACard({
-  proposal, onPersonalize,
-}: {
-  proposal: ProposalWithClient
-  onPersonalize: (args: { context: string; addresseeName: string }) => Promise<void>
-}) {
-  const [context, setContext] = useState('')
-  const [addresseeName, setAddresseeName] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [expanded, setExpanded] = useState(false)
-
-  // Always allow regen when there's a client (auto-context from cadastrado data)
-  // — context typed by owner is just a bonus.
-  const canSubmit = !loading && !!proposal.client_id
-
-  const handleSubmit = async () => {
-    if (!canSubmit) return
-    setLoading(true)
-    try {
-      await onPersonalize({ context, addresseeName })
-      setContext('')
-      setAddresseeName('')
-      // Auto-collapse after success — owner doesn't need to keep the card
-      // open after the AI did its job.
-      setExpanded(false)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <Card className="p-5">
-      {/* Clickable header — toggles the card open/closed */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className={cn(
-          'flex w-full items-center justify-between gap-3 text-left',
-          expanded ? 'mb-4' : 'mb-0',
-        )}
-      >
-        <div className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
-          Personalizar com IA
-        </div>
-        <div className="flex items-center gap-2">
-          {!expanded && (
-            <span className="hidden text-[11px] text-muted-foreground sm:inline">
-              Reescrever abertura e fases
-            </span>
-          )}
-          {expanded
-            ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-        </div>
-      </button>
-
-      {expanded && (
-        <div className="space-y-3">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            A IA usa os dados do cliente automaticamente (site, redes, perfil de IA salvo). Adicione contexto extra abaixo se quiser — notas da reunião, transcrição, detalhes específicos.
-          </p>
-
-          {/* Para quem é a abertura — override do contato primário pra
-              casos onde a proposta vai pra alguém específico que não é
-              (ou não deveria ser) o contato principal cadastrado. Sem
-              persistência; só afeta esta geração. */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Para quem é a abertura? (opcional)
-            </label>
-            <input
-              type="text"
-              value={addresseeName}
-              onChange={(e) => setAddresseeName(e.target.value)}
-              placeholder="Ex: Gabriel — usa o contato principal se vazio"
-              className={cn(
-                'flex w-full rounded-md border border-border bg-secondary px-3 py-2',
-                'text-sm text-foreground placeholder:text-muted-foreground/50',
-                'focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all',
-              )}
-            />
-          </div>
-
-          <textarea
-            value={context}
-            onChange={(e) => setContext(e.target.value)}
-            placeholder="Notas, transcrição, contexto adicional (opcional)…"
-            rows={3}
-            className={cn(
-              'flex w-full resize-y rounded-md border border-border bg-secondary px-3 py-2.5',
-              'text-sm text-foreground placeholder:text-muted-foreground/50',
-              'focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all',
-            )}
-          />
-
-          <div className="flex justify-end">
-            <Button
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-            >
-              {loading ? (
-                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Personalizando…</>
-              ) : (
-                <><Sparkles className="mr-1.5 h-3.5 w-3.5" />Personalizar</>
-              )}
-            </Button>
-          </div>
-
-          {!proposal.template_id && (
-            <p className="text-[11px] text-warning">
-              Esta proposta não tem modelo. A IA vai gerar do zero a partir do contexto e dos dados do cliente.
-            </p>
-          )}
-        </div>
-      )}
-    </Card>
-  )
-}
 
 // ─── Document view ────────────────────────────────────────────────────────
 
