@@ -22,6 +22,7 @@ import { Card } from '@/components/ui/card'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { useToast, ToastContainer } from '@/components/toast'
 import { ModelosTab } from './ModelosTab'
+import { EstudioTab } from './EstudioTab'
 
 /**
  * Centro de Configurações de Propostas — Fase 2 do roadmap.
@@ -31,7 +32,7 @@ import { ModelosTab } from './ModelosTab'
  *   - Pagamentos          (em breve)
  *   - Termos              (em breve)
  *   - Próximos passos     (em breve)
- *   - Estúdio             (em breve)
+ *   - Estúdio             ✦ ativa (v0.10.74)
  *
  * Esta página é só o lobby — o editor de blocos de cada modelo fica em
  * /admin/config/propostas/modelos/[id] porque é grande demais pra rodar
@@ -110,11 +111,7 @@ export default function ConfigPropostasPage() {
           </TabsContent>
 
           <TabsContent value="estudio">
-            <ComingSoonPanel
-              icon={<Sparkles className="h-9 w-9 opacity-40" />}
-              title="Identidade do estúdio"
-              description="Como sua marca aparece nas propostas: voz, manifesto, diferenciais. Vira contexto pra IA personalizar cada proposta."
-            />
+            <EstudioTab toast={toast} />
           </TabsContent>
         </Tabs>
       </div>

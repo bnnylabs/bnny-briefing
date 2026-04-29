@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { Mail, Phone } from 'lucide-react'
 import { getProposalBySlug, listBlocks } from '@/lib/proposals'
 import { formatProposalNumber } from '@/lib/proposal-types'
+import { getStudioIdentity, formatStudioLocation } from '@/lib/studio-identity'
+import { ProposalMarkdown } from '@/lib/proposal-markdown'
 import { Logo } from '@/components/brand/Logo'
 import { BlockReadOnly } from '@/components/admin/proposals/BlockReadOnly'
 import { ProposalViewTracker } from './ProposalViewTracker'
@@ -39,10 +41,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params
   const proposal = await getProposalBySlug(slug)
   if (!proposal) return { title: 'Proposta' }
+  const studio = await getStudioIdentity()
   const num = formatProposalNumber(proposal.number, proposal.version_suffix)
   return {
-    title: `${num} · ${proposal.title} · Bnny Labs`,
-    description: `Orçamento ${num} preparado pela Bnny Labs.`,
+    title: `${num} · ${proposal.title} · ${studio.studio_name}`,
+    description: `Orçamento ${num} preparado pela ${studio.studio_name}.`,
     robots: { index: false, follow: false }, // private commercial doc
   }
 }
@@ -58,7 +61,10 @@ export default async function PublicProposalPage({ params }: PageProps) {
   // sharable URL doesn't leak draft state.
   if (proposal.status === 'draft') notFound()
 
-  const blocks = await listBlocks(proposal.id)
+  const [blocks, studio] = await Promise.all([
+    listBlocks(proposal.id),
+    getStudioIdentity(),
+  ])
   const visibleBlocks = blocks.filter((b) => b.visible !== false)
 
   const num = formatProposalNumber(proposal.number, proposal.version_suffix)
@@ -105,31 +111,55 @@ export default async function PublicProposalPage({ params }: PageProps) {
           ))}
         </div>
 
-        {/* Footer */}
+        {/* Footer — pulls everything from studio_identity (singleton row) */}
         <footer className="mt-16 border-t border-border pt-8 text-xs leading-relaxed text-muted-foreground">
           <p className="font-mono">
-            Obrigado por considerar a Bnny Labs!
+            Obrigado por considerar a {studio.studio_name}!
             {validUntil && ` Esta estimativa é válida até ${validUntil}`}
             {validUntil && ' e pode variar com mudanças no escopo.'}
             {!validUntil && ' Para dúvidas, entre em contato conosco.'}
           </p>
-          <div className="mt-4 space-y-1.5">
+
+          {/* Owner-editable disclaimer (markdown). Rendered via the same
+              ProposalMarkdown component used in proposal blocks for
+              consistent typography and safe HTML escaping. */}
+          {studio.footer_disclaimer && (
+            <div className="mt-3 max-w-prose font-mono text-[11px] opacity-80">
+              <ProposalMarkdown source={studio.footer_disclaimer} />
+            </div>
+          )}
+
+          {/* Contact pills — only render the ones that have data */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {studio.phone_contact && (
+              <a
+                href={
+                  studio.whatsapp_contact
+                    ? `https://wa.me/${studio.whatsapp_contact}`
+                    : `tel:${studio.phone_contact.replace(/\s+/g, '')}`
+                }
+                className="inline-flex items-center gap-2 rounded bg-primary/15 px-2 py-1 font-mono text-foreground transition-colors hover:bg-primary/25"
+              >
+                <Phone className="h-3 w-3" />
+                {studio.phone_contact}
+              </a>
+            )}
             <a
-              href="tel:+5547988448858"
-              className="inline-flex items-center gap-2 rounded bg-primary/15 px-2 py-1 font-mono text-foreground transition-colors hover:bg-primary/25"
-            >
-              <Phone className="h-3 w-3" />
-              +55 47 98844 8858
-            </a>
-            <br />
-            <a
-              href="mailto:gustavo@bnnylabs.com"
+              href={`mailto:${studio.email_contact}`}
               className="inline-flex items-center gap-2 rounded bg-primary/15 px-2 py-1 font-mono text-foreground transition-colors hover:bg-primary/25"
             >
               <Mail className="h-3 w-3" />
-              gustavo@bnnylabs.com
+              {studio.email_contact}
             </a>
           </div>
+
+          {/* Optional location line */}
+          {formatStudioLocation(studio) && (
+            <p className="mt-3 font-mono text-[11px] opacity-70">
+              {studio.studio_name} · {formatStudioLocation(studio)}
+              {studio.cnpj && ` · CNPJ ${studio.cnpj}`}
+            </p>
+          )}
         </footer>
       </article>
     </div>
