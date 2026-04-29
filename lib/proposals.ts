@@ -216,6 +216,45 @@ export async function createProposal(
     }
   }
 
+  // Resolve next_steps items[] with parallel logic to terms:
+  //   1. Template's `next_steps` block has non-empty items? → use it
+  //   2. Default next-steps preset (proposal_next_steps_presets, v0.10.88+)
+  //   3. Empty array (block hydrates as-is from template)
+  //
+  // Only matters if the template includes a next_steps block. If it
+  // doesn't, we don't fabricate one — same posture as terms.
+  const templateNextStepsBlock = (template?.default_blocks ?? []).find(
+    (b) => b.type === 'next_steps',
+  )
+  const templateNextStepsItems = Array.isArray(
+    (templateNextStepsBlock?.content as { items?: string[] } | undefined)?.items,
+  )
+    ? ((templateNextStepsBlock!.content as { items: string[] }).items)
+    : []
+  const templateHasUsefulNextSteps = templateNextStepsItems.some(
+    (s) => typeof s === 'string' && s.trim().length > 0,
+  )
+
+  let resolvedNextStepsItems: string[] | null = null
+  if (!templateHasUsefulNextSteps && templateNextStepsBlock) {
+    try {
+      const { data: nsPresetRows } = await supabaseAdmin
+        .from('proposal_next_steps_presets')
+        .select('items, is_default')
+        .eq('is_default', true)
+        .limit(1)
+      if (nsPresetRows && nsPresetRows[0]) {
+        const presetItems = (nsPresetRows[0].items ?? []) as string[]
+        const cleaned = presetItems.filter(
+          (s) => typeof s === 'string' && s.trim().length > 0,
+        )
+        if (cleaned.length > 0) resolvedNextStepsItems = cleaned
+      }
+    } catch (e) {
+      console.error('[createProposal] default next_steps preset lookup failed:', e)
+    }
+  }
+
   const slug = generateProposalSlug(input.title)
 
   const { data, error } = await supabaseAdmin
@@ -265,6 +304,12 @@ export async function createProposal(
       // block in template).
       if (b.type === 'terms' && resolvedTermsBody !== null) {
         content = { body_markdown: resolvedTermsBody }
+      }
+      // For next_steps blocks, parallel chain to terms but for items[].
+      // Skip the fallback if the template already had useful items, or
+      // if no default preset exists.
+      if (b.type === 'next_steps' && resolvedNextStepsItems !== null) {
+        content = { items: resolvedNextStepsItems }
       }
       return {
         proposal_id: proposal.id,

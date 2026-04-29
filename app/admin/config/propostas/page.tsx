@@ -22,6 +22,7 @@ import { ModelosTab } from './ModelosTab'
 import { EstudioTab } from './EstudioTab'
 import { PagamentosTab } from './PagamentosTab'
 import { TermosTab } from './TermosTab'
+import { ProximosPassosTab } from './ProximosPassosTab'
 
 /**
  * Centro de Configurações de Propostas — Fase 2 do roadmap.
@@ -30,7 +31,7 @@ import { TermosTab } from './TermosTab'
  *   - Modelos              ✦ ativa
  *   - Pagamentos          ✦ ativa (v0.10.85)
  *   - Termos              ✦ ativa (v0.10.87)
- *   - Próximos passos     (em breve)
+ *   - Próximos passos     ✦ ativa (v0.10.88)
  *   - Estúdio             ✦ ativa (v0.10.74)
  *
  * Esta página é só o lobby — o editor de blocos de cada modelo fica em
@@ -94,11 +95,7 @@ export default function ConfigPropostasPage() {
           </TabsContent>
 
           <TabsContent value="proximos">
-            <ComingSoonPanel
-              icon={<ListChecks className="h-9 w-9 opacity-40" />}
-              title="Próximos passos"
-              description="Checklists pós-aprovação reutilizáveis. IA sugere passos com base no tipo de projeto e no perfil do cliente."
-            />
+            <ProximosPassosTab toast={toast} />
           </TabsContent>
 
           <TabsContent value="estudio">

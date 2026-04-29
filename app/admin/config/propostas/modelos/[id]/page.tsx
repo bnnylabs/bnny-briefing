@@ -32,6 +32,7 @@ import { PhasesEditor } from '@/components/admin/proposals/BlockPhases'
 import { InvestmentEditor } from '@/components/admin/proposals/BlockInvestment'
 import { ApplyPresetButton } from '@/components/admin/proposals/ApplyPresetButton'
 import type { TermsPreset } from '@/lib/terms-presets'
+import type { NextStepsPreset } from '@/lib/next-steps-presets'
 import {
   formatSavedAgo,
   useAutoSave,
@@ -550,6 +551,34 @@ function NextStepsBody({
 
   return (
     <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          Passos pós-aprovação
+        </Label>
+        {/* Apply next-steps preset — replaces the items list with the
+            chosen preset's items. Owner can edit/reorder/add manually
+            after, same as terms. v0.10.88. */}
+        <ApplyPresetButton<NextStepsPreset>
+          endpoint="/api/proposal-next-steps-presets"
+          onApply={(preset) =>
+            onChange({ items: preset.items ?? [] })
+          }
+          getDetailLine={(p) => {
+            const count = (p.items ?? []).filter((s) => s?.trim()).length
+            return `${count} ${count === 1 ? 'passo' : 'passos'}`
+          }}
+          emptyHint={
+            <>
+              Nenhum preset cadastrado.
+              <br />
+              Crie em{' '}
+              <span className="font-mono">Configurações &gt; Próximos passos</span>.
+            </>
+          }
+          className="h-7 text-[11px]"
+        />
+      </div>
+
       {items.length === 0 && (
         <p className="text-xs italic text-muted-foreground/70">
           Nenhum passo ainda — adicione abaixo.
