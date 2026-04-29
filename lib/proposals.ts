@@ -372,6 +372,66 @@ export async function logProposalActivity(
   if (error) throw new Error(error.message)
 }
 
+/**
+ * Latest 'approved' / 'rejected' activity for a proposal, with the
+ * captured actor metadata in `details` JSONB.
+ *
+ * Returns null when:
+ *   - The proposal hasn't been decided yet
+ *   - The activity row is missing for some reason (defensive: the
+ *     route always inserts it, but if a manual DB tweak happens or
+ *     an old proposal was approved before v0.10.75 instrumented
+ *     `proposal_activity`, we shouldn't crash)
+ *
+ * Cached per render: same component tree calling this twice gets
+ * one DB hit. Cache scope is the React rendering pass — fresh on
+ * the next request, so admin updates flow through naturally.
+ */
+export interface LatestDecision {
+  event: 'approved' | 'rejected'
+  actor_name: string | null
+  actor_email: string | null
+  reason: string | null
+  lang: 'pt-BR' | 'en-US' | null
+  created_at: string
+}
+
+export const getLatestDecision = cache(async (
+  proposalId: string,
+): Promise<LatestDecision | null> => {
+  const { data, error } = await supabaseAdmin
+    .from('proposal_activity')
+    .select('event, details, created_at')
+    .eq('proposal_id', proposalId)
+    .in('event', ['approved', 'rejected'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) {
+    if (error) console.error('[proposals/getLatestDecision] read failed:', error)
+    return null
+  }
+
+  // details is JSONB — Supabase types it as unknown. Cast carefully.
+  const d = (data.details as Record<string, unknown> | null) || {}
+
+  const actor_name = typeof d.actor_name === 'string' ? d.actor_name : null
+  const actor_email = typeof d.actor_email === 'string' ? d.actor_email : null
+  const reason = typeof d.reason === 'string' ? d.reason : null
+  const lang =
+    d.lang === 'en-US' || d.lang === 'pt-BR' ? d.lang : null
+
+  return {
+    event: data.event as 'approved' | 'rejected',
+    actor_name,
+    actor_email,
+    reason,
+    lang,
+    created_at: data.created_at,
+  }
+})
+
 // ─── Update proposal meta ────────────────────────────────────────────────
 
 /** Patch shape — only top-level proposal fields the editor mutates. */

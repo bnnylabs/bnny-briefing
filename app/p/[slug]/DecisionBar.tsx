@@ -20,6 +20,19 @@ const TEXTAREA_CLASSES =
 
 type Lang = 'pt-BR' | 'en-US'
 
+/**
+ * Snapshot of the actor info from the latest 'approved'/'rejected'
+ * proposal_activity row. Server fetches this and passes it down so
+ * every contact who opens the link sees who decided — not just the
+ * person who clicked in this session.
+ */
+export interface DecisionSnapshot {
+  event: 'approved' | 'rejected'
+  actor_name: string | null
+  actor_email: string | null
+  created_at: string
+}
+
 interface DecisionBarProps {
   slug: string
   /** Status from the server. Bar renders interactive UI for 'sent'/'viewed',
@@ -30,6 +43,10 @@ interface DecisionBarProps {
    *  by the ?l=<lang> query string the /send route puts on each
    *  recipient's link. Defaults to pt-BR. */
   lang?: Lang
+  /** Server-loaded actor data when the proposal is already decided.
+   *  Null for sent/viewed (still pending) — and as a defensive fallback
+   *  if the activity row is somehow missing. */
+  decision?: DecisionSnapshot | null
 }
 
 /**
@@ -49,9 +66,14 @@ function strings(lang: Lang) {
       // Approved panel (after success or already-approved status)
       approvedTitle: 'Proposal approved',
       approvedSubtitle: 'We received your approval. The studio will be in touch soon.',
+      approvedBy: (name: string, email: string | null, when: string) =>
+        email ? `Approved by ${name} (${email}) on ${when}.` : `Approved by ${name} on ${when}.`,
       // Rejected panel
       rejectedTitle: 'Response recorded',
       rejectedSubtitle: 'Thanks for the feedback. The studio has been notified.',
+      rejectedBy: (name: string, email: string | null, when: string) =>
+        email ? `Recorded by ${name} (${email}) on ${when}.` : `Recorded by ${name} on ${when}.`,
+      dateLocale: 'en-US' as const,
       // Approve dialog
       approveDialogTitle: 'Approve proposal',
       approveDialogDesc: 'Confirm your details and accept the terms to register the approval.',
@@ -89,8 +111,13 @@ function strings(lang: Lang) {
     rejectBtn: 'Recusar',
     approvedTitle: 'Proposta aprovada',
     approvedSubtitle: 'Recebemos sua aprovação. O estúdio vai entrar em contato em breve.',
+    approvedBy: (name: string, email: string | null, when: string) =>
+      email ? `Aprovada por ${name} (${email}) em ${when}.` : `Aprovada por ${name} em ${when}.`,
     rejectedTitle: 'Resposta registrada',
     rejectedSubtitle: 'Obrigado pelo retorno. O estúdio foi notificado.',
+    rejectedBy: (name: string, email: string | null, when: string) =>
+      email ? `Registrada por ${name} (${email}) em ${when}.` : `Registrada por ${name} em ${when}.`,
+    dateLocale: 'pt-BR' as const,
     approveDialogTitle: 'Aprovar proposta',
     approveDialogDesc: 'Confirme seus dados e aceite os termos pra registrar a aprovação.',
     nameLabel: 'Seu nome *',
@@ -118,7 +145,33 @@ function strings(lang: Lang) {
   }
 }
 
-export function DecisionBar({ slug, status, lang = 'pt-BR' }: DecisionBarProps) {
+/**
+ * Mask an email for public display: keep the first 4 characters of
+ * the local part, replace the rest with asterisks, keep the domain
+ * intact. Examples:
+ *   "gc.krypto@icloud.com" → "gc.k****@icloud.com"
+ *   "ana@x.com"            → "ana*@x.com"  (3 chars + 1 asterisk)
+ *   "a@b.com"              → "a@b.com"     (too short to mask, leave it)
+ *   null/empty             → null (caller renders without email)
+ *
+ * Why mask: this email shows on a public URL. If the link gets shared
+ * (forwarded, posted in a chat), the actor's email shouldn't leak fully.
+ * The first 4 chars are enough to recognize "this was Eduardo" while
+ * not exposing the inbox to scrapers.
+ */
+function maskEmail(email: string | null): string | null {
+  if (!email || !email.includes('@')) return null
+  const [local, domain] = email.split('@')
+  if (local.length <= 4) return email // not worth masking
+  return `${local.slice(0, 4)}${'*'.repeat(Math.max(local.length - 4, 1))}@${domain}`
+}
+
+export function DecisionBar({
+  slug,
+  status,
+  lang = 'pt-BR',
+  decision,
+}: DecisionBarProps) {
   const s = strings(lang)
 
   const [approveOpen, setApproveOpen] = React.useState(false)
@@ -135,32 +188,69 @@ export function DecisionBar({ slug, status, lang = 'pt-BR' }: DecisionBarProps) 
   const [rReason, setRReason] = React.useState('')
   const [rError, setRError] = React.useState<string | null>(null)
 
-  // Local override after successful submit (immediate feedback before
-  // the server re-renders).
-  const [localDecision, setLocalDecision] = React.useState<'approved' | 'rejected' | null>(null)
+  // Local override after successful submit so the same browser sees
+  // immediate feedback without waiting for a server re-render. Stores
+  // not just the event but also the actor data we just submitted —
+  // covers the gap until the next page load picks up the persisted
+  // proposal_activity row via getLatestDecision.
+  const [localDecision, setLocalDecision] = React.useState<DecisionSnapshot | null>(null)
 
-  // The "current" status combines server status + any local override
-  // from this session. Server status wins on first paint; local override
-  // takes precedence after a successful submit.
-  const effectiveStatus = localDecision || status
+  // Effective decision = local (this session) ?? server (other sessions
+  // / page reloads). Either way, we render the same panel.
+  const effective: DecisionSnapshot | null =
+    localDecision ||
+    (decision && (decision.event === 'approved' || decision.event === 'rejected')
+      ? decision
+      : null)
 
-  // Already-decided panels (covers BOTH paths: another tab approved and
-  // we got 'approved' from server, OR this user just clicked).
-  if (effectiveStatus === 'approved') {
+  // Format the timestamp once if present.
+  const formattedWhen = effective
+    ? new Date(effective.created_at).toLocaleString(s.dateLocale, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : ''
+
+  // Has the proposal been decided either via local action or per server?
+  const isApproved = effective?.event === 'approved' || status === 'approved'
+  const isRejected = effective?.event === 'rejected' || status === 'rejected'
+
+  if (isApproved) {
     return (
       <div className="my-12 rounded-lg border border-primary/40 bg-primary/10 p-6 text-center">
         <CheckCircle2 className="mx-auto mb-3 h-8 w-8 text-primary" />
         <p className="font-mono text-sm font-bold">{s.approvedTitle}</p>
         <p className="mt-1 text-xs text-muted-foreground">{s.approvedSubtitle}</p>
+        {effective && effective.actor_name && (
+          <p className="mt-3 font-mono text-[11px] text-muted-foreground">
+            {s.approvedBy(
+              effective.actor_name,
+              maskEmail(effective.actor_email),
+              formattedWhen,
+            )}
+          </p>
+        )}
       </div>
     )
   }
-  if (effectiveStatus === 'rejected') {
+  if (isRejected) {
     return (
       <div className="my-12 rounded-lg border border-border bg-muted/40 p-6 text-center">
         <XCircle className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
         <p className="font-mono text-sm font-bold">{s.rejectedTitle}</p>
         <p className="mt-1 text-xs text-muted-foreground">{s.rejectedSubtitle}</p>
+        {effective && effective.actor_name && (
+          <p className="mt-3 font-mono text-[11px] text-muted-foreground">
+            {s.rejectedBy(
+              effective.actor_name,
+              maskEmail(effective.actor_email),
+              formattedWhen,
+            )}
+          </p>
+        )}
       </div>
     )
   }
@@ -196,7 +286,12 @@ export function DecisionBar({ slug, status, lang = 'pt-BR' }: DecisionBarProps) 
         return
       }
       setApproveOpen(false)
-      setLocalDecision('approved')
+      setLocalDecision({
+        event: 'approved',
+        actor_name: aName.trim(),
+        actor_email: aEmail.trim(),
+        created_at: new Date().toISOString(),
+      })
     } catch (e) {
       setAError(s.errNetwork((e as Error).message))
     } finally {
@@ -229,7 +324,12 @@ export function DecisionBar({ slug, status, lang = 'pt-BR' }: DecisionBarProps) 
         return
       }
       setRejectOpen(false)
-      setLocalDecision('rejected')
+      setLocalDecision({
+        event: 'rejected',
+        actor_name: rName.trim(),
+        actor_email: rEmail.trim(),
+        created_at: new Date().toISOString(),
+      })
     } catch (e) {
       setRError(s.errNetwork((e as Error).message))
     } finally {

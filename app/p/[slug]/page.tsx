@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Mail, Phone } from 'lucide-react'
-import { getProposalBySlug, listBlocks } from '@/lib/proposals'
+import { getProposalBySlug, listBlocks, getLatestDecision } from '@/lib/proposals'
 import { formatProposalNumber } from '@/lib/proposal-types'
 import { getStudioIdentity, formatStudioLocation } from '@/lib/studio-identity'
 import { ProposalMarkdown } from '@/lib/proposal-markdown'
@@ -108,6 +108,14 @@ export default async function PublicProposalPage({ params, searchParams }: PageP
   ])
   const visibleBlocks = blocks.filter((b) => b.visible !== false)
 
+  // Pull the actor info for already-decided proposals so every contact
+  // (not just the one who clicked) sees who decided. Skip the query
+  // for non-terminal statuses — saves a round-trip on the hot path.
+  const latestDecision =
+    proposal.status === 'approved' || proposal.status === 'rejected'
+      ? await getLatestDecision(proposal.id)
+      : null
+
   const num = formatProposalNumber(proposal.number, proposal.version_suffix)
   const i18n = t(lang)
   const validUntil = proposal.valid_until
@@ -154,7 +162,12 @@ export default async function PublicProposalPage({ params, searchParams }: PageP
         </div>
 
         {/* Decision bar — buttons render only if status is 'sent' or 'viewed' */}
-        <DecisionBar slug={slug} status={proposal.status} lang={lang} />
+        <DecisionBar
+          slug={slug}
+          status={proposal.status}
+          lang={lang}
+          decision={latestDecision}
+        />
 
         {/* Footer — pulls everything from studio_identity (singleton row) */}
         <footer className="mt-16 border-t border-border pt-8 text-xs leading-relaxed text-muted-foreground">
