@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback, ReactNode } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import {
-  Activity, ArrowRight, BarChart2, BellRing, Bot, Briefcase, Building2,
+  Activity, ArrowRight, BarChart2, Bot, Briefcase, Building2,
   Check, CheckCircle2, ChevronDown,
-  Clipboard, ClipboardCheck, ClipboardList, Clock, Copy, Download, ExternalLink,
-  Eye, FileText, Image as ImageIcon, Link as LinkIcon,
-  Lock, Mail, Maximize2, MoreHorizontal, Paperclip, Pencil, Plus, RefreshCw, Save, Send,
-  ScrollText, Sparkles, Star, StickyNote, Unlock, Users, X,
+  Clipboard, ClipboardCheck, ClipboardList, Clock, Download, ExternalLink,
+  FileText, Image as ImageIcon, Link as LinkIcon,
+  Maximize2, Paperclip, Pencil, Plus, RefreshCw, Save,
+  Sparkles, Star, StickyNote, Users, X,
 } from 'lucide-react'
 import { SOCIAL_NETWORKS } from './SocialIcons'
 import { AvatarUpload } from '@/components/admin/AvatarUpload'
@@ -43,6 +43,8 @@ import { ContactsSection, type ClientContact } from './ContactsSection'
 import { NotesSection, type ClientNote } from './NotesSection'
 import { ResponsesContent, type FileEntry } from '@/components/admin/briefings/ResponsesContent'
 import { ActivityHistoryModal } from './_components/ActivityHistoryModal'
+import { ClientBriefingsCard } from './_components/ClientBriefingsCard'
+import { BRIEFING_STATUS_LABELS } from '@/components/admin/briefings/BriefingStatusBadge'
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -99,9 +101,6 @@ const STATUS_COLORS: Record<ClientStatus, string> = {
   paused: 'border-warning/30 bg-warning/10 text-warning',
   archived: 'border-border bg-muted text-muted-foreground',
 }
-const BRIEFING_STATUS_LABELS: Record<string, string> = {
-  enviado: 'Enviado', visualizado: 'Visualizado', em_andamento: 'Em andamento', concluido: 'Concluído',
-}
 
 const AI_FIELDS = [
   { key: 'company_name', label: 'Nome da empresa' },
@@ -136,17 +135,6 @@ function relativeTime(iso: string | null): string {
   if (days < 30) return `${Math.floor(days / 7)} sem. atrás`
   if (days < 365) return `${Math.floor(days / 30)} meses atrás`
   return `${Math.floor(days / 365)} ano(s) atrás`
-}
-
-function BriefingStatusIcon({ status }: { status: string }) {
-  const cls = 'h-3 w-3'
-  switch (status) {
-    case 'enviado': return <Send className={cls} />
-    case 'visualizado': return <Eye className={cls} />
-    case 'em_andamento': return <Clock className={cls} />
-    case 'concluido': return <CheckCircle2 className={cls} />
-    default: return null
-  }
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────
@@ -829,145 +817,19 @@ export default function ClientePerfilPage() {
             </Card>
 
             {/* Briefings */}
-            <Card className="p-5">
-              <div className="mb-4 flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
-                <ClipboardList className="h-4 w-4" /> Briefings
-                <span className="ml-1 text-xs font-normal text-muted-foreground">{briefings.length} no histórico</span>
-              </div>
-              {briefings.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 py-8 text-center">
-                  <ClipboardList className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
-                  <div className="text-sm text-muted-foreground">Nenhum briefing ainda</div>
-                  <Button variant="outline" size="sm" onClick={() => router.push(`/admin/novo?client_id=${id}`)}>
-                    <Plus size={13} /> Criar o primeiro
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {briefings.map(b => (
-                    <div key={b.id} className="rounded-lg border border-border bg-muted/30 px-3.5 py-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="mb-1.5 text-sm font-semibold">{b.type_label}</div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium',
-                              b.status === 'concluido' && 'border-success/30 bg-success/10 text-success',
-                              b.status === 'em_andamento' && 'border-warning/30 bg-warning/10 text-warning',
-                              b.status === 'visualizado' && 'border-info/30 bg-info/10 text-info',
-                              b.status === 'enviado' && 'border-border bg-muted/60 text-muted-foreground',
-                            )}>
-                              <BriefingStatusIcon status={b.status} />
-                              {BRIEFING_STATUS_LABELS[b.status]}
-                            </span>
-                            <span className="whitespace-nowrap text-xs text-muted-foreground">{fmt(b.created_at)}</span>
-                            {b.completed_at && <span className="whitespace-nowrap text-xs text-muted-foreground">· concluído {fmt(b.completed_at)}</span>}
-                            {(b.recipients?.length ?? 0) > 0 && (
-                              <TooltipProvider delayDuration={200}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="inline-flex cursor-default items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                      <Send size={9} />
-                                      {b.recipients!.length}
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent
-                                    side="bottom"
-                                    className="bg-popover text-popover-foreground border border-border p-0 shadow-md"
-                                  >
-                                    <div className="min-w-44 p-3">
-                                      <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Enviado para</div>
-                                      <div className="flex flex-col gap-2">
-                                        {b.recipients!.map((r, i) => (
-                                          <div key={i} className="flex items-center gap-2">
-                                            <div className="min-w-0 flex-1">
-                                              <div className="truncate text-xs font-medium text-foreground">{r.name}</div>
-                                              <div className="truncate text-[10px] text-muted-foreground">{r.email}</div>
-                                            </div>
-                                            <span className={cn(
-                                              'shrink-0 rounded-md border px-1.5 py-0 text-[10px] font-medium',
-                                              r.role === 'primary'
-                                                ? 'border-success/30 bg-success/10 text-success'
-                                                : 'border-border bg-muted/60 text-muted-foreground'
-                                            )}>
-                                              {r.role === 'primary' ? 'Principal' : 'CC'}
-                                            </span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5">
-                          {b.status === 'concluido' && (
-                            <Button size="sm" onClick={() => viewResponses(b.slug)}>
-                              <Eye size={13} />
-                              Ver respostas
-                            </Button>
-                          )}
-                          <IconButton
-                            icon={copiedSlug === b.slug ? <Check className="h-4 w-4 text-success" /> : <LinkIcon className="h-4 w-4" />}
-                            label="Copiar link" size="icon"
-                            onClick={() => copyBriefingLink(b.slug)}
-                          />
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                type="button"
-                                aria-label="Mais ações"
-                                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              >
-                                <MoreHorizontal size={15} />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-52">
-                              {b.status !== 'concluido' && (
-                                <>
-                                  <DropdownMenuItem onClick={() => resendEmail(b.slug)}>
-                                    {actionDone === b.slug + '_resend' ? <Check size={14} className="text-success" /> : <Mail size={14} />}
-                                    Reenviar email…
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => sendReminder(b.slug)}>
-                                    {actionDone === b.slug + '_reminder' ? <Check size={14} className="text-success" /> : <BellRing size={14} />}
-                                    Enviar lembrete…
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                </>
-                              )}
-                              {b.status === 'concluido' && (
-                                <>
-                                  <DropdownMenuItem onClick={() => toggleLock(b.slug, !!b.editing_locked)}>
-                                    {b.editing_locked ? <Unlock size={14} /> : <Lock size={14} />}
-                                    {b.editing_locked ? 'Liberar edição' : 'Bloquear edição'}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                </>
-                              )}
-                              <DropdownMenuItem onClick={() => router.push(`/admin/novo?client_id=${id}&duplicate=${b.slug}`)}>
-                                <Copy size={14} />
-                                Duplicar briefing
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => viewActivity(b)}>
-                                <ScrollText size={14} />
-                                Histórico de atividades
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-
-            {/* Orçamentos — placeholder */}
+            <ClientBriefingsCard
+              clientId={id}
+              briefings={briefings}
+              copiedSlug={copiedSlug}
+              actionDone={actionDone}
+              fmt={fmt}
+              onViewResponses={viewResponses}
+              onCopyLink={copyBriefingLink}
+              onSendReminder={sendReminder}
+              onResendEmail={resendEmail}
+              onToggleLock={toggleLock}
+              onViewActivity={viewActivity}
+            />
             <Card className="p-5">
               <div className="mb-1 flex items-center gap-1.5 text-[15px] font-bold tracking-tight">
                 <Briefcase className="h-4 w-4" /> Orçamentos

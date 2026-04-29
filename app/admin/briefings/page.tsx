@@ -40,7 +40,7 @@ import { fmt, timeAgo, toIsoDay } from './_components/formatters'
 import {
   BriefingStatusBadge,
   BRIEFING_STATUS_LABELS,
-} from './_components/BriefingStatusBadge'
+} from '@/components/admin/briefings/BriefingStatusBadge'
 import { Modal } from './_components/Modal'
 import { ResponsesModal } from './_components/ResponsesModal'
 import { DiffModal } from './_components/DiffModal'
