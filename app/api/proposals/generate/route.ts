@@ -67,7 +67,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     client_id?: string
     /** Optional explicit override — if absent, derived from client_id. */
     client_company?: string
-    client_contact_name?: string | null
+    /** Override the person addressed in the opening greeting. If null,
+     *  resolves to the client's primary contact. Used by the IACard's
+     *  "Para quem é a abertura?" field — handy when the proposal is
+     *  going to a specific person who isn't (or shouldn't be) the
+     *  primary contact. Doesn't persist; only affects this generation. */
+    addressee_name?: string | null
     context?: string
   }
   try { body = await req.json() } catch {
@@ -85,7 +90,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // without asking the user to paste URLs again.
 
   let clientCompany = body.client_company ?? ''
-  let clientContactName = body.client_contact_name ?? null
+  let clientContactName = body.addressee_name?.trim() || null
   let autoContext = ''
 
   if (client_id) {

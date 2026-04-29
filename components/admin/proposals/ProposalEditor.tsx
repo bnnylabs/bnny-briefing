@@ -606,7 +606,7 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
             {/* IA Assistente — primary action, fills the content below */}
             <IACard
               proposal={proposal}
-              onPersonalize={async (context) => {
+              onPersonalize={async ({ context, addresseeName }) => {
                 const res = await fetch('/api/proposals/generate', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -614,6 +614,7 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                     template_id: proposal.template_id,
                     client_id: proposal.client_id,
                     context,
+                    addressee_name: addresseeName.trim() || null,
                   }),
                 })
                 if (!res.ok) { toast('IA indisponível agora', 'error'); return }
@@ -1132,8 +1133,12 @@ function InvestimentoCard({ block, onChange }: { block: ProposalBlock; onChange:
 
 function IACard({
   proposal, onPersonalize,
-}: { proposal: ProposalWithClient; onPersonalize: (context: string) => Promise<void> }) {
+}: {
+  proposal: ProposalWithClient
+  onPersonalize: (args: { context: string; addresseeName: string }) => Promise<void>
+}) {
   const [context, setContext] = useState('')
+  const [addresseeName, setAddresseeName] = useState('')
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
@@ -1145,8 +1150,9 @@ function IACard({
     if (!canSubmit) return
     setLoading(true)
     try {
-      await onPersonalize(context)
+      await onPersonalize({ context, addresseeName })
       setContext('')
+      setAddresseeName('')
       // Auto-collapse after success — owner doesn't need to keep the card
       // open after the AI did its job.
       setExpanded(false)
@@ -1187,6 +1193,27 @@ function IACard({
           <p className="text-xs leading-relaxed text-muted-foreground">
             A IA usa os dados do cliente automaticamente (site, redes, perfil de IA salvo). Adicione contexto extra abaixo se quiser — notas da reunião, transcrição, detalhes específicos.
           </p>
+
+          {/* Para quem é a abertura — override do contato primário pra
+              casos onde a proposta vai pra alguém específico que não é
+              (ou não deveria ser) o contato principal cadastrado. Sem
+              persistência; só afeta esta geração. */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Para quem é a abertura? (opcional)
+            </label>
+            <input
+              type="text"
+              value={addresseeName}
+              onChange={(e) => setAddresseeName(e.target.value)}
+              placeholder="Ex: Gabriel — usa o contato principal se vazio"
+              className={cn(
+                'flex w-full rounded-md border border-border bg-secondary px-3 py-2',
+                'text-sm text-foreground placeholder:text-muted-foreground/50',
+                'focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all',
+              )}
+            />
+          </div>
 
           <textarea
             value={context}
