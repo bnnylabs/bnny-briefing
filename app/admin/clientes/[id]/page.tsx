@@ -41,7 +41,7 @@ import { FIELD_LABELS_PT, FIELD_LABELS_EN } from '@/lib/briefing-types'
 import { cn } from '@/lib/utils'
 import { ContactsSection, type ClientContact } from './ContactsSection'
 import { NotesSection, type ClientNote } from './NotesSection'
-import { ResponsesContent, type FileEntry } from './_components/ResponsesContent'
+import { ResponsesContent, type FileEntry } from '@/components/admin/briefings/ResponsesContent'
 import { ActivityHistoryModal } from './_components/ActivityHistoryModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────

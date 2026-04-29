@@ -36,13 +36,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-/** Format Date as YYYY-MM-DD string in local time, matching the existing date filter format */
-function toIsoDay(d: Date): string {
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
+import { fmt, timeAgo, toIsoDay } from './_components/formatters'
+import {
+  BriefingStatusBadge,
+  BRIEFING_STATUS_LABELS,
+} from './_components/BriefingStatusBadge'
+import { Modal } from './_components/Modal'
+import { ResponsesContent } from '@/components/admin/briefings/ResponsesContent'
 
 interface Client { id: string; name: string; company: string; email: string; phone: string; avatar_url?: string | null }
 interface Briefing {
@@ -52,147 +52,6 @@ interface Briefing {
   language?: string; editing_locked?: boolean; editing_expires_at?: string | null
   update_count?: number; clients: Client
   recipients?: Array<{ email: string; name: string; role: 'primary' | 'cc' }>
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  enviado: 'Enviado', visualizado: 'Visualizado', em_andamento: 'Em andamento', concluido: 'Concluído',
-}
-
-function fmt(d: string | null) {
-  if (!d) return '—'
-  return new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
-}
-
-function timeAgo(d: string) {
-  const diff = Date.now() - new Date(d).getTime()
-  const mins = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-  if (mins < 60) return `há ${mins}min`
-  if (hours < 24) return `há ${hours}h`
-  if (days === 1) return 'há 1 dia'
-  return `há ${days} dias`
-}
-
-function StatusIcon({ status, size = 11 }: { status: string; size?: number }) {
-  switch (status) {
-    case 'enviado':       return <Send size={size} />
-    case 'visualizado':   return <Eye size={size} />
-    case 'em_andamento':  return <Clock size={size} />
-    case 'concluido':     return <CheckCircle2 size={size} />
-    default:              return null
-  }
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, 'muted' | 'info' | 'warning' | 'success'> = {
-    enviado: 'muted', visualizado: 'info', em_andamento: 'warning', concluido: 'success'
-  }
-  return (
-    <Badge variant={variants[status] || 'muted'} className="text-[11px] font-medium whitespace-nowrap">
-      <StatusIcon status={status} />
-      {STATUS_LABELS[status] || status}
-    </Badge>
-  )
-}
-
-// Wrapper preserved for backwards-compat with the 7 callsites below.
-// Internally now uses Radix Dialog, which gives us focus-trap, proper
-// portal rendering, accessible aria attributes, keyboard handling and
-// scroll-lock for free — all of which the previous custom Modal had to
-// re-implement (and missed focus-trap entirely).
-//
-// API kept identical: { onClose, children, wide }. Radix's onOpenChange
-// fires with `open=false` for both Esc and overlay click, which is
-// exactly what we forward as onClose.
-function Modal({
-  onClose,
-  children,
-  wide,
-}: {
-  onClose: () => void
-  children: React.ReactNode
-  wide?: boolean
-}) {
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent wide={wide} className="max-h-[88vh] overflow-y-auto p-6">
-        {children}
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-interface FileEntry2 { url: string; name: string; type?: string; size?: number }
-function ResponsesContent({ responses, language, companyName, renderFileValue, labelMapPT, labelMapEN }: {
-  responses: Record<string, unknown>
-  language?: string
-  companyName: string
-  renderFileValue: (v: unknown) => React.ReactNode
-  labelMapPT: Record<string, string>
-  labelMapEN: Record<string, string>
-}) {
-  const allFiles: FileEntry2[] = []
-  Object.entries(responses).forEach(([, value]) => {
-    if (Array.isArray(value)) {
-      (value as FileEntry2[]).forEach(f => {
-        if (f && f.name && f.url?.startsWith('http')) allFiles.push(f)
-      })
-    }
-  })
-  const imageFiles = allFiles.filter(f =>
-    f.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
-  )
-  const otherFiles = allFiles.filter(f =>
-    !f.type?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || '')
-  )
-  const labelMap = language === 'en-US' ? labelMapEN : labelMapPT
-
-  async function handleDownloadAll() {
-    const { downloadAsZip } = await import('@/lib/download-zip')
-    await downloadAsZip(allFiles, `${companyName} - arquivos.zip`)
-  }
-
-  return (
-    <>
-      {allFiles.length > 0 && (
-        <div className="mb-4 px-4 py-3 bg-secondary border border-border rounded-xl flex items-center gap-3">
-          <Paperclip className="h-5 w-5 shrink-0 text-muted-foreground" />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold">
-              {allFiles.length} {allFiles.length === 1 ? 'arquivo anexado' : 'arquivos anexados'}
-              {imageFiles.length > 0 && <span className="ml-2 text-xs text-muted-foreground font-normal">· {imageFiles.length} {imageFiles.length === 1 ? 'imagem' : 'imagens'}{otherFiles.length > 0 && `, ${otherFiles.length} doc`}</span>}
-            </div>
-            <div className="text-xs text-muted-foreground mt-0.5 truncate">{allFiles.map(f => f.name).join(', ')}</div>
-          </div>
-          <Button onClick={handleDownloadAll} size="sm" className="shrink-0"><Download size={14} /> Baixar ZIP</Button>
-        </div>
-      )}
-      <div className="flex flex-col gap-2">
-        {Object.entries(responses).filter(([, v]) => v).map(([key, value]) => {
-          const isFileField = /arquivo|logo|referencia|anexo|upload|files/i.test(key) || (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'url' in (value[0] as object))
-          const displayValue = isFileField ? '' : (Array.isArray(value) ? (value as string[]).join(', ') : String(value))
-          const isShort = !isFileField && displayValue.length < 60
-          return (
-            <div key={key} className="rounded-xl overflow-hidden border border-border">
-              <div className={`px-3.5 py-2 bg-secondary flex items-center justify-between gap-2 ${(!isShort || isFileField) ? 'border-b border-border' : ''}`}>
-                <span className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  {isFileField && <Paperclip size={10} />}
-                  {labelMap[key] || key.replace(/_/g, ' ')}
-                </span>
-                {isShort && !isFileField && <span className="text-sm font-semibold text-foreground">{displayValue}</span>}
-              </div>
-              {(!isShort || isFileField) && (
-                <div className="px-3.5 py-3 text-sm text-foreground leading-relaxed bg-card">
-                  {isFileField ? renderFileValue(value) : <span className="whitespace-pre-wrap">{displayValue}</span>}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </>
-  )
 }
 
 
@@ -309,7 +168,7 @@ export default function AdminPage() {
     if (!responsesBriefing || !responses) return
     const b = responsesBriefing
     const fields = Object.entries(responses).filter(([, v]) => v)
-    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111;padding:48px;max-width:800px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #12fea9;margin-bottom:32px}.logo{font-size:22px;font-weight:800;letter-spacing:-0.04em}.logo span{color:#12fea9;background:#111;padding:2px 8px;border-radius:4px}.badge{background:#111;color:#12fea9;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:inline-block}.cb{background:#f8f8f8;border-radius:12px;padding:20px 24px;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.cf label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;display:block;margin-bottom:3px}.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}.f{margin-bottom:18px}.fl{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}.fv{font-size:14px;color:#111;line-height:1.6;background:#f8f8f8;padding:10px 14px;border-radius:8px;border-left:3px solid #12fea9}.footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="hdr"><div><div class="logo"><span>Bnny</span> Labs</div><div style="font-size:12px;color:#555;margin-top:4px">Sistema de Briefings</div></div><div style="text-align:right"><div style="font-size:17px;font-weight:700">${b.type_label}</div><div class="badge">${STATUS_LABELS[b.status]||b.status}</div></div></div><div class="cb"><div class="cf"><label>Empresa</label><span style="font-size:15px;font-weight:700">${b.clients?.company||'—'}</span></div><div class="cf"><label>Contato</label><span>${b.clients?.name||'—'}</span></div><div class="cf"><label>Email</label><span>${b.clients?.email||'—'}</span></div><div class="cf"><label>WhatsApp</label><span>${b.clients?.phone||'—'}</span></div><div class="cf"><label>Concluído em</label><span>${fmt(b.completed_at)}</span></div><div class="cf"><label>Tipo</label><span>${b.type_label}</span></div></div><div class="st">Respostas do briefing</div>${fields.map(([k,v])=>`<div class="f"><div class="fl">${k.replace(/_/g,' ')}</div><div class="fv">${Array.isArray(v)?(v as string[]).join(', '):String(v)}</div></div>`).join('')}<div class="footer">Gerado por Bnny Labs · briefing.bnnylabs.com · ${new Date().toLocaleDateString('pt-BR')}</div></body></html>`
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111;padding:48px;max-width:800px;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #12fea9;margin-bottom:32px}.logo{font-size:22px;font-weight:800;letter-spacing:-0.04em}.logo span{color:#12fea9;background:#111;padding:2px 8px;border-radius:4px}.badge{background:#111;color:#12fea9;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:inline-block}.cb{background:#f8f8f8;border-radius:12px;padding:20px 24px;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.cf label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;display:block;margin-bottom:3px}.st{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}.f{margin-bottom:18px}.fl{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}.fv{font-size:14px;color:#111;line-height:1.6;background:#f8f8f8;padding:10px 14px;border-radius:8px;border-left:3px solid #12fea9}.footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="hdr"><div><div class="logo"><span>Bnny</span> Labs</div><div style="font-size:12px;color:#555;margin-top:4px">Sistema de Briefings</div></div><div style="text-align:right"><div style="font-size:17px;font-weight:700">${b.type_label}</div><div class="badge">${BRIEFING_STATUS_LABELS[b.status]||b.status}</div></div></div><div class="cb"><div class="cf"><label>Empresa</label><span style="font-size:15px;font-weight:700">${b.clients?.company||'—'}</span></div><div class="cf"><label>Contato</label><span>${b.clients?.name||'—'}</span></div><div class="cf"><label>Email</label><span>${b.clients?.email||'—'}</span></div><div class="cf"><label>WhatsApp</label><span>${b.clients?.phone||'—'}</span></div><div class="cf"><label>Concluído em</label><span>${fmt(b.completed_at)}</span></div><div class="cf"><label>Tipo</label><span>${b.type_label}</span></div></div><div class="st">Respostas do briefing</div>${fields.map(([k,v])=>`<div class="f"><div class="fl">${k.replace(/_/g,' ')}</div><div class="fv">${Array.isArray(v)?(v as string[]).join(', '):String(v)}</div></div>`).join('')}<div class="footer">Gerado por Bnny Labs · briefing.bnnylabs.com · ${new Date().toLocaleDateString('pt-BR')}</div></body></html>`
     const win = window.open('', '_blank')
     if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
   }
@@ -710,7 +569,7 @@ export default function AdminPage() {
                         </div>
                         {/* Row 2: status + meta */}
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <StatusBadge status={b.status} />
+                          <BriefingStatusBadge status={b.status} />
                           {(b.update_count || 0) > 0 && (
                             <button onClick={() => openDiffModal(b)} title="Ver alterações"
                               className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-foreground hover:bg-muted/40 transition-colors">

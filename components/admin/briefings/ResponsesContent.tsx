@@ -7,18 +7,20 @@ import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 /**
- * Renders a briefing's response payload inside the responses modal,
- * grouping uploaded files at the top with a "Download all as ZIP" CTA
- * and rendering each text/array answer below in compact cards.
+ * Renders a briefing's response payload — uploaded files grouped at the
+ * top with a "Download all as ZIP" CTA, each text/array answer below
+ * in compact cards.
  *
- * Lives outside the page component because:
- *   - It has its own local state (none, but the ZIP import is lazy)
- *   - Its render logic is dense (file-detection heuristic, label maps,
- *     short-vs-long display variants) and was already a self-contained
- *     function inside the page
- *   - It's reused as a child of two distinct parents: the responses
- *     modal and the diff-mode toggle. Extracting clarifies the
- *     contract — what data goes in, what UI comes out.
+ * Shared between two pages:
+ *   - app/admin/clientes/[id]/page.tsx — modal opens from the briefings
+ *     list inside a client's profile
+ *   - app/admin/briefings/page.tsx — modal opens from the global
+ *     briefings list
+ *
+ * Both pages render the same modal shell (header, copy/export actions,
+ * diff toggle); only the body content goes here. Originally lived in
+ * each page as a near-duplicate; v0.10.99 extracted it to clientes/[id]
+ * and v0.10.101 promoted it to a shared location.
  *
  * The file-detection heuristic checks both the field name (`/arquivo|
  * logo|referencia|anexo|upload|files/i`) and the value shape (array
