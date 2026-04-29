@@ -4,29 +4,21 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Check, Loader2, Eye, Plus,
+  Check, Loader2, Eye, Plus,
   ChevronDown, FileText, AlignLeft, Clock,
   Send, Link as LinkIcon, MoreHorizontal, Download,
   Users, LayoutTemplate, Languages,
 } from 'lucide-react'
 
-import { Badge }    from '@/components/ui/badge'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Button }   from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { Input }    from '@/components/ui/input'
 import { Card }     from '@/components/ui/card'
 import {
-  Dialog, DialogContent, DialogDescription,
-  DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog'
-import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { useToast, ToastContainer } from '@/components/toast'
 import { cn } from '@/lib/utils'
 import { DatePicker, parseIsoDate, toIsoDate } from '@/components/ui/date-picker'
@@ -36,7 +28,6 @@ import { ptBR } from 'date-fns/locale'
 import {
   formatProposalNumber,
   PROPOSAL_STATUS_LABELS_PT,
-  proposalStatusVariant,
   type BlockContentInvestment,
   type ProposalBlock,
   type ProposalBlockContent,
@@ -61,6 +52,12 @@ import { InternalNotesCard } from './editor-cards/InternalNotesCard'
 import { PhasesCard } from './editor-cards/PhasesCard'
 import { InvestimentoCard } from './editor-cards/InvestimentoCard'
 import { IACard } from './editor-cards/IACard'
+import { DocumentView } from './editor-views/DocumentView'
+import {
+  DeleteBlockDialog,
+  ChangeClientDialog,
+  ChangeTemplateDialog,
+} from './editor-dialogs/AdvancedDialogs'
 import type { ProposalLanguage } from '@/lib/proposal-types'
 
 // ─── Constants ────────────────────────────────────────────────────────────
@@ -880,82 +877,33 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
         </div>
       </div>
 
-      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Remover seção?</DialogTitle>
-            <DialogDescription>Esta ação não pode ser desfeita.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="p-6 pt-0">
-            <Button type="button" variant="ghost" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={confirmDeleteBlock}>Remover</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteBlockDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={confirmDeleteBlock}
+      />
 
       {/* Trocar cliente — advanced action */}
-      <Dialog open={changeClientOpen} onOpenChange={setChangeClientOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Trocar cliente</DialogTitle>
-            <DialogDescription>
-              Os dados do novo cliente passam a ser usados no contexto da IA. O conteúdo já escrito não muda — use o card de IA para regenerar se quiser.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-2">
-            <Select value={advancedClientChoice} onValueChange={setAdvancedClientChoice}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione…" />
-              </SelectTrigger>
-              <SelectContent>
-                {advancedClients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.company} {c.name && <span className="text-muted-foreground">· {c.name}</span>}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter className="p-6 pt-2">
-            <Button variant="ghost" onClick={() => setChangeClientOpen(false)} disabled={advancedSaving}>Cancelar</Button>
-            <Button onClick={submitChangeClient} disabled={advancedSaving || !advancedClientChoice}>
-              {advancedSaving ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Salvando…</> : 'Trocar cliente'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ChangeClientDialog
+        open={changeClientOpen}
+        onOpenChange={setChangeClientOpen}
+        clients={advancedClients}
+        value={advancedClientChoice}
+        onValueChange={setAdvancedClientChoice}
+        saving={advancedSaving}
+        onConfirm={submitChangeClient}
+      />
 
       {/* Trocar modelo — advanced action */}
-      <Dialog open={changeTemplateOpen} onOpenChange={setChangeTemplateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Trocar modelo</DialogTitle>
-            <DialogDescription>
-              Apenas o vínculo com o modelo é trocado. O conteúdo atual da proposta não é apagado — você pode usar o card de IA para regenerar fases e abertura segundo o novo modelo.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-2">
-            <Select value={advancedTemplateChoice} onValueChange={setAdvancedTemplateChoice}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione…" />
-              </SelectTrigger>
-              <SelectContent>
-                {advancedTemplates.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter className="p-6 pt-2">
-            <Button variant="ghost" onClick={() => setChangeTemplateOpen(false)} disabled={advancedSaving}>Cancelar</Button>
-            <Button onClick={submitChangeTemplate} disabled={advancedSaving}>
-              {advancedSaving ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Salvando…</> : 'Trocar modelo'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ChangeTemplateDialog
+        open={changeTemplateOpen}
+        onOpenChange={setChangeTemplateOpen}
+        templates={advancedTemplates}
+        value={advancedTemplateChoice}
+        onValueChange={setAdvancedTemplateChoice}
+        saving={advancedSaving}
+        onConfirm={submitChangeTemplate}
+      />
 
       {/* Send proposal dialog — opens when user clicks "Enviar proposta".
           Lazy-loads contacts on first open. v0.10.80. */}
@@ -980,76 +928,6 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
         onTranslated={onMasterTranslated}
         onError={(msg) => toast(msg, 'error')}
       />
-    </div>
-  )
-}
-
-
-// ─── Document view ────────────────────────────────────────────────────────
-
-function DocumentView({
-  proposal, blocks, status, onEdit,
-}: { proposal: ProposalWithClient; blocks: ProposalBlock[]; status: ProposalStatus; onEdit: () => void }) {
-  const visible = blocks.filter((b) => b.visible)
-
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-2xl px-6 pt-6">
-        <div className="mb-6 flex items-center justify-between">
-          <button
-            onClick={onEdit}
-            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft size={13} />Editar
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-semibold tabular-nums text-muted-foreground">
-              {formatProposalNumber(proposal.number, proposal.version_suffix)}
-            </span>
-            <Badge variant={proposalStatusVariant(status)} className="text-[11px]">
-              {PROPOSAL_STATUS_LABELS_PT[status]}
-            </Badge>
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-2xl px-6 pb-16">
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <div className="border-b border-border px-8 py-7">
-            {proposal.clients?.company && (
-              <div className="mb-2 text-xs text-muted-foreground">{proposal.clients.company}</div>
-            )}
-            <h1 className="font-mono text-2xl font-bold tracking-tight">{proposal.title || 'Sem título'}</h1>
-            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
-              {proposal.total_amount > 0 && (
-                <div>
-                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Total </span>
-                  <span className="font-mono font-semibold tabular-nums">{fmtCurrency(proposal.total_amount, proposal.currency)}</span>
-                </div>
-              )}
-              {proposal.valid_until && (
-                <div>
-                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Válida até </span>
-                  <span className="font-medium">{fmtDate(proposal.valid_until)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          {visible.length === 0 ? (
-            <div className="px-8 py-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                <button onClick={onEdit} className="text-primary hover:underline">Editar</button> para adicionar conteúdo.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {visible.map((b) => (
-                <div key={b.id} className="px-8 py-7"><BlockReadOnly block={b} /></div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   )
 }
