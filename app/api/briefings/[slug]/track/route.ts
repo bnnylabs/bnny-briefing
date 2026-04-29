@@ -41,26 +41,40 @@ export async function POST(
 
   if (!briefing) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
-  // Only transition forward — don't regress a completed briefing
-  if (['concluido', 'em_andamento'].includes(briefing.status) && event === 'link_opened') {
-    return NextResponse.json({ ok: true, skipped: true })
+  // Compute the target status and whether this transition is allowed.
+  // Forward-only — never regress.
+  const allowedFromByEvent: Record<TrackEvent, string[]> = {
+    link_opened: ['enviado'], // visualizado/em_andamento/concluido stay put
+    form_started: ['enviado', 'visualizado'], // concluido/em_andamento stay put
   }
-  if (briefing.status === 'concluido' && event === 'form_started') {
+
+  if (!allowedFromByEvent[event].includes(briefing.status)) {
     return NextResponse.json({ ok: true, skipped: true })
-  }
-  if (briefing.status === 'em_andamento' && event === 'form_started') {
-    return NextResponse.json({ ok: true, skipped: true }) // already in this state
   }
 
   const now = new Date().toISOString()
   const newStatus = EVENT_STATUS[event]
   const timestampField = event === 'link_opened' ? 'viewed_at' : 'started_at'
 
-  // Update briefing status
-  await supabaseAdmin
+  // Atomic transition: only update if status is still in the allowed set.
+  // A client opening the briefing in 2 tabs would otherwise fire two
+  // identical events and double-insert into notifications.
+  const { data: claimed, error: updErr } = await supabaseAdmin
     .from('briefings')
     .update({ status: newStatus, [timestampField]: now })
     .eq('id', briefing.id)
+    .in('status', allowedFromByEvent[event]) // ← atomic guard
+    .select('id')
+    .maybeSingle()
+
+  if (updErr) {
+    return NextResponse.json({ error: updErr.message }, { status: 500 })
+  }
+  if (!claimed) {
+    // Lost the race to a concurrent request, or status moved under us.
+    // No work to do.
+    return NextResponse.json({ ok: true, skipped: true })
+  }
 
   // Log to activity timeline
   const eventLabels: Record<TrackEvent, string> = {

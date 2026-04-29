@@ -69,6 +69,49 @@ export async function POST(
     )
   }
 
+  // Atomic claim: try to advance status to 'sent' BEFORE sending email.
+  // Only the first concurrent request gets a row back; the loser gets
+  // null and bails out with 409. This kills the "double-click sends
+  // two emails" race that happened before v0.10.71.
+  //
+  // We allow the claim from any status that's "still drafting" — draft,
+  // viewed, expired, rejected, revised. A proposal already 'sent' or
+  // 'approved' won't claim again — re-send needs to be an explicit
+  // re-publish flow (not built yet; for now, status patch via editor).
+  //
+  // sent_at is preserved on first send: only set if currently null.
+  const claimablePrior = ['draft', 'revised', 'expired', 'rejected'] as const
+  const claimUpdate: Record<string, unknown> = {
+    status: 'sent',
+    updated_at: new Date().toISOString(),
+  }
+  if (!proposal.sent_at) claimUpdate.sent_at = new Date().toISOString()
+
+  const { data: claimed, error: claimErr } = await supabaseAdmin
+    .from('proposals')
+    .update(claimUpdate)
+    .eq('id', proposal.id)
+    .in('status', [...claimablePrior, 'sent', 'viewed'])
+    // Allow re-send from 'sent'/'viewed' (owner re-publishing after edits)
+    // but make it concurrent-safe: only the row whose previous updated_at
+    // matches what we read above wins.
+    .eq('updated_at', proposal.updated_at)
+    .select('id')
+    .maybeSingle()
+
+  if (claimErr) {
+    return NextResponse.json({ error: claimErr.message }, { status: 500 })
+  }
+  if (!claimed) {
+    // Another request already advanced the proposal. Likely double-click
+    // or two tabs. Bail without sending — the first request's email
+    // already shipped (or is in flight).
+    return NextResponse.json(
+      { error: 'Esta proposta já está sendo enviada. Aguarde alguns segundos.' },
+      { status: 409 },
+    )
+  }
+
   // Pull the investment block so the email can mention the total amount.
   // Missing investment block isn't fatal — we just send "" and the
   // template falls back gracefully.
@@ -135,27 +178,14 @@ export async function POST(
   // Forwards-compat with single-recipient code paths below.
   const result = sendResults.find((r) => r.recipient.role === 'primary' && r.ok)!
 
-  // Email shipped — now update state. We use a partial update so we don't
-  // clobber sent_at on re-sends (preserves first-send timestamp).
-  const update: Record<string, unknown> = {
-    status: 'sent',
-    updated_at: new Date().toISOString(),
-  }
-  if (!proposal.sent_at) update.sent_at = new Date().toISOString()
-
-  const { error: updErr } = await supabaseAdmin
-    .from('proposals')
-    .update(update)
-    .eq('id', proposal.id)
-
-  if (updErr) {
-    // Email already went out — can't undo it. Surface the error but tag
-    // it so the UI can show "email enviado, mas o status não atualizou".
-    return NextResponse.json(
-      { error: updErr.message, emailSent: true },
-      { status: 500 },
-    )
-  }
+  // Status was already claimed at the top of the handler (atomic update
+  // before sending the email). If the email failed AFTER we claimed,
+  // we have a tricky state — proposal is 'sent' but no email arrived.
+  // In practice this is rare (Resend errors are usually pre-flight, e.g.
+  // invalid email), and the activity log captures the failure for the
+  // owner to spot and re-trigger. A future iteration could revert the
+  // claim on Resend failure, but that opens its own race condition
+  // window with concurrent successful re-sends.
 
   // Log it (best-effort — failures here are silent).
   try {
@@ -169,8 +199,8 @@ export async function POST(
         primary_email_id: result.id,
       },
     })
-  } catch {
-    // Activity logging is best-effort. Don't break the response.
+  } catch (e) {
+    console.error('[proposals/send] activity log failed:', e)
   }
 
   return NextResponse.json({

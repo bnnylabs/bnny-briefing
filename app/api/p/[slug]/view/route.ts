@@ -50,28 +50,40 @@ export async function POST(
     return NextResponse.json({ ok: true })
   }
 
-  // Status guard: only upgrade from 'sent'. 'viewed' would just refresh
-  // viewed_at — we deliberately don't, because the first-view timestamp
-  // is the more useful signal for the owner.
-  if (existing.status !== 'sent') {
-    return NextResponse.json({ ok: true, skipped: true })
-  }
-
+  // Atomic transition: 'sent' → 'viewed', winner-takes-all. If a client
+  // opens the proposal in two tabs simultaneously, only ONE of those
+  // requests will succeed in the update (the .eq('status', 'sent')
+  // narrows the row out from under the loser). The loser's update
+  // affects 0 rows and we return early without sending the admin
+  // a duplicate "client opened the proposal" email.
+  //
+  // viewed_at is set on first view only — re-views never overwrite it,
+  // so the owner sees the true first-view timestamp.
+  const nowIso = new Date().toISOString()
   const update: Record<string, unknown> = {
     status: 'viewed',
-    updated_at: new Date().toISOString(),
+    updated_at: nowIso,
   }
   if (!existing.viewed_at) {
-    update.viewed_at = new Date().toISOString()
+    update.viewed_at = nowIso
   }
 
-  const { error: updErr } = await supabaseAdmin
+  const { data: claimed, error: updErr } = await supabaseAdmin
     .from('proposals')
     .update(update)
     .eq('id', existing.id)
+    .eq('status', 'sent') // ← atomic guard
+    .select('id')
+    .maybeSingle()
 
   if (updErr) {
     return NextResponse.json({ error: updErr.message }, { status: 500 })
+  }
+  if (!claimed) {
+    // Either the status changed under us (another tab won) or it wasn't
+    // 'sent' to begin with. Either way: no work to do, no notification
+    // to fire.
+    return NextResponse.json({ ok: true, skipped: true })
   }
 
   // Best-effort: notify the owner. Failures here are swallowed — the
