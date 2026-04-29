@@ -4,11 +4,9 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
-  CreditCard,
   FileText,
   ListChecks,
   Receipt,
-  Sparkles,
 } from 'lucide-react'
 
 import { IconButton } from '@/components/ui/icon-button'
@@ -23,13 +21,14 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { useToast, ToastContainer } from '@/components/toast'
 import { ModelosTab } from './ModelosTab'
 import { EstudioTab } from './EstudioTab'
+import { PagamentosTab } from './PagamentosTab'
 
 /**
  * Centro de Configurações de Propostas — Fase 2 do roadmap.
  *
  * 5 abas planejadas:
  *   - Modelos              ✦ ativa
- *   - Pagamentos          (em breve)
+ *   - Pagamentos          ✦ ativa (v0.10.85)
  *   - Termos              (em breve)
  *   - Próximos passos     (em breve)
  *   - Estúdio             ✦ ativa (v0.10.74)
@@ -87,11 +86,7 @@ export default function ConfigPropostasPage() {
           </TabsContent>
 
           <TabsContent value="pagamentos">
-            <ComingSoonPanel
-              icon={<CreditCard className="h-9 w-9 opacity-40" />}
-              title="Condições de pagamento"
-              description="Biblioteca de presets reutilizáveis (à vista, parcelado, mensalidade etc.) com IA pra sugerir variações por tipo de projeto."
-            />
+            <PagamentosTab toast={toast} />
           </TabsContent>
 
           <TabsContent value="termos">
