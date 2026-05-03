@@ -1,6 +1,6 @@
 {
   "name": "bnny-briefing",
-  "version": "0.10.106",
+  "version": "0.10.105",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -30,7 +30,6 @@
     "jszip": "^3.10.1",
     "lucide-react": "^1.11.0",
     "next": "^16.2.4",
-    "pdf-parse": "^2.4.5",
     "react": "^19.0.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.0.0",
@@ -39,7 +38,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.0.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",

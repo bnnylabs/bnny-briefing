@@ -697,12 +697,7 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
             {/* IA Assistente — primary action, fills the content below */}
             <IACard
               proposal={proposal}
-              onPersonalize={async ({
-                context,
-                addresseeName,
-                pdfBase64,
-                pdfFilename,
-              }) => {
+              onPersonalize={async ({ context, addresseeName }) => {
                 const res = await fetch('/api/proposals/generate', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -711,10 +706,6 @@ export function ProposalEditor({ initialProposal, initialBlocks }: ProposalEdito
                     client_id: proposal.client_id,
                     context,
                     addressee_name: addresseeName.trim() || null,
-                    // v0.10.106+ — modo visual envia PDF como document part
-                    // pra Claude processar (layout, tabelas, scans).
-                    ...(pdfBase64 ? { pdf_base64: pdfBase64 } : {}),
-                    ...(pdfFilename ? { pdf_filename: pdfFilename } : {}),
                   }),
                 })
                 if (!res.ok) { toast('IA indisponível agora', 'error'); return }
