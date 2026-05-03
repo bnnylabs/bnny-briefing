@@ -74,14 +74,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
      *  primary contact. Doesn't persist; only affects this generation. */
     addressee_name?: string | null
     context?: string
+    /** Base64-encoded PDF (sem prefixo "data:..."). Quando presente, é
+     *  enviado como `document` part pra Claude — útil pra PDFs com
+     *  layout complexo, tabelas ou scans onde extração textual local
+     *  falha ou perde estrutura. Custo adicional de tokens (Claude
+     *  processa o PDF inteiro a cada chamada). v0.10.106+. */
+    pdf_base64?: string
+    /** Nome do PDF, opcional. Aparece como label do document part — o
+     *  Claude tem mais contexto pra interpretar (ex: "briefing.pdf"
+     *  vs "contrato.pdf"). */
+    pdf_filename?: string
   }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { template_id, client_id, context } = body
-  if (!context?.trim() && !client_id) {
-    return NextResponse.json({ error: 'context or client_id is required' }, { status: 400 })
+  const { template_id, client_id, context, pdf_base64, pdf_filename } = body
+  if (!context?.trim() && !client_id && !pdf_base64) {
+    return NextResponse.json(
+      { error: 'context, client_id ou pdf_base64 é obrigatório' },
+      { status: 400 },
+    )
   }
 
   // ─── Load client data automatically ────────────────────────────────────
@@ -294,10 +307,48 @@ RESPOSTA: APENAS JSON válido, sem markdown, sem comentários.
 }`
 
   try {
+    /**
+     * Quando o usuário escolhe "ler PDF visualmente" (caminho C),
+     * mandamos o PDF inteiro como `document` part. Claude processa
+     * layout, tabelas e até PDFs scaneados. Custo: tokens proporcionais
+     * ao tamanho do PDF, cobrados a cada chamada.
+     *
+     * Quando NÃO há PDF, mantemos o content como string pra evitar
+     * regressão na maioria dos casos. v0.10.106+.
+     */
+    type UserContent =
+      | string
+      | Array<
+          | { type: 'text'; text: string }
+          | {
+              type: 'document'
+              source: { type: 'base64'; media_type: 'application/pdf'; data: string }
+              title?: string
+            }
+        >
+
+    let userContent: UserContent = prompt
+
+    if (pdf_base64) {
+      const blocks: Exclude<UserContent, string> = [
+        {
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: pdf_base64,
+          },
+          ...(pdf_filename ? { title: pdf_filename } : {}),
+        },
+        { type: 'text', text: prompt },
+      ]
+      userContent = blocks
+    }
+
     const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 2000,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: userContent }],
     })
 
     const raw = msg.content[0]
